@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Bike } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
+import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
@@ -77,6 +78,7 @@ export default function RootLayout({
           </nav>
         </div>
         <ServiceWorkerRegister />
+        <InstallPrompt />
       </body>
     </html>
   );
