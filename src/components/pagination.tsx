@@ -14,12 +14,12 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
       <div className="text-sm text-slate-500">
         Page {page} of {totalPages}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-300 px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={14} />
           Previous
@@ -29,15 +29,15 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           .map((p, idx, arr) => (
             <span key={p} className="flex items-center">
               {idx > 0 && arr[idx - 1] !== p - 1 ? (
-                <span className="px-1 text-slate-300">...</span>
+                <span className="px-1 text-slate-300 select-none">…</span>
               ) : null}
               <button
                 type="button"
                 onClick={() => onPageChange(p)}
-                className={`inline-flex size-8 items-center justify-center rounded-md text-xs font-medium ${
+                className={`inline-flex size-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
                   p === page
-                    ? "bg-slate-950 text-white"
-                    : "border border-slate-300 text-slate-700 hover:bg-slate-50"
+                    ? "bg-blue-800 text-white shadow-sm"
+                    : "border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400"
                 }`}
               >
                 {p}
@@ -48,7 +48,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-300 px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight size={14} />

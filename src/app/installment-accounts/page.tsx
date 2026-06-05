@@ -6,6 +6,7 @@ import { Bike, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
+import { ResponsiveTable, type Column } from "@/components/responsive-table";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
@@ -15,6 +16,60 @@ type AccountListResponse = {
   installmentAccounts: InstallmentAccountDto[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
+
+const columns: Column<InstallmentAccountDto>[] = [
+  {
+    key: "customer",
+    label: "Customer",
+    render: (a) => (
+      <div>
+        <div className="font-medium text-slate-900">{a.customerName}</div>
+        <div className="text-xs text-slate-500">{a.customerPhone}</div>
+      </div>
+    ),
+  },
+  {
+    key: "motorcycle",
+    label: "Motorcycle",
+    render: (a) => <span className="text-slate-700">{a.brand} {a.model}</span>,
+  },
+  {
+    key: "balance",
+    label: "Balance",
+    render: (a) => <span className="font-semibold text-slate-900">{formatPeso(a.remainingBalance)}</span>,
+    className: "font-semibold text-slate-900",
+  },
+  {
+    key: "monthly",
+    label: "Monthly",
+    render: (a) => <span className="text-slate-700">{formatPeso(a.monthlyInstallment)}</span>,
+  },
+  {
+    key: "status",
+    label: "Status",
+    render: (a) => <StatusBadge status={a.status as AccountStatusValue} />,
+  },
+  {
+    key: "nextDue",
+    label: "Next Due",
+    render: (a) => <span className="text-slate-700">{a.nextDueDate}</span>,
+  },
+  {
+    key: "actions",
+    label: "",
+    render: (a) => (
+      <Link
+        href={`/installment-accounts/${a.id}`}
+        className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
+      >
+        View
+      </Link>
+    ),
+    hideOnMobile: false,
+    headerClassName: "w-16",
+    className: "text-right",
+  },
+];
 
 export default function InstallmentAccountsPage() {
   const [accounts, setAccounts] = useState<InstallmentAccountDto[]>([]);
@@ -61,7 +116,7 @@ export default function InstallmentAccountsPage() {
         actions={
           <Link
             href="/installment-accounts/new"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-medium text-white hover:bg-slate-800"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
           >
             <Plus size={16} aria-hidden="true" />
             New Account
@@ -81,58 +136,17 @@ export default function InstallmentAccountsPage() {
               placeholder="Search by customer, brand, or model..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="h-10 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-slate-950"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
-          <div className="rounded-md border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-left text-sm">
-                <thead className="bg-slate-100 text-xs font-semibold uppercase text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Motorcycle</th>
-                    <th className="px-4 py-3">Balance</th>
-                    <th className="px-4 py-3">Monthly</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Next Due</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {accounts.map((a) => (
-                    <tr key={a.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-slate-950">{a.customerName}</div>
-                        <div className="text-xs text-slate-500">{a.customerPhone}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {a.brand} {a.model}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-950">{formatPeso(a.remainingBalance)}</td>
-                      <td className="px-4 py-3 text-slate-700">{formatPeso(a.monthlyInstallment)}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={a.status as AccountStatusValue} />
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">{a.nextDueDate}</td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/installment-accounts/${a.id}`}
-                          className="inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {accounts.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-500">
-                {searchTerm ? "No accounts match your search." : "No accounts yet. Create your first account."}
-              </div>
-            ) : null}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <ResponsiveTable
+              columns={columns}
+              data={accounts}
+              rowKey={(a) => a.id}
+              emptyMessage={searchTerm ? "No accounts match your search." : "No accounts yet. Create your first account."}
+            />
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </>

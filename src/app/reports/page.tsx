@@ -11,55 +11,47 @@ import { PageHeader } from "@/components/page-header";
 
 const reportLinks = [
   {
-    href: "/api/reports/collections",
+    href: "/reports/collections",
     label: "Collection Report",
     description: "All collections with customer and unit details",
     icon: FileText,
-    external: true,
   },
   {
-    href: "/api/reports/daily-collections",
+    href: "/reports/daily-collections",
     label: "Daily Collection Report",
     description: "Today's collections summary",
     icon: CalendarCheck,
-    external: true,
   },
   {
-    href: "/api/reports/monthly-collections",
+    href: "/reports/monthly-collections",
     label: "Monthly Collection Report",
     description: "Monthly breakdown of collections",
     icon: CalendarCheck,
-    external: true,
   },
   {
-    href: "/api/reports/overdue-accounts",
+    href: "/reports/overdue-accounts",
     label: "Overdue Accounts Report",
     description: "Accounts past due date",
     icon: AlertTriangle,
-    external: true,
   },
   {
-    href: "/api/reports/penalties",
+    href: "/reports/penalties",
     label: "Penalty Report",
     description: "All penalty records",
     icon: ReceiptText,
-    external: true,
   },
   {
-    href: "/api/reports/discounts",
+    href: "/reports/discounts",
     label: "Discount Report",
     description: "All discount records",
     icon: TrendingUp,
-    external: true,
   },
   {
-    href: "/api/reports/outstanding-balances",
+    href: "/reports/outstanding-balances",
     label: "Outstanding Balance Report",
     description: "All active accounts with remaining balances",
     icon: DollarSign,
-    external: true,
   },
-
 ];
 
 export default function ReportsPage() {
@@ -75,16 +67,15 @@ export default function ReportsPage() {
             <Link
               key={report.href}
               href={report.href}
-              {...(report.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              className="rounded-md border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 hover:shadow-md transition-shadow"
+              className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
             >
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-                  <Icon size={20} aria-hidden="true" />
+              <div className="flex items-center gap-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-blue-200 transition-colors group-hover:bg-blue-100">
+                  <Icon size={21} aria-hidden="true" />
                 </span>
                 <div>
-                  <div className="text-sm font-semibold text-slate-950">{report.label}</div>
-                  <div className="text-xs text-slate-500">{report.description}</div>
+                  <div className="text-sm font-bold font-heading text-slate-900 group-hover:text-blue-800 transition-colors">{report.label}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{report.description}</div>
                 </div>
               </div>
             </Link>
