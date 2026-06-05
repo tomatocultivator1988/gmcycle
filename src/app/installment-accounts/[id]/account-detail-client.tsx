@@ -281,10 +281,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         <StatCard label="Days Overdue" value={String(daysOverdue)} valueClass={daysOverdue > 0 ? "text-rose-600" : "text-slate-900"} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard label="Cash Price" value={formatPeso(account.cashPrice)} />
         <StatCard label="Installment Price" value={formatPeso(account.installmentPrice)} />
+        <StatCard label="Gross Profit" value={formatPeso(account.grossProfit)} valueClass="text-emerald-700" />
         <StatCard label="Down Payment" value={formatPeso(account.downPayment)} />
-        <StatCard label="Monthly Installment" value={formatPeso(account.monthlyInstallment)} />
+        <StatCard label="Monthly" value={formatPeso(account.monthlyInstallment)} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

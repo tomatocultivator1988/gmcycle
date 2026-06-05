@@ -15,6 +15,7 @@ export function serializeInstallmentAccount(account: InstallmentAccountShape) {
     installmentPrice: decimalToString(account.installmentPrice),
     downPayment: decimalToString(account.downPayment),
     remainingBalance: decimalToString(account.remainingBalance),
+    grossProfit: decimalToString(account.installmentPrice.sub(account.cashPrice)),
     monthlyInstallment: decimalToString(account.monthlyInstallment),
     startDate: dateToManilaDateOnly(account.startDate),
     nextDueDate: dateToManilaDateOnly(account.nextDueDate),

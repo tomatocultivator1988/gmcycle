@@ -15,6 +15,7 @@ export type InstallmentAccountDto = {
   installmentPrice: string;
   downPayment: string;
   remainingBalance: string;
+  grossProfit: string;
   term: number;
   monthlyInstallment: string;
   status: AccountStatusValue;
@@ -79,6 +80,7 @@ export type DashboardMetricsDto = {
   overdueAccounts: number;
   dueTodayAccounts: number;
   totalInstallmentSales: string;
+  totalInstallmentMargin: string;
   totalDownPayments: string;
   totalCollections: string;
   outstandingBalances: string;

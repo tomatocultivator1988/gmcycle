@@ -85,6 +85,15 @@ export async function GET() {
       where: { status: { in: ["ACTIVE", "DUE_TODAY"] } },
     });
 
+    const [aggregateCashPrices, aggregateInstallmentPrices] = await Promise.all([
+      prisma.installmentAccount.aggregate({ _sum: { cashPrice: true } }),
+      prisma.installmentAccount.aggregate({ _sum: { installmentPrice: true } }),
+    ]);
+
+    const totalCashPrice = new Decimal(aggregateCashPrices._sum.cashPrice?.toString() ?? "0");
+    const totalInstallmentPrice = new Decimal(aggregateInstallmentPrices._sum.installmentPrice?.toString() ?? "0");
+    const totalInstallmentMargin = totalInstallmentPrice.sub(totalCashPrice);
+
     return NextResponse.json({
       metrics: {
         totalAccounts,
@@ -92,7 +101,8 @@ export async function GET() {
         fullyPaidAccounts,
         overdueAccounts,
         dueTodayAccounts,
-        totalInstallmentSales: decimalToString(totalInstallmentSales._sum.installmentPrice?.toString() ?? "0"),
+        totalInstallmentSales: decimalToString(totalInstallmentPrice.toString()),
+        totalInstallmentMargin: decimalToString(totalInstallmentMargin.toString()),
         totalDownPayments: decimalToString(totalDownPayments._sum.downPayment?.toString() ?? "0"),
         totalCollections: decimalToString(totalCollections._sum.totalAmount?.toString() ?? "0"),
         outstandingBalances: decimalToString(totalOutstanding._sum.remainingBalance?.toString() ?? "0"),

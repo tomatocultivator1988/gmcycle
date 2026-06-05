@@ -15,30 +15,12 @@ import {
   PiggyBank,
   ArrowUpRight,
   ArrowDownRight,
-  Receipt,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
 import type { DashboardMetricsDto } from "@/types/api";
-
-const metricCards = [
-  { key: "totalAccounts", label: "Total Accounts", icon: Users, color: "bg-blue-50 text-blue-700 ring-blue-200", money: false },
-  { key: "activeAccounts", label: "Active", icon: CheckCircle2, color: "bg-emerald-50 text-emerald-700 ring-emerald-200", money: false },
-  { key: "fullyPaidAccounts", label: "Fully Paid", icon: Bike, color: "bg-sky-50 text-sky-700 ring-sky-200", money: false },
-  { key: "overdueAccounts", label: "Overdue", icon: AlertTriangle, color: "bg-rose-50 text-rose-700 ring-rose-200", money: false },
-  { key: "dueTodayAccounts", label: "Due Today", icon: ClockAlert, color: "bg-amber-50 text-amber-700 ring-amber-200", money: false },
-  { key: "totalInstallmentSales", label: "Installment Sales", icon: TrendingUp, color: "bg-violet-50 text-violet-700 ring-violet-200", money: true },
-  { key: "totalDownPayments", label: "Down Payments", icon: ArrowDownRight, color: "bg-teal-50 text-teal-700 ring-teal-200", money: true },
-  { key: "totalCollections", label: "Collections", icon: PiggyBank, color: "bg-indigo-50 text-indigo-700 ring-indigo-200", money: true },
-  { key: "outstandingBalances", label: "Outstanding", icon: Landmark, color: "bg-orange-50 text-orange-700 ring-orange-200", money: true },
-  { key: "totalPenaltiesCollected", label: "Penalties", icon: ArrowUpRight, color: "bg-rose-50 text-rose-700 ring-rose-200", money: true },
-  { key: "totalDiscountsGranted", label: "Discounts", icon: Percent, color: "bg-emerald-50 text-emerald-700 ring-emerald-200", money: true },
-  { key: "collectionsToday", label: "Today", icon: CalendarCheck, color: "bg-blue-50 text-blue-700 ring-blue-200", money: true },
-  { key: "collectionsThisWeek", label: "This Week", icon: CalendarCheck, color: "bg-purple-50 text-purple-700 ring-purple-200", money: true },
-  { key: "collectionsThisMonth", label: "This Month", icon: Receipt, color: "bg-pink-50 text-pink-700 ring-pink-200", money: true },
-] as const;
 
 const agingLabels = [
   { key: "current", label: "Current", color: "bg-emerald-500" },
@@ -47,6 +29,28 @@ const agingLabels = [
   { key: "days61to90", label: "61-90 Days", color: "bg-rose-500" },
   { key: "days90plus", label: "90+ Days", color: "bg-red-600" },
 ] as const;
+
+type MetricCardProps = {
+  label: string;
+  value: string | number;
+  icon: any;
+  color: string;
+  size?: "normal" | "large";
+};
+
+function MetricCard({ label, value, icon: Icon, color, size = "normal" }: MetricCardProps) {
+  return (
+    <div className={`group rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${size === "large" ? "p-6" : "p-5"}`}>
+      <div className="flex items-center justify-between">
+        <span className={`font-medium text-slate-600 ${size === "large" ? "text-sm" : "text-sm"}`}>{label}</span>
+        <span className={`flex items-center justify-center rounded-lg ring-1 ${color} ${size === "large" ? "size-11" : "size-9"}`}>
+          <Icon size={size === "large" ? 20 : 17} aria-hidden="true" />
+        </span>
+      </div>
+      <div className={`font-bold text-slate-900 ${size === "large" ? "mt-4 text-3xl" : "mt-3 text-2xl"}`}>{value}</div>
+    </div>
+  );
+}
 
 export function DashboardClient() {
   const [metrics, setMetrics] = useState<DashboardMetricsDto | null>(null);
@@ -83,75 +87,87 @@ export function DashboardClient() {
 
       {metrics ? (
         <>
+          {/* ── Account Health ── */}
           <section>
-            <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Accounts</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {metricCards.slice(0, 5).map((card) => {
-                const Icon = card.icon;
-                const rawValue = metrics[card.key as keyof DashboardMetricsDto];
-                const value = card.money ? formatPeso(String(rawValue)) : rawValue;
+            <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Account Health</h2>
 
-                return (
-                  <div key={card.key} className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-600">{card.label}</span>
-                      <span className={`flex size-9 items-center justify-center rounded-lg ring-1 ${card.color}`}>
-                        <Icon size={17} aria-hidden="true" />
-                      </span>
-                    </div>
-                    <div className="mt-3 text-2xl font-bold text-slate-900">{value as string}</div>
-                  </div>
-                );
-              })}
+            {/* Top row: Overdue + Due Today (large) side by side */}
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-rose-800">Overdue</span>
+                  <span className="flex size-11 items-center justify-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-rose-300">
+                    <AlertTriangle size={20} />
+                  </span>
+                </div>
+                <div className="mt-4 text-3xl font-bold text-rose-900">{metrics.overdueAccounts}</div>
+                <p className="mt-1 text-sm text-rose-700">
+                  {metrics.overdueAccounts === 1 ? "1 account past due" : `${metrics.overdueAccounts} accounts past due`}
+                </p>
+              </div>
+
+              <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-amber-800">Due Today</span>
+                  <span className="flex size-11 items-center justify-center rounded-lg bg-amber-100 text-amber-700 ring-1 ring-amber-300">
+                    <ClockAlert size={20} />
+                  </span>
+                </div>
+                <div className="mt-4 text-3xl font-bold text-amber-900">{metrics.dueTodayAccounts}</div>
+                <p className="mt-1 text-sm text-amber-700">
+                  {metrics.dueTodayAccounts === 1 ? "1 payment due today" : `${metrics.dueTodayAccounts} payments due today`}
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom row: Active + Fully Paid + Total */}
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+              <MetricCard label="Active" value={metrics.activeAccounts} icon={CheckCircle2} color="bg-emerald-50 text-emerald-700 ring-emerald-200" />
+              <MetricCard label="Fully Paid" value={metrics.fullyPaidAccounts} icon={Users} color="bg-sky-50 text-sky-700 ring-sky-200" />
+              <MetricCard label="Total Accounts" value={metrics.totalAccounts} icon={Bike} color="bg-blue-50 text-blue-700 ring-blue-200" />
             </div>
           </section>
 
+          {/* ── Financial Overview ── */}
           <section>
-            <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Financials</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {metricCards.slice(5, 11).map((card) => {
-                const Icon = card.icon;
-                const rawValue = metrics[card.key as keyof DashboardMetricsDto];
-                const value = card.money ? formatPeso(String(rawValue)) : rawValue;
+            <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Financial Overview</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <MetricCard label="Installment Sales" value={formatPeso(metrics.totalInstallmentSales)} icon={TrendingUp} color="bg-violet-50 text-violet-700 ring-violet-200" />
+              <MetricCard label="Gross Profit" value={formatPeso(metrics.totalInstallmentMargin)} icon={TrendingUp} color="bg-emerald-50 text-emerald-700 ring-emerald-200" />
+              <MetricCard label="Down Payments" value={formatPeso(metrics.totalDownPayments)} icon={ArrowDownRight} color="bg-teal-50 text-teal-700 ring-teal-200" />
 
-                return (
-                  <div key={card.key} className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-600">{card.label}</span>
-                      <span className={`flex size-9 items-center justify-center rounded-lg ring-1 ${card.color}`}>
-                        <Icon size={17} aria-hidden="true" />
-                      </span>
-                    </div>
-                    <div className="mt-3 text-2xl font-bold text-slate-900">{value as string}</div>
+              {/* Collections card with mini breakdown */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-600">Collections</span>
+                  <span className="flex size-9 items-center justify-center rounded-lg ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                    <PiggyBank size={17} />
+                  </span>
+                </div>
+                <div className="mt-3 text-2xl font-bold text-slate-900">{formatPeso(metrics.totalCollections)}</div>
+                <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                  <div className="flex justify-between">
+                    <span>Today</span>
+                    <span className="font-medium text-slate-700">{formatPeso(metrics.collectionsToday)}</span>
                   </div>
-                );
-              })}
+                  <div className="flex justify-between">
+                    <span>This Week</span>
+                    <span className="font-medium text-slate-700">{formatPeso(metrics.collectionsThisWeek)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>This Month</span>
+                    <span className="font-medium text-slate-700">{formatPeso(metrics.collectionsThisMonth)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <MetricCard label="Outstanding" value={formatPeso(metrics.outstandingBalances)} icon={Landmark} color="bg-orange-50 text-orange-700 ring-orange-200" />
+              <MetricCard label="Penalties" value={formatPeso(metrics.totalPenaltiesCollected)} icon={ArrowUpRight} color="bg-rose-50 text-rose-700 ring-rose-200" />
+              <MetricCard label="Discounts" value={formatPeso(metrics.totalDiscountsGranted)} icon={Percent} color="bg-emerald-50 text-emerald-700 ring-emerald-200" />
             </div>
           </section>
 
-          <section>
-            <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Collections</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {metricCards.slice(11).map((card) => {
-                const Icon = card.icon;
-                const rawValue = metrics[card.key as keyof DashboardMetricsDto];
-                const value = card.money ? formatPeso(String(rawValue)) : rawValue;
-
-                return (
-                  <div key={card.key} className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-600">{card.label}</span>
-                      <span className={`flex size-9 items-center justify-center rounded-lg ring-1 ${card.color}`}>
-                        <Icon size={17} aria-hidden="true" />
-                      </span>
-                    </div>
-                    <div className="mt-3 text-2xl font-bold text-slate-900">{value as string}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
+          {/* ── Aging Report ── */}
           <section>
             <h2 className="text-sm font-semibold font-heading uppercase tracking-wider text-slate-500 mb-4">Aging Report</h2>
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
