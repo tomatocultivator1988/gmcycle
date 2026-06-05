@@ -1,6 +1,7 @@
+import { Prisma } from "@/generated/prisma/client";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 
 export async function readJson(request: Request): Promise<unknown> {
   try {
@@ -22,6 +23,10 @@ export function handleApiError(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 
+  if (error instanceof ConflictError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+
   if (error instanceof ZodError) {
     return NextResponse.json(
       {
@@ -39,4 +44,25 @@ export function handleApiError(error: unknown): NextResponse {
   console.error(error);
 
   return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+}
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034" &&
+        attempt < maxRetries
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new ConflictError("Transaction conflict, please try again");
 }

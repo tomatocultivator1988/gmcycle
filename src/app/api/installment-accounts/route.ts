@@ -11,14 +11,41 @@ import { createInstallmentAccountSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const accounts = await prisma.installmentAccount.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
+    const search = searchParams.get("search") || "";
+
+    const where = search
+      ? {
+          OR: [
+            { customerName: { contains: search, mode: "insensitive" as const } },
+            { brand: { contains: search, mode: "insensitive" as const } },
+            { model: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    const [accounts, total] = await Promise.all([
+      prisma.installmentAccount.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.installmentAccount.count({ where }),
+    ]);
 
     return NextResponse.json({
       installmentAccounts: accounts.map(serializeInstallmentAccount),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     return handleApiError(error);

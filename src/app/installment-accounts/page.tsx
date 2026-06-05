@@ -1,46 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bike, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
 import type { InstallmentAccountDto, AccountStatusValue } from "@/types/api";
 
+type AccountListResponse = {
+  installmentAccounts: InstallmentAccountDto[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
 export default function InstallmentAccountsPage() {
   const [accounts, setAccounts] = useState<InstallmentAccountDto[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
+  const fetchAccounts = useCallback(async (p: number, search: string) => {
+    setLoading(true);
+    setError("");
 
-    apiRequest<{ installmentAccounts: InstallmentAccountDto[] }>(
-      "/api/installment-accounts",
-    )
-      .then((data) => {
-        if (active) setAccounts(data.installmentAccounts);
-      })
-      .catch((requestError: Error) => {
-        if (active) setError(requestError.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      if (search) params.set("search", search);
 
-    return () => { active = false; };
+      const data = await apiRequest<AccountListResponse>(
+        `/api/installment-accounts?${params}`,
+      );
+      setAccounts(data.installmentAccounts);
+      setTotalPages(data.pagination.totalPages);
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filtered = accounts.filter(
-    (a) =>
-      a.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.model.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  useEffect(() => {
+    fetchAccounts(page, searchTerm);
+  }, [page, searchTerm, fetchAccounts]);
+
+  function handleSearch(value: string) {
+    setSearchTerm(value);
+    setPage(1);
+  }
 
   return (
     <div className="space-y-6">
@@ -69,7 +80,7 @@ export default function InstallmentAccountsPage() {
               type="text"
               placeholder="Search by customer, brand, or model..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="h-10 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-slate-950"
             />
           </div>
@@ -89,7 +100,7 @@ export default function InstallmentAccountsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {filtered.map((a) => (
+                  {accounts.map((a) => (
                     <tr key={a.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div className="font-medium text-slate-950">{a.customerName}</div>
@@ -117,11 +128,12 @@ export default function InstallmentAccountsPage() {
                 </tbody>
               </table>
             </div>
-            {filtered.length === 0 ? (
+            {accounts.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">
                 {searchTerm ? "No accounts match your search." : "No accounts yet. Create your first account."}
               </div>
             ) : null}
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </>
       ) : null}

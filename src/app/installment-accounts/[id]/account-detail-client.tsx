@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
   Bike,
   CalendarDays,
   ChevronDown,
   ChevronUp,
+  Printer,
   ReceiptText,
   User,
   Phone,
@@ -316,12 +318,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           {payments.map((payment) => (
             <div key={payment.id} className="p-4">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <div className="font-medium text-slate-950">{formatPeso(payment.totalAmount)}</div>
                   <div className="text-sm text-slate-500">
                     {payment.paymentDate} — {payment.method}
                   </div>
-                  <div className="mt-1 flex gap-2 text-xs">
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium">
                       {payment.paymentType}
                     </span>
@@ -340,6 +342,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     ) : null}
                   </div>
                 </div>
+                <Link
+                  href={`/payments/${payment.id}/receipt`}
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <Printer size={14} />
+                  Print
+                </Link>
               </div>
             </div>
           ))}

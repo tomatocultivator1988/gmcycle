@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/api";
+import { NotFoundError } from "@/lib/errors";
+import { prisma } from "@/lib/prisma";
+import { serializePayment } from "@/lib/serializers";
+import { dateToManilaDateOnly } from "@/lib/dates";
+import { decimalToString } from "@/lib/money";
+
+export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+
+    const payment = await prisma.payment.findUnique({
+      where: { id },
+      include: {
+        installmentAccount: {
+          select: {
+            customerName: true,
+            customerPhone: true,
+            customerAddress: true,
+            brand: true,
+            model: true,
+            unitDescription: true,
+            monthlyInstallment: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundError("Payment not found");
+    }
+
+    return NextResponse.json({
+      payment: {
+        ...serializePayment(payment),
+        account: {
+          customerName: payment.installmentAccount.customerName,
+          customerPhone: payment.installmentAccount.customerPhone,
+          customerAddress: payment.installmentAccount.customerAddress,
+          brand: payment.installmentAccount.brand,
+          model: payment.installmentAccount.model,
+          unitDescription: payment.installmentAccount.unitDescription,
+          monthlyInstallment: decimalToString(payment.installmentAccount.monthlyInstallment),
+        },
+      },
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
