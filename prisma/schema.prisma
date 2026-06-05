@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountStatus {
+  ACTIVE
+  DUE_TODAY
+  OVERDUE
+  FULLY_PAID
+}
+
+enum PaymentMethod {
+  CASH
+  GCASH
+  BANK
+}
+
+enum PaymentType {
+  REGULAR
+  PARTIAL
+  ADVANCE
+  FULL
+}
+
+enum ScheduleStatus {
+  PENDING
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+model InstallmentAccount {
+  id                 String        @id @default(cuid())
+  customerName       String
+  customerPhone      String
+  customerAddress    String
+  brand              String
+  model              String
+  unitDescription    String
+  cashPrice          Decimal       @db.Decimal(12, 2)
+  installmentPrice   Decimal       @db.Decimal(12, 2)
+  downPayment        Decimal       @db.Decimal(12, 2)
+  remainingBalance   Decimal       @db.Decimal(12, 2)
+  term               Int
+  monthlyInstallment Decimal       @db.Decimal(12, 2)
+  status             AccountStatus @default(ACTIVE)
+  startDate          DateTime
+  dueDayOfMonth      Int
+  nextDueDate        DateTime
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  payments  Payment[]
+  schedule  InstallmentSchedule[]
+  penalties PenaltyRecord[]
+  discounts DiscountRecord[]
+
+  @@index([customerName])
+  @@index([status])
+  @@index([nextDueDate])
+}
+
+model InstallmentSchedule {
+  id                   String        @id @default(cuid())
+  installmentAccountId String
+  periodNumber         Int
+  dueDate              DateTime
+  amount               Decimal       @db.Decimal(12, 2)
+  status               ScheduleStatus @default(PENDING)
+  paidDate             DateTime?
+  paymentId            String?
+  paidAmount           Decimal?      @db.Decimal(12, 2)
+  penaltyAmount        Decimal       @default(0.00) @db.Decimal(12, 2)
+  discountAmount       Decimal       @default(0.00) @db.Decimal(12, 2)
+
+  installmentAccount InstallmentAccount @relation(fields: [installmentAccountId], references: [id])
+
+  @@index([installmentAccountId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Payment {
+  id                   String        @id @default(cuid())
+  installmentAccountId String
+  customerName         String
+  totalAmount          Decimal       @db.Decimal(12, 2)
+  paymentDate          DateTime
+  method               PaymentMethod
+  paymentType          PaymentType
+  penaltyAmount        Decimal       @default(0.00) @db.Decimal(12, 2)
+  discountAmount       Decimal       @default(0.00) @db.Decimal(12, 2)
+  notes                String?
+  cashier              String?
+  createdAt            DateTime      @default(now())
+
+  installmentAccount InstallmentAccount  @relation(fields: [installmentAccountId], references: [id])
+  penalties          PenaltyRecord[]
+  discounts          DiscountRecord[]
+
+  @@index([installmentAccountId])
+  @@index([paymentDate])
+}
+
+model PenaltyRecord {
+  id                   String        @id @default(cuid())
+  installmentAccountId String
+  paymentId            String
+  amount               Decimal       @db.Decimal(12, 2)
+  appliedDate          DateTime      @default(now())
+  reason               String?
+
+  installmentAccount InstallmentAccount @relation(fields: [installmentAccountId], references: [id])
+  payment            Payment            @relation(fields: [paymentId], references: [id])
+
+  @@index([installmentAccountId])
+  @@index([appliedDate])
+}
+
+model DiscountRecord {
+  id                   String        @id @default(cuid())
+  installmentAccountId String
+  paymentId            String
+  amount               Decimal       @db.Decimal(12, 2)
+  appliedDate          DateTime      @default(now())
+  reason               String?
+
+  installmentAccount InstallmentAccount @relation(fields: [installmentAccountId], references: [id])
+  payment            Payment            @relation(fields: [paymentId], references: [id])
+
+  @@index([installmentAccountId])
+  @@index([appliedDate])
+}
+
+model AdminConfig {
+  id             String         @id @default(cuid())
+  penaltyAmount  Decimal        @default(200.00) @db.Decimal(12, 2)
+  discountAmount Decimal        @default(200.00) @db.Decimal(12, 2)
+  dueDayOptions  Int[]          @default([10, 20, 30])
+  updatedAt      DateTime       @updatedAt
+}
