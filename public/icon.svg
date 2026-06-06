@@ -1,11 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="80" fill="#1e40af"/>
-  <g transform="translate(256,256) scale(14.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="5.5" cy="17.5" r="3.5"/>
-    <circle cx="18.5" cy="17.5" r="3.5"/>
-    <polyline points="15.5 17.5 3 17.5"/>
-    <polyline points="8 17.5 13 5.5 18.5 17.5"/>
-    <line x1="12" y1="5.5" x2="20" y2="5.5"/>
-    <polyline points="18.5 5.5 24 8.5"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+
+  <!-- Gear ring -->
+  <g opacity="0.12">
+    <circle cx="256" cy="256" r="218" fill="none" stroke="white" stroke-width="20" stroke-dasharray="18 22"/>
+  </g>
+
+  <!-- "GM" text -->
+  <text x="256" y="268" text-anchor="middle" dominant-baseline="central" fill="white" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="190" letter-spacing="2">GM</text>
+
+  <!-- Divider line -->
+  <line x1="150" y1="340" x2="362" y2="340" stroke="white" stroke-width="3" opacity="0.15" stroke-linecap="round"/>
+
+  <!-- Motorcycle silhouette -->
+  <g transform="translate(256, 398)" fill="white" opacity="0.95">
+    <!-- Rear wheel -->
+    <circle cx="-26" cy="12" r="9" fill="none" stroke="white" stroke-width="3.5"/>
+    <circle cx="-26" cy="12" r="2.5" fill="white"/>
+    <!-- Front wheel -->
+    <circle cx="26" cy="12" r="9" fill="none" stroke="white" stroke-width="3.5"/>
+    <circle cx="26" cy="12" r="2.5" fill="white"/>
+    <!-- Frame / body -->
+    <path d="M-20,7 L-18,-6 L-6,-10 L6,-10 L16,-2 L18,7 Z" fill="white"/>
+    <!-- Seat -->
+    <rect x="-10" y="-10" width="14" height="5" rx="2" fill="white" opacity="0.85"/>
+    <!-- Handlebar -->
+    <path d="M16,-2 Q24,-8 30,-4" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Exhaust -->
+    <rect x="-22" y="-1" width="6" height="4" rx="1" fill="white" opacity="0.6"/>
+    <!-- Fender hint -->
+    <path d="M-34,8 Q-26,2 -18,8" fill="none" stroke="white" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
   </g>
 </svg>

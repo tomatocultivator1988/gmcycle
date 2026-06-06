@@ -1,17 +1,33 @@
+import { readFile, writeFile, unlink } from "fs/promises";
 import sharp from "sharp";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import pngToIco from "png-to-ico";
+import { resolve } from "path";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = resolve("public");
+const svgBuffer = await readFile(`${root}/icon.svg`);
 
-const svg = fs.readFileSync(path.join(__dirname, "..", "public", "icon.svg"), "utf-8");
-const sizes = [192, 512];
+const sizes = [16, 32, 48, 192, 512];
 
+// Generate PNGs
 for (const size of sizes) {
-  await sharp(Buffer.from(svg))
-    .resize(size, size)
-    .png()
-    .toFile(path.join(__dirname, "..", "public", `icon-${size}x${size}.png`));
-  console.log(`Created icon-${size}x${size}.png`);
+  const png = await sharp(svgBuffer).resize(size, size).png().toBuffer();
+
+  if (size >= 192) {
+    await writeFile(`${root}/icon-${size}x${size}.png`, png);
+    console.log(`  icon-${size}x${size}.png`);
+  }
+
+  // Save for ICO assembly
+  await writeFile(`${root}/.favicon-${size}.png`, png);
 }
+
+// Generate ICO from 16, 32, 48 PNGs
+const icoInput = [16, 32, 48].map((s) => `${root}/.favicon-${s}.png`);
+const icoBuffer = await pngToIco(icoInput);
+await writeFile(`${root}/favicon.ico`, icoBuffer);
+console.log("  favicon.ico");
+
+// Cleanup temp files
+await Promise.all(sizes.map((s) => unlink(`${root}/.favicon-${s}.png`).catch(() => {})));
+
+console.log("Done!");

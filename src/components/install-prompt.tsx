@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Bike, Download, X } from "lucide-react";
 
-const DISMISSED_KEY = "gm-cycle-install-dismissed";
+let capturedInstallEvent: Event | null = null;
 
 function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -20,32 +20,28 @@ function isStandalone(): boolean {
 }
 
 export function InstallPrompt() {
-  const [installEvent, setInstallEvent] = useState<Event | null>(null);
+  const [installEvent, setInstallEvent] = useState<Event | null>(capturedInstallEvent);
   const [show, setShow] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const dismissed = useRef(false);
   const iOSDevice = isIOS();
+
+  // Show 2s after mount if we already have an install event (e.g., from previous page)
+  useEffect(() => {
+    if (!installEvent || isStandalone()) return;
+    const t = setTimeout(() => setShow(true), iOSDevice ? 2000 : 0);
+    return () => clearTimeout(t);
+  }, [installEvent, iOSDevice]);
 
   const dismiss = useCallback(() => {
     setShow(false);
-    dismissed.current = true;
-    try {
-      localStorage.setItem(DISMISSED_KEY, "true");
-    } catch {}
   }, []);
 
   useEffect(() => {
     if (isStandalone()) return;
-    try {
-      if (localStorage.getItem(DISMISSED_KEY) === "true") {
-        dismissed.current = true;
-        return;
-      }
-    } catch {}
 
     const handler = (e: Event) => {
       e.preventDefault();
-      if (dismissed.current) return;
+      capturedInstallEvent = e;
       setInstallEvent(e);
       setShow(true);
     };
@@ -54,7 +50,6 @@ export function InstallPrompt() {
 
     if (iOSDevice) {
       const timer = setTimeout(() => {
-        if (dismissed.current) return;
         setShow(true);
       }, 2000);
       return () => {
