@@ -15,7 +15,6 @@ export async function GET() {
       config = await prisma.adminConfig.create({
         data: {
           penaltyAmount: new Decimal("200.00"),
-          discountAmount: new Decimal("200.00"),
           dueDayOptions: [10, 20, 30],
         },
       });
@@ -25,7 +24,6 @@ export async function GET() {
       config: {
         id: config.id,
         penaltyAmount: config.penaltyAmount.toFixed(2),
-        discountAmount: config.discountAmount.toFixed(2),
         dueDayOptions: config.dueDayOptions,
       },
     });
@@ -38,7 +36,6 @@ export async function PUT(request: Request) {
   try {
     const body = updateAdminConfigSchema.parse(await readJson(request));
     const penaltyAmount = parseMoney(body.penaltyAmount, "penaltyAmount");
-    const discountAmount = parseMoney(body.discountAmount, "discountAmount");
 
     let config = await prisma.adminConfig.findFirst();
 
@@ -47,7 +44,6 @@ export async function PUT(request: Request) {
         where: { id: config.id },
         data: {
           penaltyAmount: penaltyAmount.toFixed(2),
-          discountAmount: discountAmount.toFixed(2),
           dueDayOptions: body.dueDayOptions,
         },
       });
@@ -55,7 +51,6 @@ export async function PUT(request: Request) {
       config = await prisma.adminConfig.create({
         data: {
           penaltyAmount: penaltyAmount.toFixed(2),
-          discountAmount: discountAmount.toFixed(2),
           dueDayOptions: body.dueDayOptions,
         },
       });
@@ -65,7 +60,6 @@ export async function PUT(request: Request) {
       config: {
         id: config.id,
         penaltyAmount: config.penaltyAmount.toFixed(2),
-        discountAmount: config.discountAmount.toFixed(2),
         dueDayOptions: config.dueDayOptions,
       },
     });

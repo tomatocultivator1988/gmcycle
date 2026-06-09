@@ -1,23 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Bike } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GM Cycle",
-  description: "Motorcycle Installment Monitoring System",
+  title: "MyFaveGadgets",
+  description: "Gadget Installment Monitoring System",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "GM Cycle",
+    title: "MyFaveGadgets",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e40af",
+  themeColor: "#dc2626",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/installment-accounts", label: "Accounts", icon: "Bike" },
+  { href: "/installment-accounts", label: "Accounts", icon: "Smartphone" },
   { href: "/payments", label: "Payments", icon: "ReceiptText" },
   { href: "/reports", label: "Reports", icon: "FileText" },
   { href: "/admin/config", label: "Settings", icon: "Settings" },
@@ -51,14 +51,14 @@ export default function RootLayout({
       <body className="min-h-full bg-slate-50 text-slate-900">
         <div className="min-h-screen pb-20 sm:pb-0">
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm supports-backdrop-blur:bg-white/80">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-blue-800 text-white shadow-sm">
-                  <Bike size={18} aria-hidden="true" />
+            <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
+              <Link href="/dashboard" className="flex items-center gap-4">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-red-800 shadow-sm">
+                  <img src="/logo1.png" alt="MyFaveGadgets" className="h-8 w-auto brightness-0 invert" />
                 </span>
                 <span className="hidden sm:block">
-                  <span className="block text-base font-semibold font-heading text-slate-900">GM Cycle</span>
-                  <span className="block text-[11px] font-medium text-slate-500 leading-tight">Installment Monitoring</span>
+                  <span className="block text-lg font-bold font-heading text-slate-900">MyFaveGadgets</span>
+                  <span className="block text-[11px] font-medium text-slate-500 leading-tight">Gadget Installment</span>
                 </span>
               </Link>
               <nav className="flex items-center gap-1">
@@ -69,7 +69,7 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 animate-fade-in">
+          <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>
 

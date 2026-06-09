@@ -1,4 +1,5 @@
-export type AccountStatusValue = "ACTIVE" | "DUE_TODAY" | "OVERDUE" | "FULLY_PAID";
+export type AccountStatusValue = "APPLIED" | "ACTIVE" | "DUE_TODAY" | "OVERDUE" | "FULLY_PAID";
+export type PricingTypeValue = "FLAT_RATE" | "INTEREST_PERCENTAGE";
 export type PaymentMethod = "CASH" | "GCASH" | "BANK";
 export type PaymentTypeValue = "REGULAR" | "PARTIAL" | "ADVANCE" | "FULL";
 export type ScheduleStatusValue = "PENDING" | "PAID" | "OVERDUE" | "PARTIAL";
@@ -7,6 +8,7 @@ export type InstallmentAccountDto = {
   id: string;
   customerName: string;
   customerPhone: string;
+  customerEmail: string | null;
   customerAddress: string;
   brand: string;
   model: string;
@@ -16,11 +18,12 @@ export type InstallmentAccountDto = {
   downPayment: string;
   remainingBalance: string;
   grossProfit: string;
+  pricingType: PricingTypeValue;
+  interestRate: string | null;
   term: number;
   monthlyInstallment: string;
   status: AccountStatusValue;
   startDate: string;
-  dueDayOfMonth: number;
   nextDueDate: string;
   createdAt: string;
   updatedAt: string;
@@ -52,6 +55,7 @@ export type PaymentDto = {
   discountAmount: string;
   notes: string | null;
   cashier: string | null;
+  proofUrl: string | null;
   createdAt: string;
 };
 
@@ -75,6 +79,7 @@ export type DiscountRecordDto = {
 
 export type DashboardMetricsDto = {
   totalAccounts: number;
+  appliedAccounts: number;
   activeAccounts: number;
   fullyPaidAccounts: number;
   overdueAccounts: number;
@@ -85,7 +90,6 @@ export type DashboardMetricsDto = {
   totalCollections: string;
   outstandingBalances: string;
   totalPenaltiesCollected: string;
-  totalDiscountsGranted: string;
   collectionsToday: string;
   collectionsThisWeek: string;
   collectionsThisMonth: string;
@@ -101,6 +105,5 @@ export type DashboardMetricsDto = {
 export type AdminConfigDto = {
   id: string;
   penaltyAmount: string;
-  discountAmount: string;
   dueDayOptions: number[];
 };

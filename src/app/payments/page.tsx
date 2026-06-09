@@ -1,23 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ReceiptText, Save, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
-import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
+import { ErrorMessage, LoadingBlock, SuccessMessage } from "@/components/ui-state";
+import { FieldError } from "@/components/field-error";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
-import type { PaymentDto } from "@/types/api";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { createPaymentSchema } from "@/lib/validation";
+import { validateForm, clearFieldError, type FieldErrors } from "@/lib/form-validation";
+import type { PaymentDto, InstallmentAccountDto, PaymentMethod, PaymentTypeValue } from "@/types/api";
 
 type PaymentListResponse = {
   payments: PaymentDto[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
+type AccountListResponse = {
+  installmentAccounts: InstallmentAccountDto[];
+};
+
 const paymentTypeStyles: Record<string, string> = {
-  REGULAR: "bg-blue-50 text-blue-700 border-blue-200",
+  REGULAR: "bg-red-50 text-red-700 border-red-200",
   PARTIAL: "bg-amber-50 text-amber-700 border-amber-200",
   ADVANCE: "bg-purple-50 text-purple-700 border-purple-200",
   FULL: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -49,7 +57,7 @@ const columns: Column<PaymentDto>[] = [
     key: "type",
     label: "Type",
     render: (p) => (
-      <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-xs font-semibold ${paymentTypeStyles[p.paymentType] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
+      <span className={`inline-flex items-center rounded-xl border px-2 py-0.5 text-xs font-semibold ${paymentTypeStyles[p.paymentType] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
         {p.paymentType}
       </span>
     ),
@@ -66,11 +74,13 @@ const columns: Column<PaymentDto>[] = [
     hideOnMobile: true,
   },
   {
-    key: "discount",
-    label: "Discount",
+    key: "proof",
+    label: "Proof",
     render: (p) =>
-      p.discountAmount && p.discountAmount !== "0.00" ? (
-        <span className="font-medium text-emerald-600">{formatPeso(p.discountAmount)}</span>
+      p.proofUrl ? (
+        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded border border-slate-200 overflow-hidden hover:opacity-80">
+          <img src={p.proofUrl} alt="Proof" className="size-8 object-cover" />
+        </a>
       ) : (
         <span className="text-slate-300">—</span>
       ),
@@ -78,12 +88,44 @@ const columns: Column<PaymentDto>[] = [
   },
 ];
 
+function todayDateOnly() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<PaymentDto[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<InstallmentAccountDto[]>([]);
+
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [postError, setPostError] = useState("");
+  const [postSuccess, setPostSuccess] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  const [form, setForm] = useState({
+    installmentAccountId: "",
+    totalAmount: "",
+    paymentDate: todayDateOnly(),
+    method: "CASH" as PaymentMethod,
+    paymentType: "REGULAR" as PaymentTypeValue,
+    notes: "",
+    cashier: "",
+    proofUrl: "",
+  });
+
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const fetchPayments = useCallback(async (p: number) => {
     setLoading(true);
@@ -104,19 +146,124 @@ export default function PaymentsPage() {
     fetchPayments(page);
   }, [page, fetchPayments]);
 
+  useBodyScrollLock(showModal);
+
+  function openModal() {
+    setPostError("");
+    setPostSuccess("");
+    setFieldErrors({});
+    setForm({
+      installmentAccountId: "",
+      totalAmount: "",
+      paymentDate: todayDateOnly(),
+      method: "CASH",
+      paymentType: "REGULAR",
+      notes: "",
+      cashier: "",
+      proofUrl: "",
+    });
+
+    setProofFile(null);
+    setProofPreview(null);
+
+    apiRequest<AccountListResponse>("/api/installment-accounts?page=1&limit=100")
+      .then((data) => setAccounts(data.installmentAccounts.filter((a) => a.status !== "APPLIED")))
+      .catch(() => {});
+
+    setShowModal(true);
+  }
+
+  function updateField(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors[field]) clearFieldError(setFieldErrors, field);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPostError("");
+    setPostSuccess("");
+
+    const validation = validateForm(createPaymentSchema, {
+      ...form,
+      notes: form.notes || undefined,
+      cashier: form.cashier || undefined,
+    });
+
+    if (!validation.success) {
+      setFieldErrors(validation.errors);
+      return;
+    }
+
+    if (proofFile) {
+      setUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", proofFile);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
+        setForm((prev) => ({ ...prev, proofUrl: data.url }));
+        setUploading(false);
+      } catch (uploadError) {
+        setPostError((uploadError as Error).message);
+        setUploading(false);
+        return;
+      }
+    }
+
+    setShowConfirm(true);
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProofFile(file);
+    setProofPreview(URL.createObjectURL(file));
+  }
+
+  async function confirmPost() {
+    setSaving(true);
+    setPostError("");
+
+    try {
+      await apiRequest<{ payment: PaymentDto }>("/api/payments", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+
+      setPostSuccess("Payment posted.");
+      setShowConfirm(false);
+      setFieldErrors({});
+
+      setTimeout(() => {
+        setShowModal(false);
+        setPostSuccess("");
+        fetchPayments(page);
+      }, 800);
+    } catch (requestError) {
+      setPostError((requestError as Error).message);
+      setShowConfirm(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const selectedAccount = accounts.find((a) => a.id === form.installmentAccountId);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payments"
         description="All payment records"
         actions={
-          <Link
-            href="/payments/new"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
+          <button
+            type="button"
+            onClick={openModal}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
           >
             <Plus size={16} aria-hidden="true" />
             New Payment
-          </Link>
+          </button>
         }
       />
 
@@ -124,7 +271,7 @@ export default function PaymentsPage() {
       {loading ? <LoadingBlock label="Loading payments" /> : null}
 
       {!loading ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <ResponsiveTable
             columns={columns}
             data={payments}
@@ -134,6 +281,201 @@ export default function PaymentsPage() {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       ) : null}
+
+      {showModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-red-50 text-red-700">
+                  <ReceiptText size={18} />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold font-heading text-slate-900">Post Payment</h2>
+                  <p className="text-xs text-slate-500">Record a customer payment</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex size-8 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-4">
+              {postError ? <ErrorMessage message={postError} /> : null}
+              {postSuccess ? <SuccessMessage message={postSuccess} /> : null}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Account
+                  <select
+                    required
+                    value={form.installmentAccountId}
+                    onChange={(e) => updateField("installmentAccountId", e.target.value)}
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  >
+                    <option value="">Select an account...</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.customerName} — {a.brand} {a.model} ({a.status})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <FieldError error={fieldErrors.installmentAccountId} />
+              </div>
+
+              {selectedAccount ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                  Balance: <span className="font-semibold text-slate-900">{formatPeso(selectedAccount.remainingBalance)}</span>
+                  &nbsp;·&nbsp; Next due: {selectedAccount.nextDueDate}
+                  &nbsp;·&nbsp; Monthly: {formatPeso(selectedAccount.monthlyInstallment)}
+                </div>
+              ) : null}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Amount Paid
+                  <input
+                    required
+                    inputMode="decimal"
+                    value={form.totalAmount}
+                    onChange={(e) => updateField("totalAmount", e.target.value.replace(/[^\d.]/g, ""))}
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                <FieldError error={fieldErrors.totalAmount} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Payment Date
+                    <input
+                      required
+                      type="date"
+                      value={form.paymentDate}
+                      onChange={(e) => updateField("paymentDate", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                  <FieldError error={fieldErrors.paymentDate} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Payment Type
+                    <select
+                      value={form.paymentType}
+                      onChange={(e) => updateField("paymentType", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    >
+                      <option value="REGULAR">Regular</option>
+                      <option value="PARTIAL">Partial</option>
+                      <option value="ADVANCE">Advance</option>
+                      <option value="FULL">Full Payment</option>
+                    </select>
+                  </label>
+                  <FieldError error={fieldErrors.paymentType} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Method
+                    <select
+                      value={form.method}
+                      onChange={(e) => updateField("method", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="GCASH">GCash</option>
+                      <option value="BANK">Bank</option>
+                    </select>
+                  </label>
+                  <FieldError error={fieldErrors.method} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Cashier
+                    <input
+                      value={form.cashier}
+                      onChange={(e) => updateField("cashier", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Notes
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => updateField("notes", e.target.value)}
+                    className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Payment Proof (optional)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileSelect}
+                    className="mt-1.5 block w-full text-sm text-slate-500 file:mr-3 file:rounded-xl file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
+                  />
+                </label>
+                {proofPreview ? (
+                  <div className="mt-2 rounded-xl border border-slate-200 overflow-hidden relative">
+                    <img src={proofPreview} alt="Payment proof preview" className="w-full h-32 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setProofFile(null); setProofPreview(null); }}
+                      className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+                >
+                  <Save size={16} aria-hidden="true" />
+                  Post Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      <ConfirmModal
+        open={showConfirm}
+        title="Post Payment?"
+        message={`${formatPeso(form.totalAmount || "0")} — ${form.paymentType} payment ${selectedAccount ? `for ${selectedAccount.customerName}` : ""}.`}
+        confirmLabel="Yes, post payment"
+        onConfirm={confirmPost}
+        onCancel={() => setShowConfirm(false)}
+        loading={saving}
+      />
     </div>
   );
 }

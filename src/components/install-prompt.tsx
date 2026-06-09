@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bike, Download, X } from "lucide-react";
+import { Smartphone, Download, X } from "lucide-react";
 
 let capturedInstallEvent: Event | null = null;
 
@@ -83,15 +83,15 @@ export function InstallPrompt() {
   if (iOSDevice) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 animate-fade-in sm:bottom-4 sm:left-auto sm:right-4 sm:w-80">
-        <div className="mx-2 mb-2 rounded-lg border border-blue-200 bg-white p-4 shadow-lg sm:mx-0 sm:mb-0">
+        <div className="mx-2 mb-2 rounded-lg border border-red-200 bg-white p-4 shadow-lg sm:mx-0 sm:mb-0">
           <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-800 text-white">
-              <Bike size={18} />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-red-800 text-white">
+              <Smartphone size={18} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900">Install GM Cycle</p>
+              <p className="text-sm font-semibold text-slate-900">Install MyFaveGadgets</p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Tap <strong>Share</strong> <span className="text-blue-600">&#x2191;</span> then <strong>Add to Home Screen</strong>
+                Tap <strong>Share</strong> <span className="text-red-600">&#x2191;</span> then <strong>Add to Home Screen</strong>
               </p>
             </div>
             <button onClick={dismiss} className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Dismiss">
@@ -107,16 +107,16 @@ export function InstallPrompt() {
     <div className="fixed bottom-0 left-0 right-0 z-50 animate-fade-in">
       <div className="mx-2 mb-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg sm:mx-auto sm:max-w-md">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-800 text-white">
-            <Bike size={20} />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-800 text-white">
+            <Smartphone size={20} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">Install GM Cycle</p>
+            <p className="text-sm font-semibold text-slate-900">Install MyFaveGadgets</p>
             <p className="text-xs text-slate-500">Add to home screen for the best experience</p>
           </div>
           <button
             onClick={handleInstall}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-800 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-900"
+            className="flex items-center gap-1.5 rounded-lg bg-red-800 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-900"
           >
             <Download size={15} />
             Install

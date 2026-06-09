@@ -1,5 +1,5 @@
-const CACHE = "gm-cycle-v1";
-const STATIC_CACHE = "gm-cycle-static-v1";
+const CACHE = "myfavegadgets-v1";
+const STATIC_CACHE = "myfavegadgets-static-v1";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

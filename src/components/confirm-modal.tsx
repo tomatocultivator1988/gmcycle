@@ -28,12 +28,12 @@ export function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
         <div className="p-6">
           <div className="flex flex-col items-center text-center">
             <span className={`flex size-12 items-center justify-center rounded-full ${
-              variant === "danger" ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-700"
+              variant === "danger" ? "bg-rose-100 text-rose-600" : "bg-red-100 text-red-700"
             }`}>
               <AlertTriangle size={24} />
             </span>
@@ -49,7 +49,7 @@ export function ConfirmModal({
               className={`inline-flex h-10 w-full items-center justify-center rounded-lg px-4 text-sm font-medium shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 ${
                 variant === "danger"
                   ? "bg-rose-600 text-white hover:bg-rose-500"
-                  : "bg-blue-800 text-white hover:bg-blue-700"
+                  : "bg-red-800 text-white hover:bg-red-700"
               }`}
             >
               {loading ? "Processing..." : confirmLabel}

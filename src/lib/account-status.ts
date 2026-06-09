@@ -6,7 +6,12 @@ export function determineInstallmentAccountStatus(
   remainingBalance: Decimal.Value,
   nextDueDate: Date,
   now = new Date(),
+  currentStatus?: AccountStatusValue,
 ): AccountStatusValue {
+  if (currentStatus === "APPLIED" || currentStatus === "FULLY_PAID") {
+    return currentStatus;
+  }
+
   const balance = new Decimal(remainingBalance);
 
   if (balance.eq(0)) {

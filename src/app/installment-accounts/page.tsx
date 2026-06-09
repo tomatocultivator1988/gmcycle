@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Bike, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
@@ -29,8 +29,8 @@ const columns: Column<InstallmentAccountDto>[] = [
     ),
   },
   {
-    key: "motorcycle",
-    label: "Motorcycle",
+    key: "device",
+    label: "Device",
     render: (a) => <span className="text-slate-700">{a.brand} {a.model}</span>,
   },
   {
@@ -60,7 +60,7 @@ const columns: Column<InstallmentAccountDto>[] = [
     render: (a) => (
       <Link
         href={`/installment-accounts/${a.id}`}
-        className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
+        className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
       >
         View
       </Link>
@@ -112,11 +112,11 @@ export default function InstallmentAccountsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Installment Accounts"
-        description="All motorcycle installment accounts"
+        description="All gadget installment accounts"
         actions={
           <Link
             href="/installment-accounts/new"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
           >
             <Plus size={16} aria-hidden="true" />
             New Account
@@ -136,11 +136,11 @@ export default function InstallmentAccountsPage() {
               placeholder="Search by customer, brand, or model..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
             />
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <ResponsiveTable
               columns={columns}
               data={accounts}

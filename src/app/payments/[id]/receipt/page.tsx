@@ -101,7 +101,7 @@ export default function ReceiptPage() {
         </div>
 
         <div className="mt-3">
-          <h2 className="text-xs font-semibold uppercase text-slate-500 mb-2">Motorcycle</h2>
+          <h2 className="text-xs font-semibold uppercase text-slate-500 mb-2">Contact</h2>
           <p className="text-sm text-slate-950">
             {data.account.brand} {data.account.model}
           </p>
@@ -120,12 +120,6 @@ export default function ReceiptPage() {
             <div className="flex justify-between text-sm mt-2">
               <span className="text-rose-700">Late Penalty</span>
               <span className="font-medium text-rose-700">{formatPeso(data.penaltyAmount)}</span>
-            </div>
-          ) : null}
-          {data.discountAmount !== "0.00" ? (
-            <div className="flex justify-between text-sm mt-2">
-              <span className="text-emerald-700">Advance Discount</span>
-              <span className="font-medium text-emerald-700">-{formatPeso(data.discountAmount)}</span>
             </div>
           ) : null}
         </div>

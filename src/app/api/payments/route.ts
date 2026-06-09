@@ -1,10 +1,7 @@
-import { differenceInCalendarDays } from "date-fns";
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson, withRetry } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
-import { computePenalty } from "@/lib/penalty";
-import { computeAdvanceDiscount } from "@/lib/discount";
 import { NotFoundError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -57,11 +54,11 @@ export async function POST(request: Request) {
         throw new NotFoundError("Installment account not found");
       }
 
-      const config = await tx.adminConfig.findFirst();
-      const penaltyAmount = config?.penaltyAmount ?? new Decimal("200.00");
-      const discountAmount = config?.discountAmount ?? new Decimal("200.00");
+      if (account.status === "APPLIED") {
+        throw new NotFoundError("Cannot post payment to an APPLIED account — activate first");
+      }
+
       const totalAmount = new Decimal(body.totalAmount);
-      const dueDate = account.nextDueDate;
 
       const currentPeriod = account.schedule.find(
         (s) => s.status === "PENDING" || s.status === "PARTIAL",
@@ -71,78 +68,7 @@ export async function POST(request: Request) {
         throw new NotFoundError("No unpaid periods found");
       }
 
-      // --- PENALTY (7+ days late) ---
-      let computedPenalty = new Decimal(0);
-      if (body.paymentType !== "ADVANCE") {
-        computedPenalty = computePenalty(dueDate, paymentDate, { penaltyAmount });
-      }
 
-      const currentPeriodOriginalAmount = new Decimal(currentPeriod.amount);
-      const currentPeriodExistingPenalty = new Decimal(currentPeriod.penaltyAmount);
-
-      // Store penalty on the schedule period (separate from base amount)
-      if (computedPenalty.gt(0) && currentPeriodExistingPenalty.eq(0)) {
-        await tx.installmentSchedule.update({
-          where: { id: currentPeriod.id },
-          data: { penaltyAmount: decimalToString(computedPenalty) },
-        });
-      }
-
-      // Total due for current period = amount + penalty
-      const currentPeriodTotalDue = currentPeriodOriginalAmount.plus(
-        computedPenalty.gt(0) ? computedPenalty : currentPeriodExistingPenalty,
-      );
-
-      // --- DISCOUNT + EXCESS (early AND overpayment) ---
-      let computedDiscount = new Decimal(0);
-      let excess = new Decimal(0);
-      const isEarly = differenceInCalendarDays(dueDate, paymentDate) > 0;
-      const isOverpayment = totalAmount.gt(currentPeriodOriginalAmount);
-
-      if (isEarly && isOverpayment) {
-        computedDiscount = computeAdvanceDiscount(dueDate, paymentDate, { discountAmount });
-        excess = totalAmount.minus(currentPeriodOriginalAmount);
-      }
-
-      // Find next unpaid period (for excess carry-over)
-      const currentIndex = account.schedule.findIndex((s) => s.id === currentPeriod.id);
-      const nextPeriod = currentIndex < account.schedule.length - 1
-        ? account.schedule[currentIndex + 1]
-        : null;
-
-      // Apply carry-over + discount to next period's amount
-      if (computedDiscount.gt(0) && nextPeriod) {
-        const reduction = excess.plus(computedDiscount);
-        const nextAmount = Decimal.max(
-          new Decimal(0),
-          new Decimal(nextPeriod.amount).minus(reduction),
-        ).toDecimalPlaces(2);
-
-        await tx.installmentSchedule.update({
-          where: { id: nextPeriod.id },
-          data: { amount: decimalToString(nextAmount) },
-        });
-
-        // If reduction exceeds next period's amount, cascade remaining
-        if (reduction.gt(new Decimal(nextPeriod.amount))) {
-          let remainingReduction = reduction.minus(new Decimal(nextPeriod.amount));
-          for (let i = currentIndex + 2; i < account.schedule.length; i++) {
-            if (remainingReduction.lte(0)) break;
-            const laterPeriod = account.schedule[i];
-            const laterAmount = new Decimal(laterPeriod.amount);
-            const newLaterAmount = Decimal.max(
-              new Decimal(0),
-              laterAmount.minus(remainingReduction),
-            ).toDecimalPlaces(2);
-            const actualReduction = laterAmount.minus(newLaterAmount);
-            remainingReduction = remainingReduction.minus(actualReduction);
-            await tx.installmentSchedule.update({
-              where: { id: laterPeriod.id },
-              data: { amount: decimalToString(newLaterAmount) },
-            });
-          }
-        }
-      }
 
       // --- CREATE PAYMENT ---
       const createdPayment = await tx.payment.create({
@@ -153,58 +79,26 @@ export async function POST(request: Request) {
           paymentDate,
           method: body.method,
           paymentType: body.paymentType,
-          penaltyAmount: decimalToString(computedPenalty),
-          discountAmount: decimalToString(computedDiscount),
+          penaltyAmount: "0.00",
+          discountAmount: "0.00",
           notes: body.notes || null,
           cashier: body.cashier || null,
+          proofUrl: body.proofUrl || null,
         },
       });
 
-      // --- PENALTY RECORD ---
-      if (computedPenalty.gt(0)) {
-        await tx.penaltyRecord.create({
-          data: {
-            installmentAccountId: body.installmentAccountId,
-            paymentId: createdPayment.id,
-            amount: decimalToString(computedPenalty),
-            appliedDate: paymentDate,
-            reason: `Late payment (${body.paymentDate} past due ${new Intl.DateTimeFormat("en-CA").format(dueDate)})`,
-          },
-        });
-      }
-
-      // --- DISCOUNT RECORD ---
-      if (computedDiscount.gt(0)) {
-        await tx.discountRecord.create({
-          data: {
-            installmentAccountId: body.installmentAccountId,
-            paymentId: createdPayment.id,
-            amount: decimalToString(computedDiscount),
-            appliedDate: paymentDate,
-            reason: `Advance payment discount — excess ₱${excess} carried to period ${nextPeriod?.periodNumber ?? "N/A"}`,
-          },
-        });
-      }
-
       // --- APPLY PAYMENT TO SCHEDULE PERIODS ---
-      const updatedSchedule = await tx.installmentSchedule.findMany({
-        where: { installmentAccountId: account.id },
-        orderBy: { periodNumber: "asc" },
-      });
-
       let remainingToApply = totalAmount;
 
-      for (const period of updatedSchedule) {
+      for (const period of account.schedule) {
         if (remainingToApply.lte(0)) break;
         if (period.status === "PAID") continue;
 
-        const periodPenalty = period.id === currentPeriod.id
-          ? Decimal.max(computedPenalty, new Decimal(period.penaltyAmount))
-          : new Decimal(period.penaltyAmount);
+        const periodPenalty = new Decimal(period.penaltyAmount);
         const periodBaseAmount = new Decimal(period.amount);
         const periodTotalDue = periodBaseAmount.plus(periodPenalty);
 
-        let paidForPeriod = Decimal.min(remainingToApply, periodTotalDue);
+        const paidForPeriod = Decimal.min(remainingToApply, periodTotalDue);
 
         if (paidForPeriod.gte(periodTotalDue)) {
           await tx.installmentSchedule.update({
@@ -244,7 +138,6 @@ export async function POST(request: Request) {
         )
         .toDecimalPlaces(2);
 
-      // --- DETERMINE NEXT DUE DATE & STATUS ---
       const unpaidPeriods = allSchedule
         .filter((s) => s.status === "PENDING" || s.status === "PARTIAL")
         .sort((a, b) => a.periodNumber - b.periodNumber);

@@ -41,12 +41,6 @@ const reportLinks = [
     icon: ReceiptText,
   },
   {
-    href: "/reports/discounts",
-    label: "Discount Report",
-    description: "All discount records",
-    icon: TrendingUp,
-  },
-  {
     href: "/reports/outstanding-balances",
     label: "Outstanding Balance Report",
     description: "All active accounts with remaining balances",
@@ -57,7 +51,7 @@ const reportLinks = [
 export default function ReportsPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description="GM Cycle reports and data exports" />
+      <PageHeader title="Reports" description="MyFaveGadgets reports and data exports" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {reportLinks.map((report) => {
@@ -67,14 +61,14 @@ export default function ReportsPage() {
             <Link
               key={report.href}
               href={report.href}
-              className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-blue-200 transition-colors group-hover:bg-blue-100">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700 ring-1 ring-red-200 transition-colors group-hover:bg-red-100">
                   <Icon size={21} aria-hidden="true" />
                 </span>
                 <div>
-                  <div className="text-sm font-bold font-heading text-slate-900 group-hover:text-blue-800 transition-colors">{report.label}</div>
+                  <div className="text-sm font-bold font-heading text-slate-900 group-hover:text-red-800 transition-colors">{report.label}</div>
                   <div className="mt-0.5 text-xs text-slate-500">{report.description}</div>
                 </div>
               </div>

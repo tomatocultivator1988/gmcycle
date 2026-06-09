@@ -57,8 +57,19 @@ export async function POST(request: Request) {
     const body = createInstallmentAccountSchema.parse(await readJson(request));
 
     const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
-    const installmentPrice = parsePositiveMoney(body.installmentPrice, "installmentPrice");
     const downPayment = parsePositiveMoney(body.downPayment, "downPayment");
+    const pricingType = body.pricingType ?? "FLAT_RATE";
+
+    let installmentPrice: Decimal;
+    if (pricingType === "INTEREST_PERCENTAGE") {
+      if (!body.interestRate) {
+        throw new ValidationError("Interest rate is required");
+      }
+      const interestRate = new Decimal(body.interestRate).div(100);
+      installmentPrice = cashPrice.plus(cashPrice.times(interestRate)).toDecimalPlaces(2);
+    } else {
+      installmentPrice = parsePositiveMoney(body.installmentPrice!, "installmentPrice");
+    }
 
     if (downPayment.gte(installmentPrice)) {
       throw new ValidationError("Down payment cannot equal or exceed installment price");
@@ -67,22 +78,17 @@ export async function POST(request: Request) {
     const remainingBalance = installmentPrice.minus(downPayment).toDecimalPlaces(2);
     const monthlyInstallment = remainingBalance.div(body.term).toDecimalPlaces(2);
     const startDate = parseDateOnly(body.startDate, "startDate");
-    const dueDay = body.dueDayOfMonth;
     const term = body.term;
 
-    const firstDueDate = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth() + 1,
-      Math.min(dueDay, new Date(startDate.getFullYear(), startDate.getMonth() + 2, 0).getDate()),
-    );
-
-    const schedule = generateSchedule(startDate, dueDay, term, monthlyInstallment, remainingBalance);
+    const schedule = generateSchedule(startDate, term, remainingBalance);
+    const firstDueDate = schedule[0]?.dueDate ?? startDate;
 
     const account = await prisma.$transaction(async (tx) => {
       const created = await tx.installmentAccount.create({
         data: {
           customerName: body.customerName,
           customerPhone: body.customerPhone,
+          customerEmail: body.customerEmail || null,
           customerAddress: body.customerAddress,
           brand: body.brand,
           model: body.model,
@@ -93,8 +99,11 @@ export async function POST(request: Request) {
           remainingBalance: decimalToString(remainingBalance),
           term,
           monthlyInstallment: decimalToString(monthlyInstallment),
+          pricingType,
+          interestRate: body.interestRate ?? null,
+          status: "APPLIED",
           startDate,
-          dueDayOfMonth: dueDay,
+          dueDayOfMonth: 30,
           nextDueDate: firstDueDate,
           schedule: {
             create: schedule.map((s) => ({

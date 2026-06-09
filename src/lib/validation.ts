@@ -22,20 +22,40 @@ const nameString = z
   .min(2, "Name is too short")
   .max(120, "Name is too long")
   .regex(/^[\p{L}][\p{L}\s.'-]*$/u, "Name contains unsupported characters");
+const emailString = z.string().trim().email("Enter a valid email address").optional().or(z.literal(""));
+
 export const createInstallmentAccountSchema = z.object({
   customerName: nameString,
   customerPhone: phoneString,
+  customerEmail: emailString,
   customerAddress: requiredString,
   brand: requiredString,
   model: requiredString,
   unitDescription: requiredString,
   cashPrice: moneyString,
-  installmentPrice: moneyString,
+  installmentPrice: moneyString.optional(),
   downPayment: moneyString,
-  term: z.coerce.number().refine((val) => [12, 24, 36, 48].includes(val), "Term must be 12, 24, 36, or 48 months"),
+  pricingType: z.enum(["FLAT_RATE", "INTEREST_PERCENTAGE"]).default("FLAT_RATE"),
+  interestRate: moneyString.optional(),
+  term: z.coerce.number().int().min(6, "Minimum term is 6 months").max(24, "Maximum term is 24 months"),
   startDate: dateOnlyString,
-  dueDayOfMonth: z.coerce.number().refine((val) => [10, 20, 30].includes(val), "Due day must be 10, 20, or 30"),
-});
+}).refine(
+  (data) => {
+    if (data.pricingType === "FLAT_RATE") {
+      return !!data.installmentPrice;
+    }
+    return true;
+  },
+  { message: "Installment price is required for flat rate", path: ["installmentPrice"] },
+).refine(
+  (data) => {
+    if (data.pricingType === "INTEREST_PERCENTAGE") {
+      return !!data.interestRate && /^\d+(\.\d{1,2})?$/.test(data.interestRate) && Number(data.interestRate) > 0;
+    }
+    return true;
+  },
+  { message: "Interest rate is required and must be > 0", path: ["interestRate"] },
+);
 
 export const createPaymentSchema = z.object({
   installmentAccountId: requiredString,
@@ -45,10 +65,20 @@ export const createPaymentSchema = z.object({
   paymentType: z.enum(paymentTypes),
   notes: z.string().optional(),
   cashier: z.string().optional(),
+  proofUrl: z.string().optional(),
+});
+
+export const updateInstallmentAccountSchema = z.object({
+  customerName: nameString,
+  customerPhone: phoneString,
+  customerEmail: emailString,
+  customerAddress: requiredString,
+  brand: requiredString,
+  model: requiredString,
+  unitDescription: requiredString,
 });
 
 export const updateAdminConfigSchema = z.object({
   penaltyAmount: moneyString,
-  discountAmount: moneyString,
   dueDayOptions: z.array(z.number()).min(1, "At least one due day option required"),
 });

@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "GM Cycle",
-    short_name: "GM Cycle",
-    description: "Motorcycle Installment Monitoring System",
+    name: "MyFaveGadgets",
+    short_name: "MyFaveGadgets",
+    description: "Phone Installment Monitoring System",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#f8fafc",
-    theme_color: "#1e40af",
+    theme_color: "#dc2626",
     orientation: "portrait-primary",
     icons: [
       {

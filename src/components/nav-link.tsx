@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Bike,
+  Smartphone,
   ReceiptText,
   FileText,
   Settings,
@@ -13,7 +13,7 @@ import type { LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
-  Bike,
+  Smartphone,
   ReceiptText,
   FileText,
   Settings,
@@ -39,7 +39,7 @@ export function NavLink({
       <Link
         href={href}
         className={`flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors duration-150 ${
-          isActive ? "text-blue-700" : "text-slate-500 hover:text-blue-700"
+          isActive ? "text-red-700" : "text-slate-500 hover:text-red-700"
         }`}
       >
         <Icon size={20} aria-hidden="true" />
@@ -53,8 +53,8 @@ export function NavLink({
       href={href}
       className={`flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-all duration-150 ${
         isActive
-          ? "bg-blue-50 text-blue-700"
-          : "text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+          ? "bg-red-50 text-red-700"
+          : "text-slate-600 hover:bg-red-50 hover:text-red-700"
       }`}
     >
       <Icon size={16} aria-hidden="true" />

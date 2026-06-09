@@ -16,53 +16,65 @@ export async function GET() {
     const monthStart = startOfMonth(todayStart);
     const monthEnd = endOfMonth(todayEnd);
 
-    const [
-      totalAccounts,
-      activeAccounts,
-      fullyPaidAccounts,
-      overdueAccounts,
-      totalInstallmentSales,
-      totalDownPayments,
-      totalOutstanding,
-      totalCollections,
-      totalPenalties,
-      totalDiscounts,
-      collectionsToday,
-      collectionsThisWeek,
-      collectionsThisMonth,
-    ] = await Promise.all([
-      prisma.installmentAccount.count(),
-      prisma.installmentAccount.count({ where: { status: "ACTIVE" } }),
-      prisma.installmentAccount.count({ where: { status: "FULLY_PAID" } }),
-      prisma.installmentAccount.count({ where: { status: "OVERDUE" } }),
-      prisma.installmentAccount.aggregate({ _sum: { installmentPrice: true } }),
-      prisma.installmentAccount.aggregate({ _sum: { downPayment: true } }),
-      prisma.installmentAccount.aggregate({
-        where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] } },
-        _sum: { remainingBalance: true },
-      }),
-      prisma.payment.aggregate({ _sum: { totalAmount: true } }),
-      prisma.payment.aggregate({ _sum: { penaltyAmount: true } }),
-      prisma.payment.aggregate({ _sum: { discountAmount: true } }),
-      prisma.payment.aggregate({
-        where: { paymentDate: { gte: todayStart, lt: todayEnd } },
-        _sum: { totalAmount: true },
-      }),
-      prisma.payment.aggregate({
-        where: { paymentDate: { gte: weekStart, lt: weekEnd } },
-        _sum: { totalAmount: true },
-      }),
-      prisma.payment.aggregate({
-        where: { paymentDate: { gte: monthStart, lt: monthEnd } },
-        _sum: { totalAmount: true },
-      }),
-    ]);
-
-    const dueTodayAccounts = await prisma.installmentAccount.count({
-      where: { status: "DUE_TODAY" },
+    // ── 1. Status counts (single query via groupBy) ──
+    const statusCounts = await prisma.installmentAccount.groupBy({
+      by: ["status"],
+      _count: true,
     });
 
-    const overdueAccountsList = await prisma.installmentAccount.findMany({
+    const countMap: Record<string, number> = {};
+    for (const row of statusCounts) {
+      countMap[row.status] = row._count;
+    }
+    const totalAccounts = Object.values(countMap).reduce((a, b) => a + b, 0);
+    const appliedAccounts = countMap.APPLIED ?? 0;
+    const activeAccounts = countMap.ACTIVE ?? 0;
+    const fullyPaidAccounts = countMap.FULLY_PAID ?? 0;
+    const overdueAccounts = countMap.OVERDUE ?? 0;
+    const dueTodayAccounts = countMap.DUE_TODAY ?? 0;
+    const currentAccounts = (countMap.ACTIVE ?? 0) + (countMap.DUE_TODAY ?? 0);
+
+    // ── 2. Account financial aggregates (single raw query) ──
+    const [accountAggs] = await prisma.$queryRawUnsafe<Array<{
+      total_installment: string;
+      total_down: string;
+      total_outstanding: string;
+      total_cash: string;
+      total_installment_price: string;
+    }>>(`
+      SELECT
+        COALESCE(SUM("installmentPrice"), 0)::text AS "total_installment",
+        COALESCE(SUM("downPayment"), 0)::text AS "total_down",
+        COALESCE(SUM(CASE WHEN status IN ('ACTIVE','OVERDUE','DUE_TODAY') THEN "remainingBalance" ELSE 0 END), 0)::text AS "total_outstanding",
+        COALESCE(SUM("cashPrice"), 0)::text AS "total_cash",
+        COALESCE(SUM("installmentPrice"), 0)::text AS "total_installment_price"
+      FROM "InstallmentAccount"
+    `);
+
+    const totalCashPrice = new Decimal(accountAggs.total_cash);
+    const totalInstallmentPrice = new Decimal(accountAggs.total_installment_price);
+    const totalInstallmentMargin = totalInstallmentPrice.sub(totalCashPrice);
+
+    // ── 3. Payment aggregates (single raw query) ──
+    const [paymentAggs] = await prisma.$queryRawUnsafe<Array<{
+      total_collections: string;
+      total_penalties: string;
+      today: string;
+      week: string;
+      month: string;
+    }>>(
+      `SELECT
+        COALESCE(SUM("totalAmount"), 0)::text AS "total_collections",
+        COALESCE(SUM("penaltyAmount"), 0)::text AS "total_penalties",
+        COALESCE(SUM(CASE WHEN "paymentDate" >= $1::timestamp AND "paymentDate" < $2::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "today",
+        COALESCE(SUM(CASE WHEN "paymentDate" >= $3::timestamp AND "paymentDate" < $4::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "week",
+        COALESCE(SUM(CASE WHEN "paymentDate" >= $5::timestamp AND "paymentDate" < $6::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "month"
+      FROM "Payment"`,
+      todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd,
+    );
+
+    // ── 4. Aging: overdue list (single query) ──
+    const overdueList = await prisma.installmentAccount.findMany({
       where: { status: "OVERDUE" },
       select: { nextDueDate: true },
     });
@@ -73,7 +85,7 @@ export async function GET() {
     let days61to90 = 0;
     let days90plus = 0;
 
-    for (const acc of overdueAccountsList) {
+    for (const acc of overdueList) {
       const diffDays = Math.floor((today.getTime() - acc.nextDueDate.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays <= 30) days1to30++;
       else if (diffDays <= 60) days31to60++;
@@ -81,36 +93,23 @@ export async function GET() {
       else days90plus++;
     }
 
-    const currentAccounts = await prisma.installmentAccount.count({
-      where: { status: { in: ["ACTIVE", "DUE_TODAY"] } },
-    });
-
-    const [aggregateCashPrices, aggregateInstallmentPrices] = await Promise.all([
-      prisma.installmentAccount.aggregate({ _sum: { cashPrice: true } }),
-      prisma.installmentAccount.aggregate({ _sum: { installmentPrice: true } }),
-    ]);
-
-    const totalCashPrice = new Decimal(aggregateCashPrices._sum.cashPrice?.toString() ?? "0");
-    const totalInstallmentPrice = new Decimal(aggregateInstallmentPrices._sum.installmentPrice?.toString() ?? "0");
-    const totalInstallmentMargin = totalInstallmentPrice.sub(totalCashPrice);
-
     return NextResponse.json({
       metrics: {
         totalAccounts,
+        appliedAccounts,
         activeAccounts,
         fullyPaidAccounts,
         overdueAccounts,
         dueTodayAccounts,
         totalInstallmentSales: decimalToString(totalInstallmentPrice.toString()),
         totalInstallmentMargin: decimalToString(totalInstallmentMargin.toString()),
-        totalDownPayments: decimalToString(totalDownPayments._sum.downPayment?.toString() ?? "0"),
-        totalCollections: decimalToString(totalCollections._sum.totalAmount?.toString() ?? "0"),
-        outstandingBalances: decimalToString(totalOutstanding._sum.remainingBalance?.toString() ?? "0"),
-        totalPenaltiesCollected: decimalToString(totalPenalties._sum.penaltyAmount?.toString() ?? "0"),
-        totalDiscountsGranted: decimalToString(totalDiscounts._sum.discountAmount?.toString() ?? "0"),
-        collectionsToday: decimalToString(collectionsToday._sum.totalAmount?.toString() ?? "0"),
-        collectionsThisWeek: decimalToString(collectionsThisWeek._sum.totalAmount?.toString() ?? "0"),
-        collectionsThisMonth: decimalToString(collectionsThisMonth._sum.totalAmount?.toString() ?? "0"),
+        totalDownPayments: decimalToString(accountAggs.total_down),
+        totalCollections: decimalToString(paymentAggs.total_collections),
+        outstandingBalances: decimalToString(accountAggs.total_outstanding),
+        totalPenaltiesCollected: decimalToString(paymentAggs.total_penalties),
+        collectionsToday: decimalToString(paymentAggs.today),
+        collectionsThisWeek: decimalToString(paymentAggs.week),
+        collectionsThisMonth: decimalToString(paymentAggs.month),
         aging: {
           current: currentAccounts,
           days1to30,

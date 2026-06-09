@@ -3,6 +3,7 @@ import type { AccountStatusValue, ScheduleStatusValue } from "@/types/api";
 type BadgeStatus = AccountStatusValue | ScheduleStatusValue;
 
 const statusClasses: Record<string, string> = {
+  APPLIED: "border-red-200 bg-red-50 text-red-700",
   ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700",
   DUE_TODAY: "border-amber-200 bg-amber-50 text-amber-700",
   OVERDUE: "border-rose-200 bg-rose-50 text-rose-700",

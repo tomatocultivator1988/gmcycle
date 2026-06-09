@@ -1,8 +1,10 @@
-import type { AccountStatusValue } from "@/types/api";
+import type { AccountStatusValue, PricingTypeValue } from "@/types/api";
 import { formatPeso } from "@/lib/money";
 
 export function formatAccountStatus(status: AccountStatusValue): string {
   switch (status) {
+    case "APPLIED":
+      return "Applied";
     case "ACTIVE":
       return "Active";
     case "DUE_TODAY":
@@ -12,6 +14,13 @@ export function formatAccountStatus(status: AccountStatusValue): string {
     case "FULLY_PAID":
       return "Fully Paid";
   }
+}
+
+export function formatPricingType(type: PricingTypeValue, rate?: string | null): string {
+  if (type === "INTEREST_PERCENTAGE" && rate) {
+    return `Interest ${rate}%`;
+  }
+  return "Flat Rate";
 }
 
 export function formatAccountSummary(account: {

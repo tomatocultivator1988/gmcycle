@@ -69,7 +69,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     ],
     columns: [
       { key: "customerName", label: "Customer", render: (r) => r.customerName },
-      { key: "phone", label: "Phone", render: (r) => r.customerPhone },
+      { key: "phone", label: "Contact", render: (r) => r.customerPhone },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment), hideOnMobile: true },
@@ -92,21 +92,6 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "reason", label: "Reason", render: (r) => r.reason ?? "—", hideOnMobile: true },
     ],
   },
-  discounts: {
-    title: "Discount Report",
-    description: "All discount records",
-    summaryFields: [
-      { label: "Total Discounts", getValue: (d) => formatPeso(d.total) },
-      { label: "Count", getValue: (d) => String(d.count) },
-    ],
-    columns: [
-      { key: "customerName", label: "Customer", render: (r) => r.customerName },
-      { key: "unit", label: "Unit", render: (r) => r.unit },
-      { key: "amount", label: "Amount", render: (r) => <span className="font-semibold text-emerald-600">{formatPeso(r.amount)}</span> },
-      { key: "appliedDate", label: "Date", render: (r) => r.appliedDate },
-      { key: "reason", label: "Reason", render: (r) => r.reason ?? "—", hideOnMobile: true },
-    ],
-  },
   "outstanding-balances": {
     title: "Outstanding Balance Report",
     description: "All active accounts with remaining balances",
@@ -116,7 +101,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     ],
     columns: [
       { key: "customerName", label: "Customer", render: (r) => r.customerName },
-      { key: "phone", label: "Phone", render: (r) => r.customerPhone },
+      { key: "phone", label: "Contact", render: (r) => r.customerPhone },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment), hideOnMobile: true },
@@ -144,7 +129,6 @@ const listKeys: Record<string, string> = {
   "monthly-collections": "monthlyBreakdown",
   "overdue-accounts": "accounts",
   penalties: "penalties",
-  discounts: "discounts",
   "outstanding-balances": "accounts",
 };
 

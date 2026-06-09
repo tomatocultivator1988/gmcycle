@@ -7,24 +7,35 @@ export type InstallmentScheduleInput = {
   status: "PENDING";
 };
 
+const DUE_DAYS = [15, 30] as const;
+
+function getLastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function makeDueDate(year: number, month: number, day: number): Date {
+  const lastDay = getLastDayOfMonth(year, month);
+  const safeDay = Math.min(day, lastDay);
+  return new Date(year, month, safeDay, 0, 0, 0, 0);
+}
+
 export function generateSchedule(
   startDate: Date,
-  dueDayOfMonth: number,
   term: number,
-  monthlyInstallment: Decimal,
   totalRemainingBalance: Decimal,
 ): InstallmentScheduleInput[] {
+  const totalPeriods = term * 2;
   const schedule: InstallmentScheduleInput[] = [];
   let allocated = new Decimal(0);
 
-  for (let i = 1; i <= term; i++) {
-    const dueDate = computeNextDueDate(startDate, dueDayOfMonth, i);
+  for (let i = 1; i <= totalPeriods; i++) {
+    const dueDate = computeSemiMonthlyDueDate(startDate, i);
     let amount: Decimal;
 
-    if (i === term) {
+    if (i === totalPeriods) {
       amount = totalRemainingBalance.minus(allocated);
     } else {
-      amount = monthlyInstallment;
+      amount = totalRemainingBalance.div(totalPeriods);
       allocated = allocated.plus(amount);
     }
 
@@ -39,14 +50,17 @@ export function generateSchedule(
   return schedule;
 }
 
-export function computeNextDueDate(startDate: Date, dueDay: number, periodIndex: number): Date {
+export function computeSemiMonthlyDueDate(startDate: Date, periodIndex: number): Date {
+  if (periodIndex < 1) throw new Error("periodIndex must be >= 1");
+  const monthOffset = Math.ceil(periodIndex / 2) - 1;
+  const dayIndex = (periodIndex - 1) % 2;
+  const targetDay = DUE_DAYS[dayIndex];
+
   const startMonth = startDate.getMonth();
   const startYear = startDate.getFullYear();
-  const targetMonth = (startMonth + periodIndex) % 12;
-  const yearOffset = Math.floor((startMonth + periodIndex) / 12);
+  const targetMonth = (startMonth + monthOffset) % 12;
+  const yearOffset = Math.floor((startMonth + monthOffset) / 12);
   const targetYear = startYear + yearOffset;
-  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
-  const safeDay = Math.min(dueDay, lastDay);
 
-  return new Date(targetYear, targetMonth, safeDay, 0, 0, 0, 0);
+  return makeDueDate(targetYear, targetMonth, targetDay);
 }

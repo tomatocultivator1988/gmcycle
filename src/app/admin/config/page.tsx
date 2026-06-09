@@ -14,8 +14,7 @@ import type { AdminConfigDto } from "@/types/api";
 export default function AdminConfigPage() {
   const [config, setConfig] = useState<AdminConfigDto | null>(null);
   const [penaltyAmount, setPenaltyAmount] = useState("");
-  const [discountAmount, setDiscountAmount] = useState("");
-  const [dueDayOptions, setDueDayOptions] = useState<number[]>([10, 20, 30]);
+  const [dueDayOptions, setDueDayOptions] = useState<number[]>([15, 30]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,7 +27,6 @@ export default function AdminConfigPage() {
       .then((data) => {
         setConfig(data.config);
         setPenaltyAmount(data.config.penaltyAmount);
-        setDiscountAmount(data.config.discountAmount);
         setDueDayOptions(data.config.dueDayOptions);
       })
       .catch((requestError: Error) => setError(requestError.message))
@@ -49,7 +47,6 @@ export default function AdminConfigPage() {
 
     const validation = validateForm(updateAdminConfigSchema, {
       penaltyAmount,
-      discountAmount,
       dueDayOptions,
     });
 
@@ -70,7 +67,6 @@ export default function AdminConfigPage() {
         method: "PUT",
         body: JSON.stringify({
           penaltyAmount,
-          discountAmount,
           dueDayOptions,
         }),
       });
@@ -96,14 +92,14 @@ export default function AdminConfigPage() {
 
       {!loading ? (
         <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-700">
                 <Settings size={20} />
               </span>
               <div>
-                <h2 className="text-base font-bold font-heading text-slate-900">Penalty & Discount</h2>
-                <p className="text-xs text-slate-500">Configure automatic penalty and discount amounts</p>
+                <h2 className="text-base font-bold font-heading text-slate-900">Penalty Settings</h2>
+                <p className="text-xs text-slate-500">Configure penalty amount applied to overdue accounts</p>
               </div>
             </div>
 
@@ -119,40 +115,24 @@ export default function AdminConfigPage() {
                       setPenaltyAmount(e.target.value.replace(/[^\d.]/g, ""));
                       if (fieldErrors.penaltyAmount) clearFieldError(setFieldErrors, "penaltyAmount");
                     }}
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   />
                 </label>
                 <FieldError error={fieldErrors.penaltyAmount} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Discount Amount (₱)
-                  <input
-                    required
-                    inputMode="decimal"
-                    value={discountAmount}
-                    onChange={(e) => {
-                      setDiscountAmount(e.target.value.replace(/[^\d.]/g, ""));
-                      if (fieldErrors.discountAmount) clearFieldError(setFieldErrors, "discountAmount");
-                    }}
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-                <FieldError error={fieldErrors.discountAmount} />
               </div>
             </div>
 
             <h2 className="mt-6 text-base font-bold font-heading text-slate-900">Due Day Options</h2>
             <p className="mt-1 text-xs text-slate-500">Select which due days are available for new accounts</p>
             <div className="mt-3 flex gap-3">
-              {[10, 20, 30].map((day) => (
+              {[15, 30].map((day) => (
                 <button
                   key={day}
                   type="button"
                   onClick={() => toggleDueDay(day)}
-                  className={`inline-flex h-10 items-center justify-center rounded-lg border px-5 text-sm font-medium transition-all ${
+                  className={`inline-flex h-10 items-center justify-center rounded-xl border px-5 text-sm font-medium transition-all ${
                     dueDayOptions.includes(day)
-                      ? "border-blue-800 bg-blue-800 text-white shadow-sm"
+                      ? "border-red-800 bg-red-800 text-white shadow-sm"
                       : "border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400"
                   }`}
                 >
@@ -165,7 +145,7 @@ export default function AdminConfigPage() {
             <button
               type="submit"
               disabled={saving || dueDayOptions.length === 0}
-              className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none disabled:active:scale-100"
+              className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none disabled:active:scale-100"
             >
               <Save size={16} aria-hidden="true" />
               {saving ? "Saving..." : "Save Configuration"}
@@ -177,7 +157,7 @@ export default function AdminConfigPage() {
       <ConfirmModal
         open={showConfirm}
         title="Save Configuration?"
-        message={`Update penalty (₱${penaltyAmount}) and discount (₱${discountAmount}) settings.`}
+        message={`Update penalty (₱${penaltyAmount}) settings.`}
         confirmLabel="Yes, save changes"
         onConfirm={confirmSave}
         onCancel={() => setShowConfirm(false)}
