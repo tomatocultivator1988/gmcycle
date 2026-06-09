@@ -48,3 +48,6 @@ next-env.d.ts
 
 # generated icon assets (temp)
 public/.favicon-*
+
+# user uploads (dev only)
+public/uploads/
