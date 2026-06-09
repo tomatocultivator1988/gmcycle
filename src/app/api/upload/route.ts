@@ -42,6 +42,12 @@ export async function POST(request: Request) {
         addRandomSuffix: false,
       });
       url = blob.url;
+    } else if (process.env.VERCEL) {
+      // ── Vercel without Blob token ──
+      return NextResponse.json(
+        { error: "File upload requires BLOB_READ_WRITE_TOKEN on Vercel. Add it in Environment Variables." },
+        { status: 501 },
+      );
     } else {
       // ── Local filesystem (development) ──
       const bytes = await file.arrayBuffer();
