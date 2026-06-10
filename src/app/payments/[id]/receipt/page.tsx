@@ -18,6 +18,8 @@ type ReceiptData = PaymentDto & {
     model: string;
     unitDescription: string;
     monthlyInstallment: string;
+    remainingBalance: string;
+    totalPaid: string;
   };
 };
 
@@ -69,9 +71,9 @@ export default function ReceiptPage() {
 
       <div className="mx-auto max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-sm print:border-none print:shadow-none">
         <div className="text-center border-b border-slate-200 pb-4 mb-4">
-          <h1 className="text-lg font-bold text-slate-950">GM CYCLE</h1>
-          <p className="text-xs text-slate-500">Cabanatuan City, Nueva Ecija</p>
-          <p className="mt-1 text-base font-semibold text-slate-950">OFFICIAL RECEIPT</p>
+          <h1 className="text-lg font-bold text-slate-950">MyFaveGadgets</h1>
+          <p className="text-xs text-slate-500">Binan City, Laguna • Gadget Installment</p>
+          <p className="mt-1 text-base font-semibold text-slate-950">Payment Receipt</p>
         </div>
 
         <div className="space-y-3 text-sm">
@@ -122,6 +124,17 @@ export default function ReceiptPage() {
               <span className="font-medium text-rose-700">{formatPeso(data.penaltyAmount)}</span>
             </div>
           ) : null}
+        </div>
+
+        <div className="mt-3 border-t border-slate-200 pt-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Total Paid</span>
+            <span className="font-semibold text-emerald-700">{formatPeso(data.account.totalPaid)}</span>
+          </div>
+          <div className="flex justify-between text-sm mt-2">
+            <span className="text-slate-500">Remaining Balance</span>
+            <span className="font-semibold text-slate-950">{formatPeso(data.account.remainingBalance)}</span>
+          </div>
         </div>
 
         {data.notes ? (

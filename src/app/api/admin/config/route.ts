@@ -14,8 +14,7 @@ export async function GET() {
     if (!config) {
       config = await prisma.adminConfig.create({
         data: {
-          penaltyAmount: new Decimal("200.00"),
-          dueDayOptions: [10, 20, 30],
+          penaltyPerDay: new Decimal("50.00"),
         },
       });
     }
@@ -23,8 +22,8 @@ export async function GET() {
     return NextResponse.json({
       config: {
         id: config.id,
-        penaltyAmount: config.penaltyAmount.toFixed(2),
-        dueDayOptions: config.dueDayOptions,
+        penaltyPerDay: config.penaltyPerDay.toFixed(2),
+        adminEmail: config.adminEmail ?? null,
       },
     });
   } catch (error) {
@@ -35,7 +34,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = updateAdminConfigSchema.parse(await readJson(request));
-    const penaltyAmount = parseMoney(body.penaltyAmount, "penaltyAmount");
+    const penaltyPerDay = parseMoney(body.penaltyPerDay, "penaltyPerDay");
+    const adminEmail = body.adminEmail?.trim() || null;
 
     let config = await prisma.adminConfig.findFirst();
 
@@ -43,15 +43,15 @@ export async function PUT(request: Request) {
       config = await prisma.adminConfig.update({
         where: { id: config.id },
         data: {
-          penaltyAmount: penaltyAmount.toFixed(2),
-          dueDayOptions: body.dueDayOptions,
+          penaltyPerDay: penaltyPerDay.toFixed(2),
+          adminEmail,
         },
       });
     } else {
       config = await prisma.adminConfig.create({
         data: {
-          penaltyAmount: penaltyAmount.toFixed(2),
-          dueDayOptions: body.dueDayOptions,
+          penaltyPerDay: penaltyPerDay.toFixed(2),
+          adminEmail,
         },
       });
     }
@@ -59,8 +59,8 @@ export async function PUT(request: Request) {
     return NextResponse.json({
       config: {
         id: config.id,
-        penaltyAmount: config.penaltyAmount.toFixed(2),
-        dueDayOptions: config.dueDayOptions,
+        penaltyPerDay: config.penaltyPerDay.toFixed(2),
+        adminEmail: config.adminEmail ?? null,
       },
     });
   } catch (error) {

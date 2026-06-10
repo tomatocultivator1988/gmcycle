@@ -41,8 +41,6 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
-  console.error(error);
-
   return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
 }
 

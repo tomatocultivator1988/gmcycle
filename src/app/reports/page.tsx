@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -6,8 +9,10 @@ import {
   ReceiptText,
   TrendingUp,
   DollarSign,
+  Mail,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { apiRequest } from "@/lib/client-api";
 
 const reportLinks = [
   {
@@ -49,9 +54,39 @@ const reportLinks = [
 ];
 
 export default function ReportsPage() {
+  const [sendingProfit, setSendingProfit] = useState(false);
+  const [profitResult, setProfitResult] = useState<string | null>(null);
+
+  async function sendGrossProfitEmail() {
+    setSendingProfit(true);
+    setProfitResult(null);
+    try {
+      const data = await apiRequest<{ message: string }>("/api/reports/gross-profit/email", { method: "POST" });
+      setProfitResult(data.message);
+    } catch (e) {
+      setProfitResult("Failed to send");
+    } finally {
+      setSendingProfit(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description="MyFaveGadgets reports and data exports" />
+      <PageHeader title="Reports" description="MyFaveGadgets reports and data exports"
+        actions={
+          <button
+            type="button"
+            onClick={sendGrossProfitEmail}
+            disabled={sendingProfit}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"
+          >
+            <Mail size={16} />
+            {sendingProfit ? "Sending..." : "Email Gross Profit"}
+          </button>
+        }
+      />
+
+      {profitResult ? <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">{profitResult}</div> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {reportLinks.map((report) => {

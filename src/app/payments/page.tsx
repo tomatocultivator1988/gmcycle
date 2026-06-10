@@ -231,7 +231,9 @@ export default function PaymentsPage() {
         body: JSON.stringify(form),
       });
 
-      setPostSuccess("Payment posted.");
+      setPostSuccess(selectedAccount?.customerEmail
+        ? `Payment posted. Receipt emailed to ${selectedAccount.customerEmail}.`
+        : "Payment posted.");
       setShowConfirm(false);
       setFieldErrors({});
 
@@ -283,9 +285,9 @@ export default function PaymentsPage() {
       ) : null}
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <form onSubmit={handleSubmit} className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+            <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-red-50 text-red-700">
                   <ReceiptText size={18} />
@@ -304,7 +306,7 @@ export default function PaymentsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               {postError ? <ErrorMessage message={postError} /> : null}
               {postSuccess ? <SuccessMessage message={postSuccess} /> : null}
 
@@ -427,7 +429,6 @@ export default function PaymentsPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleFileSelect}
                     className="mt-1.5 block w-full text-sm text-slate-500 file:mr-3 file:rounded-xl file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
                   />
@@ -445,25 +446,25 @@ export default function PaymentsPage() {
                   </div>
                 ) : null}
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
-                >
-                  <Save size={16} aria-hidden="true" />
-                  Post Payment
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+              >
+                <Save size={16} aria-hidden="true" />
+                Post Payment
+              </button>
+            </div>
+          </form>
         </div>
       ) : null}
 

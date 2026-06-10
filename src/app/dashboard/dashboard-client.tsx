@@ -19,7 +19,7 @@ import {
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
-import type { DashboardMetricsDto } from "@/types/api";
+import type { DashboardMetricsDto, DashboardActionsDto } from "@/types/api";
 
 function StatCard({ label, value, icon: Icon, trend, color, bgGradient }: {
   label: string; value: string | number; icon: any; trend?: string; color: string; bgGradient: string;
@@ -65,11 +65,12 @@ const statuses = [
 
 export function DashboardClient() {
   const [metrics, setMetrics] = useState<DashboardMetricsDto | null>(null);
+  const [actions, setActions] = useState<DashboardActionsDto | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiRequest<{ metrics: DashboardMetricsDto }>("/api/dashboard")
-      .then((data) => setMetrics(data.metrics))
+    apiRequest<{ metrics: DashboardMetricsDto; actions: DashboardActionsDto }>("/api/dashboard")
+      .then((data) => { setMetrics(data.metrics); setActions(data.actions); })
       .catch((requestError: Error) => setError(requestError.message));
   }, []);
 
@@ -217,6 +218,48 @@ export function DashboardClient() {
           </div>
         </div>
       </div>
+
+      {/* ── NEEDS ATTENTION ── */}
+      {actions ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold font-heading text-slate-900 mb-3">Needs Attention</h2>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {actions.dueToday > 0 ? (
+              <Link href="/installment-accounts?status=DUE_TODAY" className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 hover:bg-amber-100 transition-colors">
+                <span className="text-sm font-medium text-amber-800">{actions.dueToday} due today</span>
+                <span className="text-xs text-amber-600">View →</span>
+              </Link>
+            ) : null}
+            {actions.overdue1to30 > 0 ? (
+              <Link href="/installment-accounts?status=OVERDUE" className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 hover:bg-red-100 transition-colors">
+                <span className="text-sm font-medium text-red-800">{actions.overdue1to30} overdue 1-30 days</span>
+                <span className="text-xs text-red-600">View →</span>
+              </Link>
+            ) : null}
+            {actions.overdue31plus > 0 ? (
+              <Link href="/installment-accounts?status=OVERDUE" className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 hover:bg-rose-100 transition-colors">
+                <span className="text-sm font-bold text-rose-800">{actions.overdue31plus} overdue 31+ days</span>
+                <span className="text-xs text-rose-600">View →</span>
+              </Link>
+            ) : null}
+            {actions.unactivated > 0 ? (
+              <Link href="/installment-accounts?status=APPLIED" className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 transition-colors">
+                <span className="text-sm font-medium text-slate-700">{actions.unactivated} unactivated</span>
+                <span className="text-xs text-slate-500">View →</span>
+              </Link>
+            ) : null}
+            {actions.badRecords > 0 ? (
+              <Link href="/installment-accounts?badRecord=true" className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 hover:bg-red-100 transition-colors">
+                <span className="text-sm font-medium text-red-800">{actions.badRecords} bad records</span>
+                <span className="text-xs text-red-600">View →</span>
+              </Link>
+            ) : null}
+            {actions.dueToday === 0 && actions.overdue31plus === 0 && actions.unactivated === 0 && actions.badRecords === 0 ? (
+              <span className="text-sm text-slate-500 col-span-full">All clear — no items need attention.</span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {/* ── QUICK ACTIONS ── */}
       <div className="flex flex-wrap gap-3">

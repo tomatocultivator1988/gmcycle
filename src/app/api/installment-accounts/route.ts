@@ -58,6 +58,9 @@ export async function POST(request: Request) {
 
     const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
     const downPayment = parsePositiveMoney(body.downPayment, "downPayment");
+    const processingFee = body.processingFee?.trim()
+      ? parsePositiveMoney(body.processingFee, "processingFee")
+      : new Decimal(0);
     const pricingType = body.pricingType ?? "FLAT_RATE";
 
     let installmentPrice: Decimal;
@@ -77,11 +80,13 @@ export async function POST(request: Request) {
 
     const remainingBalance = installmentPrice.minus(downPayment).toDecimalPlaces(2);
     const monthlyInstallment = remainingBalance.div(body.term).toDecimalPlaces(2);
-    const startDate = parseDateOnly(body.startDate, "startDate");
+    const startDate = parseDateOnly(body.startDate || body.firstDueDate, "startDate");
+    const firstDueDate = parseDateOnly(body.firstDueDate, "firstDueDate");
     const term = body.term;
+    const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
+    const dueDays = body.dueDays ?? [15, 30];
 
-    const schedule = generateSchedule(startDate, term, remainingBalance);
-    const firstDueDate = schedule[0]?.dueDate ?? startDate;
+    const schedule = generateSchedule(firstDueDate, term, dueDays, remainingBalance);
 
     const account = await prisma.$transaction(async (tx) => {
       const created = await tx.installmentAccount.create({
@@ -90,20 +95,25 @@ export async function POST(request: Request) {
           customerPhone: body.customerPhone,
           customerEmail: body.customerEmail || null,
           customerAddress: body.customerAddress,
-          brand: body.brand,
-          model: body.model,
+          itemType: body.itemType ?? "GADGET",
+          brand: body.itemType === "CASH" ? "N/A" : body.brand,
+          model: body.itemType === "CASH" ? "N/A" : body.model,
           unitDescription: body.unitDescription,
           cashPrice: decimalToString(cashPrice),
           installmentPrice: decimalToString(installmentPrice),
           downPayment: decimalToString(downPayment),
+          processingFee: decimalToString(processingFee),
           remainingBalance: decimalToString(remainingBalance),
           term,
           monthlyInstallment: decimalToString(monthlyInstallment),
           pricingType,
-          interestRate: body.interestRate ?? null,
+          interestRate: body.interestRate?.trim() || null,
           status: "APPLIED",
+          scheduleType,
+          dueDays,
+          firstDueDate,
           startDate,
-          dueDayOfMonth: 30,
+          customFields: body.customFields ?? {},
           nextDueDate: firstDueDate,
           schedule: {
             create: schedule.map((s) => ({

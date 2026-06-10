@@ -6,12 +6,23 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const accounts = await prisma.installmentAccount.findMany({
-      where: { status: "OVERDUE" },
-      orderBy: { nextDueDate: "asc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+
+    const [accounts, totalCount] = await Promise.all([
+      prisma.installmentAccount.findMany({
+        where: { status: "OVERDUE" as any },
+        orderBy: { nextDueDate: "asc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.installmentAccount.count({
+        where: { status: "OVERDUE" as any },
+      }),
+    ]);
 
     const now = new Date();
 
@@ -33,7 +44,8 @@ export async function GET() {
           daysOverdue,
         };
       }),
-      totalOverdue: accounts.length,
+      totalOverdue: totalCount,
+      pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {
     return handleApiError(error);

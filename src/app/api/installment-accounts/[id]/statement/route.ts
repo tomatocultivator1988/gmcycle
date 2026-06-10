@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const account = await prisma.installmentAccount.findUnique({
       where: { id },
       include: {
-        payments: { orderBy: { paymentDate: "asc" } },
+        payments: { where: { voided: false }, orderBy: { paymentDate: "asc" } },
         schedule: { orderBy: { periodNumber: "asc" } },
         penalties: { orderBy: { appliedDate: "asc" } },
       },

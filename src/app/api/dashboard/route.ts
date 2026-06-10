@@ -1,20 +1,25 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { getManilaDayRange } from "@/lib/dates";
+import { getManilaDayRange, dateToManilaDateOnly } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 export const runtime = "nodejs";
 
+function manilaMidnight(date: Date): Date {
+  return new Date(dateToManilaDateOnly(date) + "T00:00:00+08:00");
+}
+
 export async function GET() {
   try {
     const { start: todayStart, end: todayEnd } = getManilaDayRange();
-    const weekStart = startOfWeek(todayStart, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(todayEnd, { weekStartsOn: 1 });
-    const monthStart = startOfMonth(todayStart);
-    const monthEnd = endOfMonth(todayEnd);
+    const todayManila = manilaMidnight(todayStart);
+    const weekStart = startOfWeek(todayManila, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(todayManila, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(todayManila);
+    const monthEnd = endOfMonth(todayManila);
 
     // ── 1. Status counts (single query via groupBy) ──
     const statusCounts = await prisma.installmentAccount.groupBy({
@@ -69,29 +74,43 @@ export async function GET() {
         COALESCE(SUM(CASE WHEN "paymentDate" >= $1::timestamp AND "paymentDate" < $2::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "today",
         COALESCE(SUM(CASE WHEN "paymentDate" >= $3::timestamp AND "paymentDate" < $4::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "week",
         COALESCE(SUM(CASE WHEN "paymentDate" >= $5::timestamp AND "paymentDate" < $6::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "month"
-      FROM "Payment"`,
+      FROM "Payment"
+      WHERE "voided" = false`,
       todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd,
     );
 
-    // ── 4. Aging: overdue list (single query) ──
-    const overdueList = await prisma.installmentAccount.findMany({
-      where: { status: "OVERDUE" },
-      select: { nextDueDate: true },
-    });
+    // ── 4. Aging: computed from oldest overdue schedule period ──
+    const [agingData] = await prisma.$queryRawUnsafe<Array<{
+      days1to30: number;
+      days31to60: number;
+      days61to90: number;
+      days90plus: number;
+    }>>(
+      `SELECT
+        COUNT(*) FILTER (WHERE days_overdue BETWEEN 1 AND 30)::int AS "days1to30",
+        COUNT(*) FILTER (WHERE days_overdue BETWEEN 31 AND 60)::int AS "days31to60",
+        COUNT(*) FILTER (WHERE days_overdue BETWEEN 61 AND 90)::int AS "days61to90",
+        COUNT(*) FILTER (WHERE days_overdue > 90)::int AS "days90plus"
+      FROM (
+        SELECT
+          CURRENT_DATE - MIN(sub.due_date)::date AS days_overdue
+        FROM (
+          SELECT s."installmentAccountId", s."dueDate" as due_date
+          FROM "InstallmentSchedule" s
+          JOIN "InstallmentAccount" a ON a.id = s."installmentAccountId"
+          WHERE a.status = 'OVERDUE'
+            AND s.status IN ('PENDING', 'OVERDUE', 'PARTIAL')
+            AND s."dueDate" < CURRENT_DATE
+          ORDER BY s."dueDate" ASC
+        ) sub
+        GROUP BY sub."installmentAccountId"
+      ) aged`,
+    );
 
-    const today = todayStart;
-    let days1to30 = 0;
-    let days31to60 = 0;
-    let days61to90 = 0;
-    let days90plus = 0;
-
-    for (const acc of overdueList) {
-      const diffDays = Math.floor((today.getTime() - acc.nextDueDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 30) days1to30++;
-      else if (diffDays <= 60) days31to60++;
-      else if (diffDays <= 90) days61to90++;
-      else days90plus++;
-    }
+    const days1to30 = agingData?.days1to30 ?? 0;
+    const days31to60 = agingData?.days31to60 ?? 0;
+    const days61to90 = agingData?.days61to90 ?? 0;
+    const days90plus = agingData?.days90plus ?? 0;
 
     return NextResponse.json({
       metrics: {
@@ -117,6 +136,13 @@ export async function GET() {
           days61to90,
           days90plus,
         },
+      },
+      actions: {
+        dueToday: dueTodayAccounts,
+        overdue1to30: days1to30,
+        overdue31plus: days31to60 + days61to90 + days90plus,
+        unactivated: appliedAccounts,
+        badRecords: await prisma.installmentAccount.count({ where: { badRecord: true, status: { notIn: ["FULLY_PAID", "CLOSED"] as any } } }),
       },
     });
   } catch (error) {

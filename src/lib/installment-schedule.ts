@@ -7,40 +7,59 @@ export type InstallmentScheduleInput = {
   status: "PENDING";
 };
 
-const DUE_DAYS = [15, 30] as const;
-
-function getLastDayOfMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
+function clampDay(year: number, month: number, day: number): number {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return Math.min(day, lastDay);
 }
 
 function makeDueDate(year: number, month: number, day: number): Date {
-  const lastDay = getLastDayOfMonth(year, month);
-  const safeDay = Math.min(day, lastDay);
-  return new Date(year, month, safeDay, 0, 0, 0, 0);
+  const safeDay = clampDay(year, month, day);
+  const y = String(year).padStart(4, "0");
+  const m = String(month + 1).padStart(2, "0");
+  const d = String(safeDay).padStart(2, "0");
+  return new Date(`${y}-${m}-${d}T00:00:00+08:00`);
 }
 
 export function generateSchedule(
-  startDate: Date,
+  firstDueDate: Date,
   term: number,
+  dueDays: number[],
   totalRemainingBalance: Decimal,
 ): InstallmentScheduleInput[] {
-  const totalPeriods = term * 2;
+  const sortedDays = [...dueDays].sort((a, b) => a - b);
+  const periodsPerMonth = sortedDays.length;
+  const totalPeriods = term * periodsPerMonth;
   const schedule: InstallmentScheduleInput[] = [];
   let allocated = new Decimal(0);
 
-  for (let i = 1; i <= totalPeriods; i++) {
-    const dueDate = computeSemiMonthlyDueDate(startDate, i);
-    let amount: Decimal;
+  const dueMonth = firstDueDate.getMonth();
+  const dueYear = firstDueDate.getFullYear();
 
-    if (i === totalPeriods) {
+  for (let i = 0; i < totalPeriods; i++) {
+    const dayIndex = i % periodsPerMonth;
+    const monthOffset = Math.floor(i / periodsPerMonth);
+    const targetDay = sortedDays[dayIndex];
+
+    let targetMonth = dueMonth + monthOffset;
+    let targetYear = dueYear;
+    while (targetMonth > 11) {
+      targetMonth -= 12;
+      targetYear++;
+    }
+
+    const dueDate = makeDueDate(targetYear, targetMonth, targetDay);
+
+    let amount: Decimal;
+    if (i === totalPeriods - 1) {
       amount = totalRemainingBalance.minus(allocated);
     } else {
       amount = totalRemainingBalance.div(totalPeriods);
-      allocated = allocated.plus(amount);
+      const rounded = amount.toDecimalPlaces(2);
+      allocated = allocated.plus(rounded);
     }
 
     schedule.push({
-      periodNumber: i,
+      periodNumber: i + 1,
       dueDate,
       amount: amount.toDecimalPlaces(2),
       status: "PENDING",
@@ -50,17 +69,32 @@ export function generateSchedule(
   return schedule;
 }
 
-export function computeSemiMonthlyDueDate(startDate: Date, periodIndex: number): Date {
-  if (periodIndex < 1) throw new Error("periodIndex must be >= 1");
-  const monthOffset = Math.ceil(periodIndex / 2) - 1;
-  const dayIndex = (periodIndex - 1) % 2;
-  const targetDay = DUE_DAYS[dayIndex];
-
+export function generateAdjustedDates(
+  dueDays: number[],
+  count: number,
+  startDate: Date,
+): Date[] {
+  const sorted = [...dueDays].sort((a, b) => a - b);
+  const perMonth = sorted.length;
+  const dates: Date[] = [];
   const startMonth = startDate.getMonth();
   const startYear = startDate.getFullYear();
-  const targetMonth = (startMonth + monthOffset) % 12;
-  const yearOffset = Math.floor((startMonth + monthOffset) / 12);
-  const targetYear = startYear + yearOffset;
 
-  return makeDueDate(targetYear, targetMonth, targetDay);
+  for (let i = 0; i < count; i++) {
+    const dayIndex = i % perMonth;
+    const monthOffset = Math.floor(i / perMonth);
+    const targetDay = sorted[dayIndex];
+
+    let targetMonth = startMonth + monthOffset;
+    let targetYear = startYear;
+    while (targetMonth > 11) {
+      targetMonth -= 12;
+      targetYear++;
+    }
+
+    const safeDay = clampDay(targetYear, targetMonth, targetDay);
+    dates.push(new Date(targetYear, targetMonth, safeDay, 0, 0, 0, 0));
+  }
+
+  return dates;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import Decimal from "decimal.js";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Smartphone,
   ChevronDown,
@@ -18,6 +19,8 @@ import {
   UserCheck,
   FileText,
   Pencil,
+  Ban,
+  Lock,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -27,6 +30,7 @@ import { ErrorMessage, LoadingBlock, SuccessMessage } from "@/components/ui-stat
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { useEscapeKey } from "@/lib/use-escape-key";
 import { createPaymentSchema } from "@/lib/validation";
 import { validateForm, type FieldErrors } from "@/lib/form-validation";
 import type {
@@ -91,7 +95,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [penalties, setPenalties] = useState<PenaltyRecordDto[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [showSchedule, setShowSchedule] = useState(true);
+  const [showSchedule, setShowSchedule] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -109,6 +113,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [postSuccess, setPostSuccess] = useState("");
   const [penaltyPeriodId, setPenaltyPeriodId] = useState<string | null>(null);
   const [penaltyAmount, setPenaltyAmount] = useState("");
+  const [penaltyPerDay, setPenaltyPerDay] = useState("50");
   const [applyingPenalty, setApplyingPenalty] = useState(false);
   const [showPenaltyModal, setShowPenaltyModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -122,10 +127,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     brand: "",
     model: "",
     unitDescription: "",
+    itemType: "GADGET" as "GADGET" | "CASH",
+    processingFee: "",
   });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [editCustomFields, setEditCustomFields] = useState<{ key: string; value: string }[]>([]);
   const [requirements, setRequirements] = useState<Record<string, boolean>>({
     validId: false,
     selfie: false,
@@ -134,6 +142,23 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     residencePhoto: false,
   });
   const [activating, setActivating] = useState(false);
+  const [showAdjustDueModal, setShowAdjustDueModal] = useState(false);
+  const [adjustDueDay1, setAdjustDueDay1] = useState("");
+  const [adjustDueDay2, setAdjustDueDay2] = useState("");
+  const [savingAdjustDue, setSavingAdjustDue] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidConfirm, setVoidConfirm] = useState("");
+  const [voiding, setVoiding] = useState(false);
+  const [closeRemarks, setCloseRemarks] = useState("");
+  const [closing, setClosing] = useState(false);
+  const [showDeviceSecurity, setShowDeviceSecurity] = useState(false);
+  const [deviceEmail, setDeviceEmail] = useState("");
+  const [deviceEmailPassword, setDeviceEmailPassword] = useState("");
+  const [deviceAccountHolderEmail, setDeviceAccountHolderEmail] = useState("");
+  const [savingDeviceSecurity, setSavingDeviceSecurity] = useState(false);
 
   const loadData = useCallback(() => {
     let active = true;
@@ -167,7 +192,20 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     return cancel;
   }, [loadData]);
 
-  useBodyScrollLock(showModal || showPenaltyModal || showEditModal);
+  useEffect(() => {
+    apiRequest<{ config: { penaltyPerDay: string } }>("/api/admin/config")
+      .then((data) => setPenaltyPerDay(data.config.penaltyPerDay))
+      .catch(() => {});
+  }, []);
+
+  useBodyScrollLock(showModal || showPenaltyModal || showEditModal || showCloseModal || showVoidModal || showDeviceSecurity || showAdjustDueModal);
+  useEscapeKey(() => setShowModal(false), showModal);
+  useEscapeKey(() => setShowPenaltyModal(false), showPenaltyModal);
+  useEscapeKey(() => setShowEditModal(false), showEditModal);
+  useEscapeKey(() => setShowCloseModal(false), showCloseModal);
+  useEscapeKey(() => setShowVoidModal(false), showVoidModal);
+  useEscapeKey(() => setShowDeviceSecurity(false), showDeviceSecurity);
+  useEscapeKey(() => setShowAdjustDueModal(false), showAdjustDueModal);
 
   async function handlePostPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -254,7 +292,9 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         }),
       });
 
-      setPostSuccess("Payment posted successfully.");
+      setPostSuccess(account.customerEmail
+        ? `Payment posted successfully. Receipt emailed to ${account.customerEmail}.`
+        : "Payment posted successfully.");
       setFieldErrors({});
       setForm({
         totalAmount: "",
@@ -302,8 +342,16 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   }
 
   function openPenaltyModal(periodId: string) {
+    const period = schedule.find((s) => s.id === periodId);
+    if (!period) return;
+
+    const due = new Date(period.dueDate);
+    const today = new Date(todayDateOnly() + "T00:00:00+08:00");
+    const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+    const accrued = diffDays * Number(penaltyPerDay);
+
     setPenaltyPeriodId(periodId);
-    setPenaltyAmount("200");
+    setPenaltyAmount(accrued > 0 ? String(accrued) : penaltyPerDay);
     setShowPenaltyModal(true);
   }
 
@@ -318,7 +366,14 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       brand: account.brand,
       model: account.model,
       unitDescription: account.unitDescription,
+      itemType: (account.itemType as "GADGET" | "CASH") ?? "GADGET",
+      processingFee: account.processingFee ?? "",
     });
+    setEditCustomFields(
+      account.customFields
+        ? Object.entries(account.customFields).map(([key, value]) => ({ key, value }))
+        : [],
+    );
     setShowEditModal(true);
   }
 
@@ -329,7 +384,18 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     try {
       const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
         `/api/installment-accounts/${account.id}`,
-        { method: "PATCH", body: JSON.stringify(editForm) },
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            ...editForm,
+            itemType: editForm.itemType,
+            processingFee: editForm.processingFee || undefined,
+            customFields: editCustomFields.reduce((acc, { key, value }) => {
+              if (key.trim()) acc[key.trim()] = value;
+              return acc;
+            }, {} as Record<string, string>),
+          }),
+        },
       );
       setAccount(data.installmentAccount);
       setShowEditModal(false);
@@ -348,7 +414,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         method: "POST",
         body: JSON.stringify({
           periodId: penaltyPeriodId,
-          amount: penaltyAmount,
+          appliedAmount: penaltyAmount,
         }),
       });
       setShowPenaltyModal(false);
@@ -369,7 +435,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         `/api/installment-accounts/${account.id}/activate`,
         { method: "PATCH" },
       );
-      loadData();
+      setShowDeviceSecurity(true);
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {
@@ -377,7 +443,90 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     }
   }
 
-  const allRequirementsMet = Object.values(requirements).every(Boolean);
+  async function saveDeviceSecurity() {
+    if (!account) return;
+    setSavingDeviceSecurity(true);
+    try {
+      await apiRequest(`/api/installment-accounts/${account.id}/device-security`, {
+        method: "PATCH",
+        body: JSON.stringify({ deviceEmail, deviceEmailPassword, deviceAccountHolderEmail }),
+      });
+      setShowDeviceSecurity(false);
+      loadData();
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setSavingDeviceSecurity(false);
+    }
+  }
+
+  async function handleCloseAccount() {
+    if (!account) return;
+    setClosing(true);
+    try {
+      await apiRequest(`/api/installment-accounts/${account.id}/close`, {
+        method: "PATCH",
+        body: JSON.stringify({ remarks: closeRemarks }),
+      });
+      setShowCloseModal(false);
+      loadData();
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  async function handleVoidPayment() {
+    if (!voidPaymentId || voidConfirm !== "VOID") return;
+    setVoiding(true);
+    try {
+      await apiRequest(`/api/payments/${voidPaymentId}/void`, {
+        method: "POST",
+        body: JSON.stringify({ reason: voidReason }),
+      });
+      setShowVoidModal(false);
+      setVoidPaymentId(null);
+      setVoidConfirm("");
+      loadData();
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setVoiding(false);
+    }
+  }
+
+  function openAdjustDueDates() {
+    const firstUnpaid = schedule.find((s) => s.status === "PENDING" || s.status === "PARTIAL");
+    if (firstUnpaid && account) {
+      const current = account.dueDays?.length ? [...account.dueDays].sort((a, b) => a - b) : [15, 30];
+      setAdjustDueDay1(String(current[0]));
+      setAdjustDueDay2(current.length > 1 ? String(current[1]) : "");
+      setShowAdjustDueModal(true);
+    }
+  }
+
+  async function confirmAdjustDueDates() {
+    if (!account) return;
+    const d1 = parseInt(adjustDueDay1);
+    const d2 = adjustDueDay2 ? parseInt(adjustDueDay2) : null;
+    if (isNaN(d1) || d1 < 1 || d1 > 31) return;
+    if (account.scheduleType === "SEMI_MONTHLY" && (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31)) return;
+    const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
+    setSavingAdjustDue(true);
+    try {
+      await apiRequest(`/api/installment-accounts/${account.id}/adjust-due-dates`, {
+        method: "PATCH",
+        body: JSON.stringify({ dueDays }),
+      });
+      setShowAdjustDueModal(false);
+      loadData();
+    } catch (requestError) {
+      setError((requestError as Error).message);
+    } finally {
+      setSavingAdjustDue(false);
+    }
+  }
 
   const requirementsList = [
     { key: "validId" as const, label: "Valid Government ID (UMID, PhilHealth, Driver's License, Passport, National ID)" },
@@ -387,11 +536,58 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     { key: "residencePhoto" as const, label: "Clear photo showing exterior view of residence" },
   ];
 
+  const { allRequirementsMet } = useMemo(() => {
+    const unmet = requirementsList.find((r) => !requirements[r.key]);
+    return { allRequirementsMet: !unmet };
+  }, [requirements]);
+
+  const adjustPreview = useMemo(() => {
+    if (!account || !showAdjustDueModal) return [];
+    const d1 = parseInt(adjustDueDay1);
+    const d2 = adjustDueDay2 ? parseInt(adjustDueDay2) : null;
+    if (isNaN(d1) || d1 < 1 || d1 > 31) return [];
+    if (account.scheduleType === "SEMI_MONTHLY" && (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31)) return [];
+
+    const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
+    const unpaid = schedule.filter((s) => s.status === "PENDING" || s.status === "PARTIAL");
+    if (unpaid.length === 0) return [];
+
+    const startDate = new Date(unpaid[0].dueDate + "T00:00:00.000+08:00");
+    const sorted = [...dueDays].sort((a, b) => a - b);
+    const perMonth = sorted.length;
+    const preview: { periodNumber: number; oldDate: string; newDate: string }[] = [];
+    const startMonth = startDate.getMonth();
+    const startYear = startDate.getFullYear();
+
+    for (let i = 0; i < unpaid.length; i++) {
+      const dayIndex = i % perMonth;
+      const monthOffset = Math.floor(i / perMonth);
+      const targetDay = sorted[dayIndex];
+      let targetMonth = startMonth + monthOffset;
+      let targetYear = startYear;
+      while (targetMonth > 11) {
+        targetMonth -= 12;
+        targetYear++;
+      }
+      const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const safeDay = Math.min(targetDay, lastDay);
+      const yy = String(targetYear);
+      const mm = String(targetMonth + 1).padStart(2, "0");
+      const dd = String(safeDay).padStart(2, "0");
+      preview.push({
+        periodNumber: unpaid[i].periodNumber,
+        oldDate: unpaid[i].dueDate,
+        newDate: `${yy}-${mm}-${dd}`,
+      });
+    }
+    return preview;
+  }, [account, showAdjustDueModal, adjustDueDay1, adjustDueDay2, schedule]);
+
   if (loading) return <LoadingBlock label="Loading account" />;
   if (!account) return <ErrorMessage message={error || "Account not found"} />;
 
-  const totalPaymentsAmount = payments.reduce((s, p) => s + Number(p.totalAmount), 0);
-  const totalPenaltiesAmount = penalties.reduce((s, p) => s + Number(p.amount), 0);
+  const totalPaymentsAmount = payments.reduce((s, p) => s.plus(new Decimal(p.totalAmount)), new Decimal(0));
+  const totalPenaltiesAmount = penalties.reduce((s, p) => s.plus(new Decimal(p.amount)), new Decimal(0));
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
   const daysOverdue = account.status === "OVERDUE"
@@ -407,30 +603,40 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         title={`${account.brand} ${account.model}`}
         description={account.unitDescription}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Link
               href={`/installment-accounts/${account.id}/statement`}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
             >
               <FileText size={16} aria-hidden="true" />
-              Statement
+              <span className="inline">Statement</span>
             </Link>
             <button
               type="button"
               onClick={openEditModal}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
             >
               <Pencil size={16} aria-hidden="true" />
-              Edit
+              <span className="inline">Edit</span>
             </button>
-            {account.status !== "APPLIED" ? (
+            {account.status !== "APPLIED" && account.status !== "CLOSED" ? (
               <button
                 type="button"
                 onClick={openModal}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+                className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg bg-red-800 px-2.5 sm:px-4 text-xs sm:text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
               >
                 <ReceiptText size={16} aria-hidden="true" />
-                Post Payment
+                <span className="inline">Post Payment</span>
+              </button>
+            ) : null}
+            {account.status !== "APPLIED" && account.status !== "CLOSED" ? (
+              <button
+                type="button"
+                onClick={() => setShowCloseModal(true)}
+                className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                <Ban size={16} aria-hidden="true" />
+                <span className="inline">Close</span>
               </button>
             ) : null}
           </div>
@@ -448,7 +654,11 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           </div>
         } />
         <InfoCard icon={MapPin} label="Address" value={account.customerAddress} />
-        <InfoCard icon={Smartphone} label="Device" value={`${account.brand} ${account.model}`} />
+        <InfoCard icon={Smartphone} label={account.itemType === "CASH" ? "Type" : "Device"} value={
+          account.itemType === "CASH"
+            ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">Cash</span>
+            : `${account.brand} ${account.model}`
+        } />
         <InfoCard icon={Hash} label="Term" value={`${account.term} months`} />
       </div>
 
@@ -468,18 +678,33 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Cash Price" value={formatPeso(account.cashPrice)} />
         <StatCard label="Installment Price" value={formatPeso(account.installmentPrice)} />
-        <StatCard label="Gross Profit" value={formatPeso(account.grossProfit)} valueClass="text-emerald-700" />
         <StatCard label="Down Payment" value={formatPeso(account.downPayment)} />
+        <StatCard label="Processing Fee" value={formatPeso(account.processingFee)} />
         <StatCard label="Monthly" value={formatPeso(account.monthlyInstallment)} />
+        <StatCard label="Gross Profit" value={formatPeso(account.grossProfit)} valueClass="text-emerald-700" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <StatCard label="Total Payments" value={formatPeso(totalPaymentsAmount.toString())} valueClass="text-emerald-700" />
-        <StatCard label="Total Penalties" value={formatPeso(totalPenaltiesAmount.toString())} valueClass="text-rose-700" />
+        <StatCard label="Total Payments" value={formatPeso(totalPaymentsAmount.toFixed(2))} valueClass="text-emerald-700" />
+        <StatCard label="Total Penalties" value={formatPeso(totalPenaltiesAmount.toFixed(2))} valueClass="text-rose-700" />
       </div>
+
+      {account.customFields && Object.keys(account.customFields).length > 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Custom Fields</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {Object.entries(account.customFields).map(([key, value]) => (
+              <div key={key} className="flex gap-2 items-baseline">
+                <span className="text-xs font-medium text-slate-500 min-w-24">{key}:</span>
+                <span className="text-sm text-slate-900">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {account.status === "APPLIED" ? (
         <section className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-red-100/50 p-6 shadow-sm">
@@ -543,18 +768,34 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           <h2 className="text-sm font-semibold font-heading text-slate-900">Installment Schedule ({schedule.length} periods)</h2>
           {showSchedule ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
         </button>
+        {showSchedule && schedule.some((s) => s.status === "PENDING" || s.status === "PARTIAL") ? (
+          <div className="px-5 pb-3">
+            <button
+              type="button"
+              onClick={openAdjustDueDates}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+            >
+              Adjust Due Dates
+            </button>
+          </div>
+        ) : null}
         {showSchedule ? (
           <div className="divide-y divide-slate-100">
             {schedule.map((period) => (
               <div
                 key={period.id}
-                className={`px-5 py-3.5 transition-colors ${scheduleStatusStyles[period.status as ScheduleStatusValue]}`}
+                className={`px-5 py-3.5 transition-colors ${
+                  period.status === "PAID" ? scheduleStatusStyles.PAID :
+                  period.status === "OVERDUE" || (period.status === "PENDING" && period.dueDate < todayDateOnly()) ? scheduleStatusStyles.OVERDUE :
+                  period.status === "PARTIAL" ? scheduleStatusStyles.PARTIAL :
+                  scheduleStatusStyles.PENDING
+                }`}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                       period.status === "PAID" ? "bg-emerald-200 text-emerald-800" :
-                      period.status === "OVERDUE" ? "bg-rose-200 text-rose-800" :
+                      period.status === "OVERDUE" || (period.status === "PENDING" && period.dueDate < todayDateOnly()) ? "bg-rose-200 text-rose-800" :
                       period.status === "PARTIAL" ? "bg-amber-200 text-amber-800" :
                       "bg-slate-200 text-slate-700"
                     }`}>
@@ -563,6 +804,15 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     <div>
                       <div className="text-sm font-semibold text-slate-900">{formatPeso(period.amount)}</div>
                       <div className="text-xs text-slate-500">Due: {period.dueDate}</div>
+                      {period.status === "PAID" && period.paidAmount ? (
+                        <div className="text-xs text-emerald-600 mt-0.5">Paid: {formatPeso(period.paidAmount)}</div>
+                      ) : period.status === "PARTIAL" && period.paidAmount ? (
+                        <div className="text-xs text-amber-600 mt-0.5">
+                          Paid: {formatPeso(period.paidAmount)} &middot; Balance: {formatPeso((parseFloat(period.amount) - parseFloat(period.paidAmount)).toFixed(2))}
+                        </div>
+                      ) : period.status === "PENDING" && period.penaltyAmount !== "0.00" ? (
+                        <div className="text-xs text-rose-500 mt-0.5">+ Penalty: {formatPeso(period.penaltyAmount)}</div>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -571,15 +821,26 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
                         Pen: {formatPeso(period.penaltyAmount)}
                       </span>
-                    ) : period.status === "OVERDUE" ? (
-                      <button
-                        type="button"
-                        onClick={() => openPenaltyModal(period.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-all hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98]"
-                      >
-                        <AlertTriangle size={12} />
-                        Apply Penalty
-                      </button>
+                    ) : (period.status === "OVERDUE" || (period.status === "PENDING" && period.dueDate < todayDateOnly())) ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-rose-600 font-medium">
+                          {(() => {
+                            const due = new Date(period.dueDate);
+                            const today = new Date(todayDateOnly() + "T00:00:00+08:00");
+                            const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+                            const accrued = diffDays * Number(penaltyPerDay);
+                            return `Accrued: ₱${accrued.toFixed(2)} (${diffDays}d)`;
+                          })()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openPenaltyModal(period.id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-all hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98]"
+                        >
+                          <AlertTriangle size={12} />
+                          Apply Penalty
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -630,6 +891,18 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                   <Printer size={14} />
                   Print
                 </Link>
+                {!payment.voided && account.status !== "CLOSED" ? (
+                  <button
+                    type="button"
+                    onClick={() => { setVoidPaymentId(payment.id); setVoidReason(""); setShowVoidModal(true); }}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 text-xs font-medium text-rose-600 shadow-sm transition-all hover:bg-rose-50 active:scale-[0.98]"
+                  >
+                    <Ban size={14} />
+                    Void
+                  </button>
+                ) : payment.voided ? (
+                  <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">VOIDED</span>
+                ) : null}
               </div>
             </div>
           ))}
@@ -659,9 +932,9 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       ) : null}
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <form onSubmit={handlePostPayment} className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+            <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
                 <h2 className="text-base font-bold font-heading text-slate-900">Post Payment</h2>
                 <p className="mt-0.5 text-sm text-slate-500">{account.brand} {account.model} — {account.customerName}</p>
@@ -669,13 +942,14 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
+                aria-label="Close"
                 className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handlePostPayment} className="space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               {postError ? <ErrorMessage message={postError} /> : null}
               {postSuccess ? <SuccessMessage message={postSuccess} /> : null}
 
@@ -770,7 +1044,6 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleFileSelect}
                     className="mt-1.5 block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
                   />
@@ -786,12 +1059,34 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       <X size={12} />
                     </button>
                   </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+              >
+                <Save size={16} aria-hidden="true" />
+                Post Payment
+              </button>
+            </div>
+          </form>
+        </div>
       ) : null}
 
       {showEditModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+            <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
                 <h2 className="text-base font-bold font-heading text-slate-900">Edit Account</h2>
                 <p className="mt-0.5 text-sm text-slate-500">{account.brand} {account.model} — {account.customerName}</p>
@@ -799,13 +1094,14 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
+                aria-label="Close"
                 className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               {editError ? <ErrorMessage message={editError} /> : null}
 
               <div className="grid grid-cols-2 gap-4">
@@ -855,32 +1151,63 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               </div>
 
               <div className="border-t border-slate-100 pt-4">
-                <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Device Info</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700">
-                      Brand
-                      <input
-                        value={editForm.brand}
-                        onChange={(e) => setEditForm((p) => ({ ...p, brand: e.target.value }))}
-                        className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      />
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700">
-                      Model
-                      <input
-                        value={editForm.model}
-                        onChange={(e) => setEditForm((p) => ({ ...p, model: e.target.value }))}
-                        className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      />
-                    </label>
+                <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">{editForm.itemType === "CASH" ? "Cash Info" : "Device Info"}</p>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Item Type</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm((p) => ({ ...p, itemType: "GADGET" }))}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                        editForm.itemType === "GADGET"
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                      }`}
+                    >
+                      📱 Gadget
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm((p) => ({ ...p, itemType: "CASH" }))}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                        editForm.itemType === "CASH"
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                      }`}
+                    >
+                      💰 Cash
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4">
+
+                {editForm.itemType === "GADGET" ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700">
+                        Brand
+                        <input
+                          value={editForm.brand}
+                          onChange={(e) => setEditForm((p) => ({ ...p, brand: e.target.value }))}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700">
+                        Model
+                        <input
+                          value={editForm.model}
+                          onChange={(e) => setEditForm((p) => ({ ...p, model: e.target.value }))}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+                <div className={editForm.itemType === "GADGET" ? "mt-4" : ""}>
                   <label className="block text-sm font-medium text-slate-700">
-                    Unit Description
+                    {editForm.itemType === "CASH" ? "Description" : "Unit Description"}
                     <textarea
                       value={editForm.unitDescription}
                       onChange={(e) => setEditForm((p) => ({ ...p, unitDescription: e.target.value }))}
@@ -890,46 +1217,86 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmEdit}
-                  disabled={editSaving || !editForm.customerName.trim()}
-                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300"
-                >
-                  {editSaving ? "Saving..." : "Save Changes"}
-                </button>
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Financial</p>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Processing Fee
+                    <input
+                      inputMode="decimal"
+                      value={editForm.processingFee}
+                      onChange={(e) => setEditForm((p) => ({ ...p, processingFee: e.target.value.replace(/[^\d.]/g, "") }))}
+                      placeholder="0.00"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Custom Fields</p>
+                <div className="space-y-2">
+                  {editCustomFields.map((field, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row gap-2 items-start">
+                      <input
+                        placeholder="Field name"
+                        value={field.key}
+                        onChange={(e) => {
+                          const updated = [...editCustomFields];
+                          updated[i] = { ...updated[i], key: e.target.value };
+                          setEditCustomFields(updated);
+                        }}
+                        className="h-10 w-full sm:flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      />
+                      <div className="flex gap-2 w-full sm:flex-[2]">
+                        <input
+                          placeholder="Value"
+                          value={field.value}
+                          onChange={(e) => {
+                            const updated = [...editCustomFields];
+                            updated[i] = { ...updated[i], value: e.target.value };
+                            setEditCustomFields(updated);
+                          }}
+                          className="h-10 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditCustomFields(editCustomFields.filter((_, j) => j !== i))}
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 transition-all"
+                        >
+                          <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditCustomFields([...editCustomFields, { key: "", value: "" }])}
+                    className="inline-flex h-9 items-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white px-3 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-all"
+                  >
+                    + Add Field
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      ) : null}
 
-    </div>
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
-                >
-                  <Save size={16} aria-hidden="true" />
-                  Post Payment
-                </button>
-              </div>
-            </form>
+            <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmEdit}
+                disabled={editSaving || !editForm.customerName.trim()}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300"
+              >
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -945,32 +1312,58 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       />
 
       {showPenaltyModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <h2 className="text-base font-bold font-heading text-slate-900">Apply Penalty</h2>
               <button
                 type="button"
                 onClick={() => setShowPenaltyModal(false)}
+                aria-label="Close"
                 className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-4 px-6 py-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Penalty Amount (₱)
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={penaltyAmount}
-                    onChange={(e) => setPenaltyAmount(e.target.value)}
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  />
-                </label>
-              </div>
+              <div className="space-y-4 px-6 py-4">
+              {(() => {
+                const period = schedule.find((s) => s.id === penaltyPeriodId);
+                if (!period) return null;
+                const due = new Date(period.dueDate);
+                const today = new Date(todayDateOnly() + "T00:00:00+08:00");
+                const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+                const accrued = diffDays * Number(penaltyPerDay);
+                const applied = Number(penaltyAmount) || 0;
+                const waived = accrued - applied > 0 ? accrued - applied : 0;
+
+                return (
+                  <>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5">
+                      <p className="text-xs text-slate-500">Period #{period.periodNumber} — Due: {period.dueDate}</p>
+                      <p className="text-xs text-slate-500">Days Overdue: <span className="font-semibold text-slate-900">{diffDays}</span></p>
+                      <p className="text-xs text-slate-500">Rate: ₱{penaltyPerDay}/day</p>
+                      <p className="text-sm font-bold text-rose-700">Accrued: ₱{accrued.toLocaleString()}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700">
+                        Apply Amount (₱)
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={penaltyAmount}
+                          onChange={(e) => setPenaltyAmount(e.target.value)}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                      </label>
+                      {waived > 0 ? (
+                        <p className="mt-1 text-xs text-amber-600">Waived: ₱{waived.toFixed(2)}</p>
+                      ) : null}
+                    </div>
+                  </>
+                );
+              })()}
               <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
                 <button
                   type="button"
@@ -986,6 +1379,249 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                   className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-700 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-rose-600 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300"
                 >
                   {applyingPenalty ? "Applying..." : "Apply Penalty"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showCloseModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                  <Ban size={24} />
+                </span>
+                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Close Account</h3>
+                <p className="mt-1.5 text-sm text-slate-500">
+                  {account.brand} {account.model} — {account.customerName}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Remarks
+                  <textarea
+                    required
+                    value={closeRemarks}
+                    onChange={(e) => setCloseRemarks(e.target.value)}
+                    placeholder="Why is this account being closed?"
+                    className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={closing || !closeRemarks.trim()}
+                  onClick={handleCloseAccount}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-rose-500 active:scale-[0.98] disabled:bg-slate-300"
+                >
+                  {closing ? "Closing..." : "Close Account"}
+                </button>
+                <button
+                  type="button"
+                  disabled={closing}
+                  onClick={() => setShowCloseModal(false)}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeviceSecurity ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl">
+            <div className="flex-shrink-0 p-6 pb-0">
+              <div className="flex flex-col items-center text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                  <Lock size={24} />
+                </span>
+                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Device Security Setup</h3>
+                <p className="mt-1.5 text-sm text-slate-500">Install this email on the device for security tracking</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Device Email *
+                  <input
+                    type="email"
+                    required
+                    value={deviceEmail}
+                    onChange={(e) => setDeviceEmail(e.target.value)}
+                    placeholder="gadgets.myfave.10@gmail.com"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Password *
+                  <input
+                    type="text"
+                    required
+                    value={deviceEmailPassword}
+                    onChange={(e) => setDeviceEmailPassword(e.target.value)}
+                    placeholder="Password of this email"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Account Holder Email *
+                  <input
+                    type="email"
+                    required
+                    value={deviceAccountHolderEmail}
+                    onChange={(e) => setDeviceAccountHolderEmail(e.target.value)}
+                    placeholder="myfave.gadgets.02@gmail.com"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 flex flex-col gap-2 px-6 pb-6">
+              <button
+                type="button"
+                disabled={savingDeviceSecurity || !deviceEmail || !deviceEmailPassword || !deviceAccountHolderEmail}
+                onClick={saveDeviceSecurity}
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:bg-slate-300"
+              >
+                {savingDeviceSecurity ? "Saving..." : "Save & Continue"}
+              </button>
+              <button
+                type="button"
+                disabled={savingDeviceSecurity}
+                onClick={() => { setShowDeviceSecurity(false); loadData(); }}
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showAdjustDueModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl max-h-[90vh] flex flex-col">
+            <div className="overflow-y-auto p-6">
+              <div className="text-center">
+                <h3 className="text-base font-bold font-heading text-slate-900">Adjust Due Dates</h3>
+                <p className="mt-1 text-sm text-slate-500">Set new due day numbers for all remaining unpaid periods. Paid periods stay unchanged.</p>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Due Day 1
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={adjustDueDay1}
+                    onChange={(e) => setAdjustDueDay1(e.target.value)}
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                {account?.scheduleType === "SEMI_MONTHLY" ? (
+                  <label className="block text-sm font-medium text-slate-700">
+                    Due Day 2
+                    <input
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={adjustDueDay2}
+                      onChange={(e) => setAdjustDueDay2(e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                ) : null}
+              </div>
+
+              {adjustPreview.length > 0 ? (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Preview</p>
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+                    {adjustPreview.map((p) => (
+                      <div key={p.periodNumber} className="flex items-center justify-between px-3 py-2 text-sm">
+                        <span className="text-slate-500">Period {p.periodNumber}</span>
+                        <span className="text-slate-400 line-through">{p.oldDate}</span>
+                        <span className="text-red-700 font-medium">{p.newDate}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={savingAdjustDue || !adjustDueDay1}
+                  onClick={confirmAdjustDueDates}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:bg-slate-300"
+                >
+                  {savingAdjustDue ? "Saving..." : `Apply to ${adjustPreview.length} unpaid periods`}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingAdjustDue}
+                  onClick={() => setShowAdjustDueModal(false)}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showVoidModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h2 className="text-base font-bold font-heading text-slate-900">Void Payment</h2>
+              <button type="button" onClick={() => setShowVoidModal(false)} aria-label="Close" className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-4">
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+                <p className="text-sm text-rose-800">This will reverse the payment and restore the schedule. This cannot be undone.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Type VOID to confirm
+                  <input value={voidConfirm} onChange={(e) => setVoidConfirm(e.target.value)} placeholder="VOID"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold tracking-wider outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" />
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Reason
+                  <textarea value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="Why is this being voided?"
+                    className="mt-1.5 min-h-[60px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" />
+                </label>
+              </div>
+              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                <button type="button" onClick={() => setShowVoidModal(false)}
+                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 active:scale-[0.98]">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleVoidPayment} disabled={voiding || voidConfirm !== "VOID"}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-700 px-4 text-sm font-medium text-white shadow-sm hover:bg-rose-600 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300">
+                  {voiding ? "Voiding..." : "Void Payment"}
                 </button>
               </div>
             </div>

@@ -33,5 +33,5 @@ export function formatPeso(value: MoneyInput): string {
   const [whole, cents] = decimalToString(value).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-  return `PHP ${grouped}.${cents}`;
+  return `₱${grouped}.${cents}`;
 }

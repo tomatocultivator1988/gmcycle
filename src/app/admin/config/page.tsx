@@ -13,8 +13,8 @@ import type { AdminConfigDto } from "@/types/api";
 
 export default function AdminConfigPage() {
   const [config, setConfig] = useState<AdminConfigDto | null>(null);
-  const [penaltyAmount, setPenaltyAmount] = useState("");
-  const [dueDayOptions, setDueDayOptions] = useState<number[]>([15, 30]);
+  const [penaltyPerDay, setPenaltyPerDay] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,28 +26,19 @@ export default function AdminConfigPage() {
     apiRequest<{ config: AdminConfigDto }>("/api/admin/config")
       .then((data) => {
         setConfig(data.config);
-        setPenaltyAmount(data.config.penaltyAmount);
-        setDueDayOptions(data.config.dueDayOptions);
+        setPenaltyPerDay(data.config.penaltyPerDay);
+        setAdminEmail(data.config.adminEmail ?? "");
       })
       .catch((requestError: Error) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
 
-  function toggleDueDay(day: number) {
-    setDueDayOptions((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(),
-    );
-    if (fieldErrors.dueDayOptions) {
-      clearFieldError(setFieldErrors, "dueDayOptions");
-    }
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const validation = validateForm(updateAdminConfigSchema, {
-      penaltyAmount,
-      dueDayOptions,
+      penaltyPerDay,
+      adminEmail,
     });
 
     if (!validation.success) {
@@ -66,8 +57,8 @@ export default function AdminConfigPage() {
       const data = await apiRequest<{ config: AdminConfigDto }>("/api/admin/config", {
         method: "PUT",
         body: JSON.stringify({
-          penaltyAmount,
-          dueDayOptions,
+          penaltyPerDay,
+          adminEmail,
         }),
       });
       setConfig(data.config);
@@ -99,52 +90,46 @@ export default function AdminConfigPage() {
               </span>
               <div>
                 <h2 className="text-base font-bold font-heading text-slate-900">Penalty Settings</h2>
-                <p className="text-xs text-slate-500">Configure penalty amount applied to overdue accounts</p>
+                <p className="text-xs text-slate-500">Configure penalty per day for overdue accounts</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700">
-                  Penalty Amount (₱)
+                  Penalty Per Day (₱)
                   <input
                     required
                     inputMode="decimal"
-                    value={penaltyAmount}
+                    value={penaltyPerDay}
                     onChange={(e) => {
-                      setPenaltyAmount(e.target.value.replace(/[^\d.]/g, ""));
-                      if (fieldErrors.penaltyAmount) clearFieldError(setFieldErrors, "penaltyAmount");
+                      setPenaltyPerDay(e.target.value.replace(/[^\d.]/g, ""));
+                      if (fieldErrors.penaltyPerDay) clearFieldError(setFieldErrors, "penaltyPerDay");
                     }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   />
                 </label>
-                <FieldError error={fieldErrors.penaltyAmount} />
+                <FieldError error={fieldErrors.penaltyPerDay} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Admin Email (for reports)
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="admin@example.com"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                <FieldError error={fieldErrors.adminEmail} />
               </div>
             </div>
 
-            <h2 className="mt-6 text-base font-bold font-heading text-slate-900">Due Day Options</h2>
-            <p className="mt-1 text-xs text-slate-500">Select which due days are available for new accounts</p>
-            <div className="mt-3 flex gap-3">
-              {[15, 30].map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDueDay(day)}
-                  className={`inline-flex h-10 items-center justify-center rounded-xl border px-5 text-sm font-medium transition-all ${
-                    dueDayOptions.includes(day)
-                      ? "border-red-800 bg-red-800 text-white shadow-sm"
-                      : "border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400"
-                  }`}
-                >
-                  {day}th
-                </button>
-              ))}
-            </div>
-            <FieldError error={fieldErrors.dueDayOptions} />
-
             <button
               type="submit"
-              disabled={saving || dueDayOptions.length === 0}
+              disabled={saving}
               className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none disabled:active:scale-100"
             >
               <Save size={16} aria-hidden="true" />
@@ -157,7 +142,7 @@ export default function AdminConfigPage() {
       <ConfirmModal
         open={showConfirm}
         title="Save Configuration?"
-        message={`Update penalty (₱${penaltyAmount}) settings.`}
+        message={`Update penalty (₱${penaltyPerDay}/day) settings.`}
         confirmLabel="Yes, save changes"
         onConfirm={confirmSave}
         onCancel={() => setShowConfirm(false)}

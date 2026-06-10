@@ -7,14 +7,24 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const payments = await prisma.payment.findMany({
-      orderBy: { paymentDate: "desc" },
-      include: {
-        installmentAccount: { select: { id: true, brand: true, model: true, customerName: true } },
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+
+    const [payments, totalCount] = await Promise.all([
+      prisma.payment.findMany({
+        where: { voided: false },
+        orderBy: { paymentDate: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          installmentAccount: { select: { id: true, brand: true, model: true, customerName: true } },
+        },
+      }),
+      prisma.payment.count({ where: { voided: false } }),
+    ]);
 
     const total = payments.reduce(
       (sum, p) => sum.plus(new Decimal(p.totalAmount.toString())),
@@ -32,6 +42,7 @@ export async function GET() {
         method: p.method,
       })),
       total: decimalToString(total),
+      pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {
     return handleApiError(error);

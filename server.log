@@ -1,0 +1,344 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.100:3000
+- Environments: .env
+✓ Ready in 729ms
+
+ GET /manifest.webmanifest 200 in 125ms (next.js: 107ms, application-code: 18ms)
+ GET /installment-accounts 200 in 742ms (next.js: 226ms, application-code: 516ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 797ms (next.js: 189ms, application-code: 608ms)
+prisma:error 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `syntax error at or near ")"`
+ GET /api/dashboard 500 in 297ms (next.js: 54ms, application-code: 243ms)
+ GET /installment-accounts 200 in 101ms (next.js: 6ms, application-code: 95ms)
+ GET /manifest.webmanifest 200 in 31ms (next.js: 14ms, application-code: 17ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 1390ms (next.js: 8ms, application-code: 1382ms)
+✓ Compiled in 777ms
+ GET /installment-accounts 200 in 519ms (next.js: 426ms, application-code: 93ms)
+ GET /manifest.webmanifest 200 in 48ms (next.js: 36ms, application-code: 12ms)
+ GET /api/dashboard 200 in 731ms (next.js: 65ms, application-code: 667ms)
+ GET /dashboard 200 in 184ms (next.js: 44ms, application-code: 140ms)
+ GET /api/dashboard 200 in 298ms (next.js: 4ms, application-code: 294ms)
+ GET /installment-accounts 200 in 106ms (next.js: 5ms, application-code: 100ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 476ms (next.js: 63ms, application-code: 413ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 1090ms (next.js: 779ms, application-code: 311ms)
+ GET /api/admin/config 200 in 177ms (next.js: 47ms, application-code: 131ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 1528ms (next.js: 1451ms, application-code: 78ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 1742ms (next.js: 1474ms, application-code: 268ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 1922ms (next.js: 1427ms, application-code: 495ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 1858ms (next.js: 1409ms, application-code: 449ms)
+ GET /installment-accounts/new 200 in 200ms (next.js: 38ms, application-code: 162ms)
+ GET /dashboard 200 in 34ms (next.js: 5ms, application-code: 30ms)
+ GET /api/dashboard 200 in 416ms (next.js: 5ms, application-code: 410ms)
+ GET /api/dashboard 200 in 17ms (next.js: 3ms, application-code: 14ms)
+ GET /payments 200 in 189ms (next.js: 41ms, application-code: 148ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0aj84gg._.js:1339:150
+
+  1336 const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  1337 const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
+  1338 const [payments, total] = await Promise.all([
+→ 1339     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/payments?page=1&limit=20 500 in 124ms (next.js: 58ms, application-code: 66ms)
+ GET /reports 200 in 149ms (next.js: 39ms, application-code: 110ms)
+ GET /reports/collections 200 in 886ms (next.js: 769ms, application-code: 118ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0uga~ak._.js:799:150
+
+  796 const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  797 const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+  798 const [payments, totalCount] = await Promise.all([
+→ 799     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/reports/collections?page=1&limit=50 500 in 123ms (next.js: 51ms, application-code: 72ms)
+ GET /admin/config 200 in 150ms (next.js: 38ms, application-code: 113ms)
+ GET /api/admin/config 200 in 72ms (next.js: 4ms, application-code: 68ms)
+ GET /dashboard 200 in 90ms (next.js: 4ms, application-code: 86ms)
+ GET /api/dashboard 200 in 301ms (next.js: 4ms, application-code: 297ms)
+ GET /installment-accounts 200 in 88ms (next.js: 6ms, application-code: 82ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 427ms (next.js: 4ms, application-code: 423ms)
+ GET /installment-accounts/new 200 in 181ms (next.js: 5ms, application-code: 176ms)
+ GET /payments 200 in 86ms (next.js: 6ms, application-code: 80ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0aj84gg._.js:1339:150
+
+  1336 const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  1337 const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
+  1338 const [payments, total] = await Promise.all([
+→ 1339     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/payments?page=1&limit=20 500 in 76ms (next.js: 4ms, application-code: 72ms)
+ GET /reports 200 in 96ms (next.js: 5ms, application-code: 90ms)
+ GET /admin/config 200 in 75ms (next.js: 5ms, application-code: 70ms)
+ GET /api/admin/config 200 in 65ms (next.js: 3ms, application-code: 62ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 115ms (next.js: 16ms, application-code: 99ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 295ms (next.js: 16ms, application-code: 279ms)
+ GET /api/admin/config 200 in 448ms (next.js: 5ms, application-code: 443ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 505ms (next.js: 17ms, application-code: 488ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 507ms (next.js: 59ms, application-code: 448ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 518ms (next.js: 36ms, application-code: 482ms)
+ GET /api/installment-accounts?page=1&limit=1 200 in 73ms (next.js: 4ms, application-code: 69ms)
+ GET /api/dashboard 200 in 313ms (next.js: 3ms, application-code: 310ms)
+ GET /api/admin/config 200 in 72ms (next.js: 4ms, application-code: 68ms)
+ GET /api/installment-accounts/nonexistent 404 in 83ms (next.js: 13ms, application-code: 71ms)
+ POST /api/installment-accounts 400 in 20ms (next.js: 5ms, application-code: 15ms)
+ GET /dashboard 200 in 123ms (next.js: 10ms, application-code: 112ms)
+ GET /api/dashboard 200 in 734ms (next.js: 5ms, application-code: 729ms)
+ GET /installment-accounts 200 in 93ms (next.js: 61ms, application-code: 32ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 420ms (next.js: 5ms, application-code: 415ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 83ms (next.js: 4ms, application-code: 80ms)
+ GET /dashboard 200 in 121ms (next.js: 8ms, application-code: 113ms)
+ GET /api/dashboard 200 in 710ms (next.js: 5ms, application-code: 705ms)
+ GET /installment-accounts 200 in 92ms (next.js: 5ms, application-code: 87ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 414ms (next.js: 4ms, application-code: 410ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 127ms (next.js: 17ms, application-code: 111ms)
+ GET /api/admin/config 200 in 118ms (next.js: 25ms, application-code: 92ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 265ms (next.js: 16ms, application-code: 249ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 474ms (next.js: 22ms, application-code: 452ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 587ms (next.js: 17ms, application-code: 571ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 634ms (next.js: 27ms, application-code: 607ms)
+ GET /dashboard 200 in 107ms (next.js: 7ms, application-code: 100ms)
+ GET /api/dashboard 200 in 707ms (next.js: 4ms, application-code: 703ms)
+ GET /installment-accounts 200 in 92ms (next.js: 5ms, application-code: 87ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 429ms (next.js: 4ms, application-code: 425ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 217ms (next.js: 14ms, application-code: 204ms)
+ GET /api/admin/config 200 in 87ms (next.js: 5ms, application-code: 81ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 288ms (next.js: 15ms, application-code: 272ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 431ms (next.js: 21ms, application-code: 410ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 448ms (next.js: 13ms, application-code: 434ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 459ms (next.js: 17ms, application-code: 442ms)
+ GET /installment-accounts 200 in 16ms (next.js: 5ms, application-code: 11ms)
+ GET /installment-accounts 200 in 41ms (next.js: 8ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 4ms, application-code: 11ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 57ms (next.js: 13ms, application-code: 44ms)
+ GET /manifest.webmanifest 200 in 16ms (next.js: 5ms, application-code: 10ms)
+ GET /api/admin/config 200 in 480ms (next.js: 15ms, application-code: 464ms)
+ GET /api/admin/config 200 in 78ms (next.js: 9ms, application-code: 68ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 541ms (next.js: 76ms, application-code: 465ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 555ms (next.js: 35ms, application-code: 520ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 565ms (next.js: 55ms, application-code: 510ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 88ms (next.js: 14ms, application-code: 75ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 89ms (next.js: 10ms, application-code: 78ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 709ms (next.js: 14ms, application-code: 694ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 253ms (next.js: 5ms, application-code: 249ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 434ms (next.js: 16ms, application-code: 418ms)
+ GET /installment-accounts 200 in 34ms (next.js: 7ms, application-code: 27ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 416ms (next.js: 13ms, application-code: 404ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 73ms (next.js: 3ms, application-code: 70ms)
+ GET /installment-accounts/cmq7nv04y0000vkw0ztuywfpi 200 in 63ms (next.js: 16ms, application-code: 48ms)
+ GET /manifest.webmanifest 200 in 57ms (next.js: 48ms, application-code: 9ms)
+ GET /api/admin/config 200 in 125ms (next.js: 13ms, application-code: 112ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/payments 500 in 261ms (next.js: 91ms, application-code: 170ms)
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi 200 in 446ms (next.js: 29ms, application-code: 416ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/schedule 500 in 662ms (next.js: 52ms, application-code: 609ms)
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/penalties 200 in 661ms (next.js: 30ms, application-code: 631ms)
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi 200 in 271ms (next.js: 11ms, application-code: 260ms)
+ GET /api/admin/config 200 in 514ms (next.js: 16ms, application-code: 498ms)
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/penalties 200 in 81ms (next.js: 7ms, application-code: 74ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/payments 500 in 471ms (next.js: 7ms, application-code: 464ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7nv04y0000vkw0ztuywfpi/schedule 500 in 430ms (next.js: 4ms, application-code: 425ms)
+ GET /installment-accounts 200 in 618ms (next.js: 167ms, application-code: 451ms)
+ GET /manifest.webmanifest 200 in 30ms (next.js: 21ms, application-code: 9ms)
+ GET /dashboard 200 in 287ms (next.js: 103ms, application-code: 184ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 88ms (next.js: 7ms, application-code: 81ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 76ms (next.js: 5ms, application-code: 71ms)
+ GET /api/dashboard 200 in 307ms (next.js: 4ms, application-code: 303ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 7ms, application-code: 7ms)
+ GET /installment-accounts 200 in 99ms (next.js: 9ms, application-code: 91ms)
+ GET /api/installment-accounts?page=1&limit=20 200 in 78ms (next.js: 4ms, application-code: 74ms)
+ GET /installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 113ms (next.js: 15ms, application-code: 97ms)
+ GET /api/admin/config 200 in 98ms (next.js: 5ms, application-code: 93ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__0i-xytw._.js:890:181
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const schedule = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].installmentSchedule.findMany(
+The column `InstallmentSchedule.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/schedule 500 in 95ms (next.js: 14ms, application-code: 81ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd 200 in 338ms (next.js: 15ms, application-code: 323ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany()` invocation in
+D:\MVP\.next\dev\server\chunks\[root-of-the-server]__07.dhr0._.js:890:169
+
+  887 async function GET(_request, context) {
+  888     try {
+  889         const { id } = await context.params;
+→ 890         const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].payment.findMany(
+The column `Payment.discountAmount` does not exist in the current database.
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/payments 500 in 584ms (next.js: 36ms, application-code: 548ms)
+ GET /api/installment-accounts/cmq7wmakj0000gsw0zhmdg7fd/penalties 200 in 565ms (next.js: 22ms, application-code: 543ms)
+ GET /installment-accounts 200 in 319ms (next.js: 79ms, application-code: 239ms)
+ GET /installment-accounts 200 in 194ms (next.js: 6ms, application-code: 187ms)
+ GET /installment-accounts 200 in 209ms (next.js: 7ms, application-code: 201ms)
+ GET /installment-accounts 200 in 209ms (next.js: 33ms, application-code: 175ms)
+ GET /installment-accounts 200 in 209ms (next.js: 63ms, application-code: 146ms)
+ GET /installment-accounts 200 in 210ms (next.js: 91ms, application-code: 119ms)
+ GET /installment-accounts 200 in 223ms (next.js: 8ms, application-code: 216ms)
+ GET /installment-accounts 200 in 184ms (next.js: 5ms, application-code: 179ms)
+ GET /installment-accounts 200 in 209ms (next.js: 37ms, application-code: 171ms)
+ GET /installment-accounts 200 in 212ms (next.js: 7ms, application-code: 205ms)
+ GET /installment-accounts 200 in 213ms (next.js: 67ms, application-code: 147ms)
+ GET /installment-accounts 200 in 155ms (next.js: 36ms, application-code: 119ms)
+ GET /installment-accounts 200 in 226ms (next.js: 7ms, application-code: 218ms)
+ GET /installment-accounts 200 in 190ms (next.js: 5ms, application-code: 185ms)
+ GET /installment-accounts 200 in 186ms (next.js: 44ms, application-code: 142ms)
+ GET /installment-accounts 200 in 189ms (next.js: 10ms, application-code: 179ms)
+ GET /installment-accounts 200 in 115ms (next.js: 6ms, application-code: 109ms)
+ GET /installment-accounts 200 in 116ms (next.js: 38ms, application-code: 78ms)
+ GET /installment-accounts 200 in 48ms (next.js: 6ms, application-code: 42ms)
+ GET /manifest.webmanifest 200 in 58ms (next.js: 48ms, application-code: 11ms)

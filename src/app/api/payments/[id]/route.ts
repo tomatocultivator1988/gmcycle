@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
 import { NotFoundError } from "@/lib/errors";
@@ -27,6 +28,7 @@ export async function GET(
             model: true,
             unitDescription: true,
             monthlyInstallment: true,
+            remainingBalance: true,
           },
         },
       },
@@ -35,6 +37,14 @@ export async function GET(
     if (!payment) {
       throw new NotFoundError("Payment not found");
     }
+
+      const allPayments = await prisma.payment.findMany({
+        where: { installmentAccountId: payment.installmentAccountId, voided: false },
+      });
+
+    const totalPaid = allPayments
+      .reduce((sum, p) => sum.plus(new Decimal(p.totalAmount)), new Decimal(0))
+      .toFixed(2);
 
     return NextResponse.json({
       payment: {
@@ -47,6 +57,8 @@ export async function GET(
           model: payment.installmentAccount.model,
           unitDescription: payment.installmentAccount.unitDescription,
           monthlyInstallment: decimalToString(payment.installmentAccount.monthlyInstallment),
+          remainingBalance: decimalToString(payment.installmentAccount.remainingBalance),
+          totalPaid,
         },
       },
     });

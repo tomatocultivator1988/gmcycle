@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
+import { Pagination } from "@/components/pagination";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
@@ -138,19 +139,26 @@ export default function ReportPage() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
 
     let active = true;
 
-    apiRequest<any>(`/api/reports/${slug}`)
-      .then((res) => { if (active) setData(res); })
+    apiRequest<any>(`/api/reports/${slug}?page=${page}&limit=50`)
+      .then((res) => {
+        if (active) {
+          setData(res);
+          if (res.pagination) setTotalPages(res.pagination.totalPages);
+        }
+      })
       .catch((requestError: Error) => { if (active) setError(requestError.message); })
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config]);
+  }, [slug, config, page]);
 
   if (!config) {
     return (
@@ -201,6 +209,9 @@ export default function ReportPage() {
               rowKey={(row: any, idx: number) => row.id ?? idx}
               emptyMessage="No data for this report."
             />
+            {slug !== "monthly-collections" ? (
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            ) : null}
           </div>
         </>
       ) : null}

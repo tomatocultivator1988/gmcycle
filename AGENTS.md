@@ -1,8 +1,8 @@
-# GM CYCLE — Motorcycle Installment Monitoring System
+# MyFaveGadgets — Gadget Installment Monitoring System
 
-## MIGRATION PLAN: Cash Loan Management → Motorcycle Installment Monitoring
+## MIGRATION PLAN: Cash Loan Management → Gadget Installment Monitoring
 
-**Business:** GM Cycle, Cabanatuan City, Nueva Ecija
+**Business:** MyFaveGadgets, Binan City, Laguna
 **Original System:** CreditFlow v0.1.0 (Micro-lending MVP)
 
 ---
@@ -97,7 +97,7 @@ Each payment applies to exactly ONE installment account (no split payments).
 1. Update balance automatically
 2. Update account status
 3. Update payment history
-4. Apply penalty if applicable (7+ days late → ₱200)
+4. Apply penalty — manual via admin (no auto-penalty)
 5. Apply discount if applicable (paid before due date → ₱200)
 6. Mark schedule period as paid/partial
 
@@ -105,14 +105,19 @@ Each payment applies to exactly ONE installment account (no split payments).
 
 ## PENALTY RULE
 
-**If payment is 7+ days after due date:** Penalty = ₱200
+**Per-day penalty accrual:** Penalty = ₱50 per day overdue (configurable)
 
-Example: Due June 10, Paid June 17 → Penalty = ₱200
+Example: Due June 10, Today June 15 (5 days overdue) → Accrued = ₱250
+
+Admin manually applies penalty with ability to discount/waive a portion.
+Only the applied amount is added to the remaining balance.
 
 Requirements:
-- Penalty amount configurable by admin
-- Automatic penalty computation
-- Penalty history (PenaltyRecord table)
+- Penalty per day amount configurable by admin
+- Manual penalty application via "Apply Penalty" button on overdue periods
+- Accrued penalty displayed per period (days × rate)
+- Admin chooses how much to apply (can waive portion)
+- Penalty history (PenaltyRecord table) with applied/accrued/waived tracking
 - Penalty reporting
 
 ---

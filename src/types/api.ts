@@ -1,4 +1,5 @@
-export type AccountStatusValue = "APPLIED" | "ACTIVE" | "DUE_TODAY" | "OVERDUE" | "FULLY_PAID";
+export type AccountStatusValue = "APPLIED" | "ACTIVE" | "DUE_TODAY" | "OVERDUE" | "FULLY_PAID" | "CLOSED";
+export type ScheduleTypeValue = "SEMI_MONTHLY" | "MONTHLY";
 export type PricingTypeValue = "FLAT_RATE" | "INTEREST_PERCENTAGE";
 export type PaymentMethod = "CASH" | "GCASH" | "BANK";
 export type PaymentTypeValue = "REGULAR" | "PARTIAL" | "ADVANCE" | "FULL";
@@ -13,9 +14,11 @@ export type InstallmentAccountDto = {
   brand: string;
   model: string;
   unitDescription: string;
+  itemType: string;
   cashPrice: string;
   installmentPrice: string;
   downPayment: string;
+  processingFee: string;
   remainingBalance: string;
   grossProfit: string;
   pricingType: PricingTypeValue;
@@ -23,8 +26,17 @@ export type InstallmentAccountDto = {
   term: number;
   monthlyInstallment: string;
   status: AccountStatusValue;
+  scheduleType: ScheduleTypeValue;
+  dueDays: number[];
+  firstDueDate: string | null;
   startDate: string;
   nextDueDate: string;
+  badRecord: boolean;
+  badRecordRemark: string | null;
+  deviceEmail: string | null;
+  deviceAccountHolderEmail: string | null;
+  remarks: string | null;
+  customFields: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -40,7 +52,6 @@ export type InstallmentScheduleDto = {
   paymentId: string | null;
   paidAmount: string | null;
   penaltyAmount: string;
-  discountAmount: string;
 };
 
 export type PaymentDto = {
@@ -52,10 +63,12 @@ export type PaymentDto = {
   method: PaymentMethod;
   paymentType: PaymentTypeValue;
   penaltyAmount: string;
-  discountAmount: string;
   notes: string | null;
   cashier: string | null;
   proofUrl: string | null;
+  voided: boolean;
+  voidedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
 };
 
@@ -68,13 +81,12 @@ export type PenaltyRecordDto = {
   reason: string | null;
 };
 
-export type DiscountRecordDto = {
-  id: string;
-  installmentAccountId: string;
-  paymentId: string;
-  amount: string;
-  appliedDate: string;
-  reason: string | null;
+export type DashboardActionsDto = {
+  dueToday: number;
+  overdue1to30: number;
+  overdue31plus: number;
+  unactivated: number;
+  badRecords: number;
 };
 
 export type DashboardMetricsDto = {
@@ -104,6 +116,6 @@ export type DashboardMetricsDto = {
 
 export type AdminConfigDto = {
   id: string;
-  penaltyAmount: string;
-  dueDayOptions: number[];
+  penaltyPerDay: string;
+  adminEmail: string | null;
 };

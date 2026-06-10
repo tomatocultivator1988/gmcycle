@@ -1,6 +1,6 @@
-# GM Cycle User Manual
+# MyFaveGadgets User Manual
 
-**For GM Cycle — Cabanatuan City**
+**For MyFaveGadgets — Binan City, Laguna**
 
 ---
 

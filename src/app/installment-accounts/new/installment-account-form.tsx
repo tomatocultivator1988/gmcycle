@@ -3,7 +3,7 @@
 import Decimal from "decimal.js";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Smartphone, Save } from "lucide-react";
+import { Smartphone, Save, CheckCircle, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ErrorMessage, SuccessMessage } from "@/components/ui-state";
 import { FieldError } from "@/components/field-error";
@@ -23,6 +23,13 @@ function todayDateOnly() {
   }).format(new Date());
 }
 
+function computeDueDays(firstDueDate: string, scheduleType: "SEMI_MONTHLY" | "MONTHLY"): number[] {
+  const day = parseInt(firstDueDate.slice(8, 10)) || 15;
+  if (scheduleType === "MONTHLY") return [day];
+  const secondDay = Math.min(day + 15, 28);
+  return secondDay === day ? [day] : [day, secondDay];
+}
+
 export function InstallmentAccountForm() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -33,19 +40,25 @@ export function InstallmentAccountForm() {
     brand: "",
     model: "",
     unitDescription: "",
+    itemType: "GADGET" as "GADGET" | "CASH",
     cashPrice: "",
     installmentPrice: "",
     downPayment: "",
+    processingFee: "",
     pricingType: "FLAT_RATE" as "FLAT_RATE" | "INTEREST_PERCENTAGE",
     interestRate: "",
     term: 24,
-    startDate: todayDateOnly(),
+    scheduleType: "SEMI_MONTHLY" as "SEMI_MONTHLY" | "MONTHLY",
+    firstDueDate: todayDateOnly(),
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
+  const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([]);
 
   function parseDecimal(value: string): Decimal {
     try {
@@ -63,7 +76,7 @@ export function InstallmentAccountForm() {
     : parseDecimal(form.installmentPrice);
   const installmentPrice = form.pricingType === "FLAT_RATE" ? parseDecimal(form.installmentPrice) : computedInstallmentPrice;
   const downPayment = parseDecimal(form.downPayment);
-  const totalPeriods = form.term * 2;
+  const totalPeriods = form.scheduleType === "SEMI_MONTHLY" ? form.term * 2 : form.term;
   const remainingBalance = installmentPrice.minus(downPayment);
   const monthlyInstallment = remainingBalance.gt(0) && form.term > 0
     ? remainingBalance.div(form.term).toDecimalPlaces(2)
@@ -93,17 +106,55 @@ export function InstallmentAccountForm() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setProcessing(true);
     setError("");
     setSuccess("");
+    setFieldErrors({});
 
-    const validation = validateForm(createInstallmentAccountSchema, form);
+    try {
+      const dataToValidate: Record<string, unknown> = {
+        customerName: form.customerName,
+        customerPhone: form.customerPhone,
+        customerEmail: form.customerEmail,
+        customerAddress: form.customerAddress,
+        brand: form.brand,
+        model: form.model,
+        unitDescription: form.unitDescription,
+        itemType: form.itemType,
+        cashPrice: form.cashPrice,
+        downPayment: form.downPayment,
+        processingFee: form.processingFee || undefined,
+        pricingType: form.pricingType,
+        term: form.term,
+        startDate: form.firstDueDate,
+        scheduleType: form.scheduleType,
+        dueDays: computeDueDays(form.firstDueDate, form.scheduleType),
+        firstDueDate: form.firstDueDate,
+        customFields: customFields.reduce((acc, { key, value }) => {
+          if (key.trim()) acc[key.trim()] = value;
+          return acc;
+        }, {} as Record<string, string>),
+      };
+      if (form.pricingType === "FLAT_RATE") {
+        dataToValidate.installmentPrice = form.installmentPrice;
+      } else {
+        dataToValidate.interestRate = form.interestRate;
+      }
+      const validation = validateForm(createInstallmentAccountSchema, dataToValidate);
 
-    if (!validation.success) {
-      setFieldErrors(validation.errors);
-      return;
+      if (!validation.success) {
+        setFieldErrors(validation.errors);
+        setProcessing(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      setProcessing(false);
+      setShowConfirm(true);
+    } catch (err) {
+      setError(`Unexpected error: ${(err as Error).message}`);
+      setProcessing(false);
     }
-
-    setShowConfirm(true);
   }
 
   async function confirmCreate() {
@@ -111,12 +162,41 @@ export function InstallmentAccountForm() {
     setError("");
 
     try {
+      const body: Record<string, unknown> = {
+        customerName: form.customerName,
+        customerPhone: form.customerPhone,
+        customerEmail: form.customerEmail,
+        customerAddress: form.customerAddress,
+        brand: form.brand,
+        model: form.model,
+        unitDescription: form.unitDescription,
+        itemType: form.itemType,
+        cashPrice: form.cashPrice,
+        downPayment: form.downPayment,
+        processingFee: form.processingFee || undefined,
+        pricingType: form.pricingType,
+        term: form.term,
+        startDate: form.firstDueDate,
+        scheduleType: form.scheduleType,
+        dueDays: computeDueDays(form.firstDueDate, form.scheduleType),
+        firstDueDate: form.firstDueDate,
+        customFields: customFields.reduce((acc, { key, value }) => {
+          if (key.trim()) acc[key.trim()] = value;
+          return acc;
+        }, {} as Record<string, string>),
+      };
+      if (form.pricingType === "FLAT_RATE") {
+        body.installmentPrice = form.installmentPrice;
+      } else {
+        body.interestRate = form.interestRate;
+      }
       const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
         "/api/installment-accounts",
-        { method: "POST", body: JSON.stringify(form) },
+        { method: "POST", body: JSON.stringify(body) },
       );
-      setSuccess("Account created.");
-      router.push(`/installment-accounts/${data.installmentAccount.id}`);
+      setSaving(false);
+      setShowConfirm(false);
+      setCreatedAccountId(data.installmentAccount.id);
     } catch (requestError) {
       setError((requestError as Error).message);
       setShowConfirm(false);
@@ -131,6 +211,16 @@ export function InstallmentAccountForm() {
 
       {error ? <ErrorMessage message={error} /> : null}
       {success ? <SuccessMessage message={success} /> : null}
+      {Object.keys(fieldErrors).length > 0 ? (
+        <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-4">
+          <p className="text-sm font-bold text-rose-800 mb-2">Please fix the following errors:</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {Object.entries(fieldErrors).map(([field, msg]) => (
+              <li key={field} className="text-sm text-rose-700">{msg}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[420px_1fr]">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -200,47 +290,126 @@ export function InstallmentAccountForm() {
               <Smartphone size={20} />
             </span>
             <div>
-              <h2 className="text-base font-bold font-heading text-slate-900">Device Details</h2>
-              <p className="text-xs text-slate-500">Gadget information</p>
+              <h2 className="text-base font-bold font-heading text-slate-900">{form.itemType === "CASH" ? "Cash Details" : "Device Details"}</h2>
+              <p className="text-xs text-slate-500">{form.itemType === "CASH" ? "Cash loan information" : "Gadget information"}</p>
             </div>
           </div>
+
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Item Type</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, itemType: "GADGET" })}
+                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                  form.itemType === "GADGET"
+                    ? "border-red-500 bg-red-50 text-red-700"
+                    : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                }`}
+              >
+                📱 Gadget
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, itemType: "CASH" })}
+                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                  form.itemType === "CASH"
+                    ? "border-red-500 bg-red-50 text-red-700"
+                    : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                }`}
+              >
+                💰 Cash
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-4">
+            {form.itemType === "GADGET" ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Brand
+                    <input
+                      required
+                      value={form.brand}
+                      onChange={(e) => updateField("brand", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                  <FieldError error={fieldErrors.brand} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Model
+                    <input
+                      required
+                      value={form.model}
+                      onChange={(e) => updateField("model", e.target.value)}
+                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </label>
+                  <FieldError error={fieldErrors.model} />
+                </div>
+              </>
+            ) : null}
             <div>
               <label className="block text-sm font-medium text-slate-700">
-                Brand
-                <input
-                  required
-                  value={form.brand}
-                  onChange={(e) => updateField("brand", e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
-              </label>
-              <FieldError error={fieldErrors.brand} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Model
-                <input
-                  required
-                  value={form.model}
-                  onChange={(e) => updateField("model", e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
-              </label>
-              <FieldError error={fieldErrors.model} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Unit Description
+                {form.itemType === "CASH" ? "Description" : "Unit Description"}
                 <textarea
                   required
                   value={form.unitDescription}
                   onChange={(e) => updateField("unitDescription", e.target.value)}
-                    placeholder="Color, storage, condition"
+                  placeholder={form.itemType === "CASH" ? "Purpose / reason for cash" : "Color, storage, condition"}
                   className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>
               <FieldError error={fieldErrors.unitDescription} />
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-2">Custom Fields</p>
+            <div className="space-y-2">
+              {customFields.map((field, i) => (
+                <div key={i} className="flex flex-col sm:flex-row gap-2 items-start">
+                  <input
+                    placeholder="Field name"
+                    value={field.key}
+                    onChange={(e) => {
+                      const updated = [...customFields];
+                      updated[i] = { ...updated[i], key: e.target.value };
+                      setCustomFields(updated);
+                    }}
+                    className="h-10 w-full sm:flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                  <div className="flex gap-2 w-full sm:flex-[2]">
+                    <input
+                      placeholder="Value"
+                      value={field.value}
+                      onChange={(e) => {
+                        const updated = [...customFields];
+                        updated[i] = { ...updated[i], value: e.target.value };
+                        setCustomFields(updated);
+                      }}
+                      className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomFields(customFields.filter((_, j) => j !== i))}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500 hover:bg-slate-50 transition-all"
+                    >
+                      <X size={16} />
+                  </button>
+                </div>
+              </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setCustomFields([...customFields, { key: "", value: "" }])}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white px-3 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-all"
+              >
+                + Add Field
+              </button>
             </div>
           </div>
         </section>
@@ -344,31 +513,71 @@ export function InstallmentAccountForm() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">
+                Processing Fee
+                <input
+                  inputMode="decimal"
+                  value={form.processingFee}
+                  onChange={(e) => updateField("processingFee", e.target.value.replace(/[^\d.]/g, ""))}
+                  placeholder="0.00"
+                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+              <FieldError error={fieldErrors.processingFee} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
                 Term (months)
-                <select
+                <input
+                  type="number"
+                  min={6}
+                  max={48}
                   value={form.term}
                   onChange={(e) => updateField("term", Number(e.target.value))}
+                  placeholder="e.g. 24"
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                >
-                  {Array.from({ length: 19 }, (_, i) => i + 6).map((m) => (
-                    <option key={m} value={m}>{m} months</option>
-                  ))}
-                </select>
+                />
               </label>
               <FieldError error={fieldErrors.term} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">
-                Start Date
+                First Due Date
                 <input
                   required
                   type="date"
-                  value={form.startDate}
-                  onChange={(e) => updateField("startDate", e.target.value)}
+                  value={form.firstDueDate}
+                  onChange={(e) => updateField("firstDueDate", e.target.value)}
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>
-              <FieldError error={fieldErrors.startDate} />
+              <FieldError error={fieldErrors.firstDueDate} />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Schedule</p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Frequency</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateField("scheduleType", "SEMI_MONTHLY")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                    form.scheduleType === "SEMI_MONTHLY" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-300 bg-white text-slate-600"
+                  }`}
+                >
+                  Semi-Monthly (2x/month)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateField("scheduleType", "MONTHLY")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                    form.scheduleType === "MONTHLY" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-300 bg-white text-slate-600"
+                  }`}
+                >
+                  Monthly (1x/month)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -388,7 +597,7 @@ export function InstallmentAccountForm() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">Per Period (15th/30th)</div>
+                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">Per Period</div>
                   <div className="mt-1 text-lg font-bold text-emerald-700">
                     {formatPeso(periodAmount.toFixed(2))}
                   </div>
@@ -403,24 +612,48 @@ export function InstallmentAccountForm() {
 
           <button
             type="submit"
-            disabled={!formValid || saving}
+            disabled={processing || saving}
             className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none disabled:active:scale-100"
           >
             <Save size={16} aria-hidden="true" />
-            {saving ? "Creating..." : "Create Account"}
+            {processing ? "Checking..." : saving ? "Creating..." : "Create Account"}
           </button>
+          {!formValid && !saving ? (
+            <p className="mt-2 text-xs text-amber-600 text-center">Fill in all required fields above. Down payment must be less than installment price.</p>
+          ) : null}
         </section>
       </form>
 
       <ConfirmModal
         open={showConfirm}
         title="Create Installment Account?"
-        message={`${form.customerName} — ${form.brand} ${form.model}. ₱${formatPeso(remainingBalance.toFixed(2))} — ${totalPeriods} payments every 15th & 30th.`}
+        message={`${form.customerName} — ${form.brand} ${form.model}. ₱${formatPeso(remainingBalance.toFixed(2))} — ${totalPeriods} periods, ${form.scheduleType === "SEMI_MONTHLY" ? "semi-monthly" : "monthly"}.`}
         confirmLabel="Yes, create account"
         onConfirm={confirmCreate}
         onCancel={() => setShowConfirm(false)}
         loading={saving}
       />
+
+      {createdAccountId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="p-6 text-center">
+              <span className="flex size-12 mx-auto items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <CheckCircle size={28} />
+              </span>
+              <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Account Created</h3>
+              <p className="mt-1.5 text-sm text-slate-500">The installment account has been created successfully.</p>
+              <button
+                type="button"
+                onClick={() => router.push(`/installment-accounts/${createdAccountId}`)}
+                className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98]"
+              >
+                View Account
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

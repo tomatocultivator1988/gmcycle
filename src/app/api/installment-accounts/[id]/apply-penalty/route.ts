@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { NotFoundError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
+import { computeAccruedPenalty } from "@/lib/penalty";
+import { recalculateBalance } from "@/lib/balance";
 import { prisma } from "@/lib/prisma";
+import { updateOverdueSchedule } from "@/lib/schedule-status";
 
 export const runtime = "nodejs";
 
@@ -12,20 +15,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id: installmentAccountId } = await context.params;
-    const body = await readJson(request) as { periodId: string; amount?: string; reason?: string };
+    const body = await readJson(request) as { periodId: string; appliedAmount?: string };
 
     if (!body.periodId) {
       return NextResponse.json({ error: "periodId is required" }, { status: 400 });
-    }
-
-    const config = await prisma.adminConfig.findFirst();
-    const configPenalty = config?.penaltyAmount ?? new Decimal("200.00");
-    const penaltyAmount = body.amount
-      ? new Decimal(body.amount)
-      : configPenalty;
-
-    if (penaltyAmount.lte(0)) {
-      return NextResponse.json({ error: "Penalty amount must be greater than 0" }, { status: 400 });
     }
 
     const period = await prisma.installmentSchedule.findUnique({
@@ -40,53 +33,72 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Period does not belong to this account" }, { status: 400 });
     }
 
+    if (period.status === "PAID") {
+      return NextResponse.json({ error: "Cannot apply penalty to a paid period" }, { status: 400 });
+    }
+
+    const config = await prisma.adminConfig.findFirst();
+    const penaltyPerDay = config?.penaltyPerDay
+      ? new Decimal(config.penaltyPerDay.toString())
+      : new Decimal("50.00");
+
+    const today = new Date();
+    const { daysOverdue, accrued } = computeAccruedPenalty(period.dueDate, today, { penaltyPerDay });
+
+    const appliedAmount = body.appliedAmount
+      ? new Decimal(body.appliedAmount)
+      : accrued;
+
+    if (appliedAmount.lte(0)) {
+      return NextResponse.json({ error: "Applied penalty must be greater than 0" }, { status: 400 });
+    }
+
+    const waivedAmount = accrued.gt(appliedAmount) ? accrued.minus(appliedAmount).toDecimalPlaces(2) : new Decimal(0);
+
     const result = await prisma.$transaction(async (tx) => {
-      const updatedPeriod = await tx.installmentSchedule.update({
+      await updateOverdueSchedule(installmentAccountId);
+
+      const existingPenalty = new Decimal(period.penaltyAmount);
+      const totalPenalty = existingPenalty.plus(appliedAmount);
+
+      await tx.installmentSchedule.update({
         where: { id: body.periodId },
         data: {
-          penaltyAmount: decimalToString(penaltyAmount),
+          penaltyAmount: decimalToString(totalPenalty),
         },
       });
+
+      let reason = `Applied: ₱${appliedAmount.toFixed(2)} | Accrued: ₱${accrued.toFixed(2)} (${daysOverdue}d × ₱${penaltyPerDay.toFixed(2)}/day)`;
+      if (waivedAmount.gt(0)) {
+        reason += ` | Waived: ₱${waivedAmount.toFixed(2)}`;
+      }
 
       const penaltyRecord = await tx.penaltyRecord.create({
         data: {
           installmentAccountId,
-          paymentId: period.paymentId ?? "",
-          amount: decimalToString(penaltyAmount),
+          paymentId: period.paymentId || null,
+          amount: decimalToString(appliedAmount),
           appliedDate: new Date(),
-          reason: body.reason ?? `Manual penalty applied — period #${period.periodNumber}`,
+          reason,
         },
       });
 
-      const accountSchedule = await tx.installmentSchedule.findMany({
-        where: { installmentAccountId },
-      });
+      await recalculateBalance(tx, installmentAccountId);
 
-      const newBalance = accountSchedule
-        .filter((s) => s.status === "PENDING" || s.status === "PARTIAL")
-        .reduce(
-          (sum, s) => sum.plus(new Decimal(s.amount)).plus(new Decimal(s.penaltyAmount)),
-          new Decimal(0),
-        )
-        .toDecimalPlaces(2);
-
-      await tx.installmentAccount.update({
-        where: { id: installmentAccountId },
-        data: {
-          remainingBalance: decimalToString(newBalance),
-        },
-      });
-
-      return { period: updatedPeriod, penaltyRecord };
+      return { penaltyRecord };
     });
 
     return NextResponse.json({
       penaltyRecord: {
         ...result.penaltyRecord,
-        amount: decimalToString(penaltyAmount),
+        amount: decimalToString(appliedAmount),
         appliedDate: result.penaltyRecord.appliedDate.toISOString(),
       },
-      message: `Penalty of ₱${penaltyAmount.toFixed(2)} applied to period #${period.periodNumber}`,
+      accrued: decimalToString(accrued),
+      applied: decimalToString(appliedAmount),
+      waived: decimalToString(waivedAmount),
+      daysOverdue,
+      message: `₱${appliedAmount.toFixed(2)} penalty applied to period #${period.periodNumber}${waivedAmount.gt(0) ? ` (₱${waivedAmount.toFixed(2)} waived)` : ""}`,
     });
   } catch (error) {
     return handleApiError(error);

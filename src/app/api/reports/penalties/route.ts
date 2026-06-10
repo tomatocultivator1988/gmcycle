@@ -7,14 +7,23 @@ import { dateToManilaDateOnly } from "@/lib/dates";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const penalties = await prisma.penaltyRecord.findMany({
-      orderBy: { appliedDate: "desc" },
-      include: {
-        installmentAccount: { select: { brand: true, model: true, customerName: true } },
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+
+    const [penalties, totalCount] = await Promise.all([
+      prisma.penaltyRecord.findMany({
+        orderBy: { appliedDate: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          installmentAccount: { select: { brand: true, model: true, customerName: true } },
+        },
+      }),
+      prisma.penaltyRecord.count(),
+    ]);
 
     const total = penalties.reduce(
       (sum, p) => sum.plus(new Decimal(p.amount.toString())),
@@ -31,7 +40,8 @@ export async function GET() {
         reason: p.reason,
       })),
       total: decimalToString(total),
-      count: penalties.length,
+      count: totalCount,
+      pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {
     return handleApiError(error);

@@ -8,6 +8,7 @@ const statusClasses: Record<string, string> = {
   DUE_TODAY: "border-amber-200 bg-amber-50 text-amber-700",
   OVERDUE: "border-rose-200 bg-rose-50 text-rose-700",
   FULLY_PAID: "border-slate-200 bg-slate-100 text-slate-700",
+  CLOSED: "border-slate-300 bg-slate-200 text-slate-600",
   PAID: "border-slate-200 bg-slate-100 text-slate-700",
   PENDING: "border-slate-200 bg-white text-slate-600",
   PARTIAL: "border-amber-200 bg-amber-50 text-amber-700",

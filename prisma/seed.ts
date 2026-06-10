@@ -37,7 +37,7 @@ async function createInstallmentAccount(input: {
   const monthlyInstallment = remainingBalance.div(input.term).toDecimalPlaces(2);
   const startDate = parseDateOnly(input.startDate);
 
-  const schedule = generateSchedule(startDate, input.term, remainingBalance);
+  const schedule = generateSchedule(startDate, input.term, [15, 30], remainingBalance);
   const firstDueDate = schedule[0]?.dueDate ?? startDate;
 
   return prisma.installmentAccount.create({
@@ -56,8 +56,10 @@ async function createInstallmentAccount(input: {
       term: input.term,
       monthlyInstallment: decimalToString(monthlyInstallment),
       status: input.status ?? "APPLIED",
+      scheduleType: "SEMI_MONTHLY",
+      dueDays: [15, 30],
+      firstDueDate,
       startDate,
-      dueDayOfMonth: 30,
       nextDueDate: firstDueDate,
       schedule: {
         create: schedule.map((s) => ({
@@ -167,7 +169,6 @@ async function postPayment(input: {
 
 async function main() {
   await prisma.$transaction([
-    prisma.discountRecord.deleteMany(),
     prisma.penaltyRecord.deleteMany(),
     prisma.installmentSchedule.deleteMany(),
     prisma.payment.deleteMany(),
@@ -177,8 +178,7 @@ async function main() {
 
   await prisma.adminConfig.create({
     data: {
-      penaltyAmount: new Decimal("200.00"),
-      dueDayOptions: [15, 30],
+      penaltyPerDay: new Decimal("50.00"),
     },
   });
 
@@ -189,7 +189,7 @@ async function main() {
     customerName: "Juan Dela Cruz",
     customerPhone: "09171234567",
     customerEmail: "juan.delacruz@gmail.com",
-    customerAddress: "Barangay San Nicolas, Cabanatuan City, Nueva Ecija",
+    customerAddress: "Barangay San Nicolas, Binan City, Laguna",
     brand: "iPhone",
     model: "16 Pro Max",
     unitDescription: "iPhone 16 Pro Max 256GB, Natural Titanium",
@@ -206,7 +206,7 @@ async function main() {
   const maria = await createInstallmentAccount({
     customerName: "Maria Santos",
     customerPhone: "09289876543",
-    customerAddress: "Barangay Zulueta, Cabanatuan City, Nueva Ecija",
+    customerAddress: "Barangay Zulueta, Binan City, Laguna",
     brand: "Samsung",
     model: "Galaxy S25 Ultra",
     unitDescription: "Samsung Galaxy S25 Ultra 512GB, Titanium Silver",

@@ -76,19 +76,19 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
 
   if (!data) return <LoadingBlock label="Generating statement..." />;
 
-  const generatedDate = new Date(data.generatedAt).toLocaleDateString("en-PH", {
+  const generatedDate = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Manila",
     year: "numeric",
     month: "long",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }).format(new Date(data.generatedAt));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 print:px-0 print:py-0">
       {/* Print / Back buttons — hidden when printing */}
-      <div className="mb-6 flex items-center justify-between print:hidden">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
           href={`/installment-accounts/${id}`}
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
@@ -147,10 +147,8 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
         <div className="border-t border-slate-100 px-8 py-5 print:border-slate-200">
           <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Contract Details</h2>
           <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-            <div><span className="text-slate-500">Cash Price:</span> <span className="font-medium text-slate-900">{formatPeso(data.cashPrice)}</span></div>
             <div><span className="text-slate-500">Installment Price:</span> <span className="font-medium text-slate-900">{formatPeso(data.installmentPrice)}</span></div>
             <div><span className="text-slate-500">Down Payment:</span> <span className="text-slate-700">{formatPeso(data.downPayment)}</span></div>
-            <div><span className="text-slate-500">Profit:</span> <span className="font-medium text-emerald-700">{formatPeso(data.grossProfit)}</span></div>
             <div><span className="text-slate-500">Term:</span> <span className="text-slate-700">{data.term} months</span></div>
             <div><span className="text-slate-500">Monthly:</span> <span className="text-slate-700">{formatPeso(data.monthlyInstallment)}</span></div>
             <div><span className="text-slate-500">Pricing:</span> <span className="text-slate-700">{data.pricingType === "INTEREST_PERCENTAGE" ? `Interest ${data.interestRate}%` : "Flat Rate"}</span></div>
