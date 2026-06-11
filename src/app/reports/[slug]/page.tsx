@@ -213,8 +213,8 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const hasFilterChips = slug === "overdue-accounts" || slug === "account-master-list";
+  const [selectedDate, setSelectedDate] = useState("");
+  const hasDateFilter = slug === "overdue-accounts" || slug === "account-master-list";
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -228,7 +228,7 @@ export default function ReportPage() {
       .then((res) => {
         if (active) {
           setData(res);
-          setSelectedDay(null);
+          setSelectedDate("");
           if (res.pagination) setTotalPages(res.pagination.totalPages);
         }
       })
@@ -250,8 +250,8 @@ export default function ReportPage() {
   }
 
   const allRows = data ? (data[listKeys[slug]] ?? []) : [];
-  const rows = hasFilterChips && selectedDay
-    ? allRows.filter((r: any) => r.dueDays?.includes(selectedDay))
+  const rows = hasDateFilter && selectedDate
+    ? allRows.filter((r: any) => r.nextDueDate && r.nextDueDate <= selectedDate)
     : allRows;
 
   return (
@@ -261,7 +261,7 @@ export default function ReportPage() {
         description={config.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {hasFilterChips ? (
+            {hasDateFilter ? (
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -284,36 +284,26 @@ export default function ReportPage() {
       {error ? <ErrorMessage message={error} /> : null}
       {loading ? <LoadingBlock label={`Loading ${config.title}`} /> : null}
 
-      {!loading && data && hasFilterChips ? (
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <span className="text-xs font-semibold text-slate-500 mr-1">Due Day:</span>
-          <button
-            type="button"
-            onClick={() => setSelectedDay(null)}
-            className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-all ${
-              selectedDay === null
-                ? "border-red-500 bg-red-50 text-red-700"
-                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            All
-          </button>
-          {(data.dueDays as number[] ?? []).map((day: number) => (
+      {!loading && data && hasDateFilter ? (
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <span className="text-xs font-semibold text-slate-500">Due on or before:</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+          />
+          {selectedDate ? (
             <button
-              key={day}
               type="button"
-              onClick={() => setSelectedDay(day)}
-              className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-all ${
-                selectedDay === day
-                  ? "border-red-500 bg-red-50 text-red-700"
-                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
+              onClick={() => setSelectedDate("")}
+              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
             >
-              Day {day}
+              Clear Filter
             </button>
-          ))}
-          <span className="ml-2 text-xs text-slate-500">
-            {rows.length} account{rows.length !== 1 ? "s" : ""}
+          ) : null}
+          <span className="text-xs text-slate-500">
+            {rows.length} of {allRows.length} accounts
           </span>
         </div>
       ) : null}
