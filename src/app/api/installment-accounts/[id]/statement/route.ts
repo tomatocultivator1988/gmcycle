@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { dateToManilaDateOnly, getManilaTodayDateString } from "@/lib/dates";
+import { dateToManilaDateOnly } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -43,13 +43,8 @@ export async function GET(_request: Request, context: RouteContext) {
     const grossProfit = installmentPrice.sub(cashPrice);
 
     const generatedAt = new Date();
-    const todayStr = getManilaTodayDateString();
-
-    // Filter schedule: only periods up to today OR already paid/partial
-    const filteredSchedule = account.schedule.filter((s) => {
-      if (s.status === "PAID" || s.status === "PARTIAL" || s.status === "OVERDUE") return true;
-      return dateToManilaDateOnly(s.dueDate) <= todayStr;
-    });
+    // Full schedule — paid, pending, future — all periods
+    const filteredSchedule = account.schedule;
 
     return NextResponse.json({
       statement: {

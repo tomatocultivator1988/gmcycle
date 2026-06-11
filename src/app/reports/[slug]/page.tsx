@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
 import { Pagination } from "@/components/pagination";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
+import { StatusBadge } from "@/components/status-badge";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
 
@@ -63,19 +64,44 @@ const reportConfigs: Record<string, ReportConfig> = {
     ],
   },
   "overdue-accounts": {
-    title: "Overdue Accounts Report",
-    description: "Accounts past due date",
+    title: "Due Date Monitoring",
+    description: "All active accounts sorted by due date. Filter by a specific date to see who has paid and who hasn't.",
     summaryFields: [
+      { label: "Filtered Accounts", getValue: (d) => String(d.totalFiltered) },
       { label: "Total Overdue", getValue: (d) => String(d.totalOverdue) },
     ],
     columns: [
-      { key: "customerName", label: "Customer", render: (r) => r.customerName },
-      { key: "phone", label: "Contact", render: (r) => r.customerPhone },
+      {
+        key: "customerName",
+        label: "Customer",
+        render: (r) => <Link href={`/installment-accounts/${r.id}`} className="font-medium text-red-800 hover:text-red-600 hover:underline">{r.customerName}</Link>,
+      },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
+      { key: "phone", label: "Contact", render: (r) => r.customerPhone },
+      { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },
+      {
+        key: "status",
+        label: "Status",
+        render: (r) => <StatusBadge status={r.status} />,
+      },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment), hideOnMobile: true },
-      { key: "dueDate", label: "Due Date", render: (r) => r.nextDueDate },
-      { key: "daysOverdue", label: "Days Overdue", render: (r) => <span className="font-semibold text-rose-600">{r.daysOverdue}d</span> },
+      {
+        key: "lastPaymentDate",
+        label: "Last Payment",
+        render: (r) => r.lastPaymentDate
+          ? <span className="text-xs">{r.lastPaymentDate}<br/><span className="text-slate-500">{formatPeso(r.lastPaymentAmount)}</span></span>
+          : <span className="text-slate-400">—</span>,
+        hideOnMobile: true,
+      },
+      {
+        key: "dueLabel",
+        label: "Days Overdue",
+        render: (r) => r.daysOverdue > 0
+          ? <span className="font-semibold text-rose-600">{r.daysOverdue}d overdue</span>
+          : <span className="text-slate-400">—</span>,
+        hideOnMobile: true,
+      },
     ],
   },
   penalties: {
@@ -141,13 +167,27 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [dueDate, setDueDate] = useState("");
+
+  function todayString() {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+  }
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
 
     let active = true;
+    setLoading(true);
 
-    apiRequest<any>(`/api/reports/${slug}?page=${page}&limit=50`)
+    let url = `/api/reports/${slug}?page=${page}&limit=50`;
+    if (slug === "overdue-accounts" && dueDate) {
+      url += `&dueDate=${dueDate}`;
+    }
+
+    apiRequest<any>(url)
       .then((res) => {
         if (active) {
           setData(res);
@@ -158,7 +198,7 @@ export default function ReportPage() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page]);
+  }, [slug, config, page, dueDate]);
 
   if (!config) {
     return (
@@ -190,6 +230,27 @@ export default function ReportPage() {
 
       {error ? <ErrorMessage message={error} /> : null}
       {loading ? <LoadingBlock label={`Loading ${config.title}`} /> : null}
+
+      {!loading && data && slug === "overdue-accounts" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => { setDueDate(e.target.value); setPage(1); }}
+            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+          />
+          {dueDate ? (
+            <button
+              type="button"
+              onClick={() => { setDueDate(""); setPage(1); }}
+              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Clear Filter
+            </button>
+          ) : null}
+          <span className="text-xs text-slate-500">Showing {data.totalFiltered} accounts{dueDate ? ` due on ${dueDate}` : ""}</span>
+        </div>
+      ) : null}
 
       {!loading && data ? (
         <>

@@ -35,8 +35,8 @@ const reportLinks = [
   },
   {
     href: "/reports/overdue-accounts",
-    label: "Overdue Accounts Report",
-    description: "Accounts past due date",
+    label: "Due Date Monitoring",
+    description: "All active accounts sorted by due date — filter by any date to see who paid and who hasn't",
     icon: AlertTriangle,
   },
   {
