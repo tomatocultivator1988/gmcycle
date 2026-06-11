@@ -590,7 +590,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const totalPenaltiesAmount = penalties.reduce((s, p) => s.plus(new Decimal(p.amount)), new Decimal(0));
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
-  const daysOverdue = account.status === "OVERDUE"
+  const daysOverdue = account.nextDueDate && today > account.nextDueDate
     ? Math.floor(
         (new Date(today).getTime() - new Date(account.nextDueDate).getTime()) /
           (1000 * 60 * 60 * 24),

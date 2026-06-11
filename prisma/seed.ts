@@ -360,6 +360,31 @@ async function main() {
   });
   console.log("✓ 15. Tomas Rivera — OVERDUE (monthly, due 14)");
 
+  // ── STATUS RECONCILIATION ──
+  console.log("\n— Reconciling account statuses —\n");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+  const todayStart = new Date(`${today}T00:00:00+08:00`);
+  const allActive = await prisma.installmentAccount.findMany({
+    where: { status: { in: ["ACTIVE", "DUE_TODAY"] } },
+  });
+  let reconciled = 0;
+  for (const acct of allActive) {
+    const dueDate = new Date(acct.nextDueDate);
+    const isOverdue = dueDate < todayStart && new Decimal(acct.remainingBalance).gt(0);
+    if (isOverdue) {
+      await prisma.installmentAccount.update({
+        where: { id: acct.id },
+        data: { status: "OVERDUE" },
+      });
+      await prisma.installmentSchedule.updateMany({
+        where: { installmentAccountId: acct.id, status: "PENDING", dueDate: { lt: todayStart } },
+        data: { status: "OVERDUE" },
+      });
+      reconciled++;
+    }
+  }
+  console.log(`✓ Reconciled ${reconciled} accounts → OVERDUE`);
+
   // ── SUMMARY ──
   console.log("\n═══════════════════════════════════════");
   console.log("  SEED COMPLETE");
