@@ -167,13 +167,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [dueDateInput, setDueDateInput] = useState("");
-  const [dueDate, setDueDate] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDueDate(dueDateInput), 300);
-    return () => clearTimeout(timer);
-  }, [dueDateInput]);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -181,15 +175,13 @@ export default function ReportPage() {
     let active = true;
     setLoading(true);
 
-    let url = `/api/reports/${slug}?page=${page}&limit=50`;
-    if (slug === "overdue-accounts" && dueDate) {
-      url += `&dueDate=${dueDate}`;
-    }
+    const url = `/api/reports/${slug}?page=${page}&limit=50`;
 
     apiRequest<any>(url)
       .then((res) => {
         if (active) {
           setData(res);
+          setSelectedDay(null);
           if (res.pagination) setTotalPages(res.pagination.totalPages);
         }
       })
@@ -197,7 +189,7 @@ export default function ReportPage() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page, dueDate]);
+  }, [slug, config, page]);
 
   if (!config) {
     return (
@@ -210,7 +202,10 @@ export default function ReportPage() {
     );
   }
 
-  const rows = data ? (data[listKeys[slug]] ?? []) : [];
+  const allRows = data ? (data[listKeys[slug]] ?? []) : [];
+  const rows = slug === "overdue-accounts" && selectedDay
+    ? allRows.filter((r: any) => r.dueDays?.includes(selectedDay))
+    : allRows;
 
   return (
     <div className="space-y-6">
@@ -231,26 +226,36 @@ export default function ReportPage() {
       {loading ? <LoadingBlock label={`Loading ${config.title}`} /> : null}
 
       {!loading && data && slug === "overdue-accounts" ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={dueDateInput}
-            onChange={(e) => { setDueDateInput(e.target.value); setPage(1); }}
-            placeholder="Day of month (1–31)"
-            className="h-10 w-48 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-          />
-          {dueDate ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 mr-1">Due Day:</span>
+          <button
+            type="button"
+            onClick={() => setSelectedDay(null)}
+            className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-all ${
+              selectedDay === null
+                ? "border-red-500 bg-red-50 text-red-700"
+                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            All
+          </button>
+          {(data.dueDays as number[] ?? []).map((day: number) => (
             <button
+              key={day}
               type="button"
-              onClick={() => { setDueDateInput(""); setDueDate(""); setPage(1); }}
-              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
+              onClick={() => setSelectedDay(day)}
+              className={`inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-all ${
+                selectedDay === day
+                  ? "border-red-500 bg-red-50 text-red-700"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
             >
-              Clear Filter
+              Day {day}
             </button>
-          ) : null}
-          <span className="text-xs text-slate-500">Showing {data.totalFiltered} accounts{dueDate ? ` due on day ${dueDate}` : ""}</span>
+          ))}
+          <span className="ml-2 text-xs text-slate-500">
+            {rows.length} account{rows.length !== 1 ? "s" : ""}
+          </span>
         </div>
       ) : null}
 

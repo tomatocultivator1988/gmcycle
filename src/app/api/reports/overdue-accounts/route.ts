@@ -11,18 +11,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
-    const dueDateFilter = searchParams.get("dueDate") || "";
 
     const whereBase: Record<string, unknown> = {
       status: { in: ["ACTIVE", "DUE_TODAY", "OVERDUE"] },
     };
-
-    if (dueDateFilter) {
-      const dayNum = parseInt(dueDateFilter, 10);
-      if (dayNum >= 1 && dayNum <= 31) {
-        whereBase.dueDays = { has: dayNum };
-      }
-    }
 
     const [accounts, totalCount, overdueCount] = await Promise.all([
       prisma.installmentAccount.findMany({
@@ -36,6 +28,11 @@ export async function GET(request: Request) {
         where: { status: "OVERDUE" as any },
       }),
     ]);
+
+    // All unique due days across all accounts
+    const allDueDays = [
+      ...new Set(accounts.flatMap((a) => a.dueDays)),
+    ].sort((a, b) => a - b);
 
     // Fetch last payment per account
     const accountIds = accounts.map((a) => a.id);
@@ -73,6 +70,8 @@ export async function GET(request: Request) {
         remainingBalance: decimalToString(a.remainingBalance),
         monthlyInstallment: decimalToString(a.monthlyInstallment),
         nextDueDate: nextDue,
+        dueDays: a.dueDays,
+        scheduleType: a.scheduleType,
         dueLabel,
         daysOverdue,
         status: a.status,
@@ -85,7 +84,7 @@ export async function GET(request: Request) {
       accounts: rows,
       totalOverdue: overdueCount,
       totalFiltered: totalCount,
-      dueDateFilter: dueDateFilter || null,
+      dueDays: allDueDays,
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {
