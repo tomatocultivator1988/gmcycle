@@ -47,16 +47,16 @@ export default function RootLayout({
         <div className="min-h-screen pb-20 sm:pb-0">
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm supports-backdrop-blur:bg-white/80 print:hidden">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-              <Link href="/dashboard" className="flex items-center gap-4">
-                <span className="flex size-16 items-center justify-center">
-                  <img src="/logo.png" alt="MyFaveGadgets" className="h-12 w-auto object-contain" />
+              <Link href="/dashboard" className="flex items-center gap-3 sm:gap-4 shrink-0">
+                <span className="flex size-12 sm:size-16 items-center justify-center">
+                  <img src="/logo.png" alt="MyFaveGadgets" className="h-10 sm:h-12 w-auto object-contain" />
                 </span>
                 <span>
-                  <span className="block text-lg font-bold font-heading text-slate-900">MyFaveGadgets</span>
+                  <span className="block text-base sm:text-lg font-bold font-heading text-slate-900">MyFaveGadgets</span>
                   <span className="hidden sm:block text-[11px] font-medium text-slate-500 leading-tight">Gadget Installment</span>
                 </span>
               </Link>
-              <nav className="flex items-center gap-1">
+              <nav className="hidden sm:flex items-center gap-1">
                 {navLinks.map((link) => (
                   <NavLink key={link.href} href={link.href} label={link.label} icon={link.icon} />
                 ))}
