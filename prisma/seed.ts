@@ -205,18 +205,20 @@ async function main() {
     term: 24,
     startDate: "2026-06-15",
     status: "APPLIED",
+    scheduleType: "SEMI_MONTHLY",
+    dueDays: [1, 16],
   });
   console.log("✓ 1. Juan Dela Cruz — APPLIED");
 
-  // ── 2–8. ACTIVE (semi-monthly, due 15+30) ──
-  const activesSM: { name: string; phone: string; address: string; brand: string; model: string; cash: string; installment: string; dp: string; term: number; start: string }[] = [
-    { name: "Maria Santos", phone: "09289876543", address: "Barangay Zulueta, Binan City, Laguna", brand: "Samsung", model: "Galaxy S25 Ultra", cash: "65000.00", installment: "78000.00", dp: "10000.00", term: 24, start: "2026-04-01" },
-    { name: "Pedro Reyes", phone: "09551234567", address: "Barangay San Jose, Binan City, Laguna", brand: "Honda", model: "Click 125i", cash: "85000.00", installment: "102000.00", dp: "15000.00", term: 24, start: "2026-05-01" },
-    { name: "Lina Mercado", phone: "09661234567", address: "Barangay San Isidro, Binan City, Laguna", brand: "Toyota", model: "Raize E CVT", cash: "751000.00", installment: "901200.00", dp: "100000.00", term: 36, start: "2026-05-15" },
-    { name: "Josefa Villanueva", phone: "09771234567", address: "Barangay San Vicente, Binan City, Laguna", brand: "Yamaha", model: "Nmax", cash: "120000.00", installment: "144000.00", dp: "20000.00", term: 24, start: "2026-05-01" },
-    { name: "Ramon Bautista", phone: "09881234567", address: "Barangay Santo Domingo, Binan City, Laguna", brand: "Suzuki", model: "Raider J Crossover", cash: "95000.00", installment: "114000.00", dp: "15000.00", term: 24, start: "2026-04-15" },
-    { name: "Cecilia Tan", phone: "09991234567", address: "Barangay San Lorenzo, Binan City, Laguna", brand: "Kawasaki", model: "Barako 175", cash: "78000.00", installment: "93600.00", dp: "12000.00", term: 24, start: "2026-05-15" },
-    { name: "Nestor Santos", phone: "09101234567", address: "Barangay San Antonio, Binan City, Laguna", brand: "BMW", model: "G 310 R", cash: "200000.00", installment: "240000.00", dp: "30000.00", term: 36, start: "2026-06-01" },
+  // ── 2–8. ACTIVE (semi-monthly, diverse due pair) ──
+  const activesSM: { name: string; phone: string; address: string; brand: string; model: string; cash: string; installment: string; dp: string; term: number; start: string; days: number[] }[] = [
+    { name: "Maria Santos", phone: "09289876543", address: "Barangay Zulueta, Binan City, Laguna", brand: "Samsung", model: "Galaxy S25 Ultra", cash: "65000.00", installment: "78000.00", dp: "10000.00", term: 24, start: "2026-04-01", days: [5, 20] },
+    { name: "Pedro Reyes", phone: "09551234567", address: "Barangay San Jose, Binan City, Laguna", brand: "Honda", model: "Click 125i", cash: "85000.00", installment: "102000.00", dp: "15000.00", term: 24, start: "2026-05-01", days: [7, 22] },
+    { name: "Lina Mercado", phone: "09661234567", address: "Barangay San Isidro, Binan City, Laguna", brand: "Toyota", model: "Raize E CVT", cash: "751000.00", installment: "901200.00", dp: "100000.00", term: 36, start: "2026-05-15", days: [10, 25] },
+    { name: "Josefa Villanueva", phone: "09771234567", address: "Barangay San Vicente, Binan City, Laguna", brand: "Yamaha", model: "Nmax", cash: "120000.00", installment: "144000.00", dp: "20000.00", term: 24, start: "2026-05-01", days: [12, 28] },
+    { name: "Ramon Bautista", phone: "09881234567", address: "Barangay Santo Domingo, Binan City, Laguna", brand: "Suzuki", model: "Raider J Crossover", cash: "95000.00", installment: "114000.00", dp: "15000.00", term: 24, start: "2026-04-15", days: [14, 30] },
+    { name: "Cecilia Tan", phone: "09991234567", address: "Barangay San Lorenzo, Binan City, Laguna", brand: "Kawasaki", model: "Barako 175", cash: "78000.00", installment: "93600.00", dp: "12000.00", term: 24, start: "2026-05-15", days: [2, 18] },
+    { name: "Nestor Santos", phone: "09101234567", address: "Barangay San Antonio, Binan City, Laguna", brand: "BMW", model: "G 310 R", cash: "200000.00", installment: "240000.00", dp: "30000.00", term: 36, start: "2026-06-01", days: [9, 24] },
   ];
 
   for (const a of activesSM) {
@@ -234,17 +236,17 @@ async function main() {
       startDate: a.start,
       status: "ACTIVE",
       scheduleType: "SEMI_MONTHLY",
-      dueDays: [15, 30],
+      dueDays: a.days,
     });
   }
-  console.log("✓ 2–8. Active semi-monthly (due day 15+30)");
+  console.log("✓ 2–8. Active semi-monthly (diverse due pairs)");
 
-  // ── 9–12. ACTIVE (monthly, due 10 / due 20) ──
+  // ── 9–12. ACTIVE (monthly, diverse due days) ──
   const activesM: { name: string; phone: string; address: string; brand: string; model: string; cash: string; installment: string; dp: string; term: number; start: string; day: number }[] = [
-    { name: "Diana Flores", phone: "09111111111", address: "Barangay San Francisco, Binan City, Laguna", brand: "Honda", model: "Beat", cash: "72000.00", installment: "86400.00", dp: "10000.00", term: 24, start: "2026-04-01", day: 10 },
-    { name: "Gregorio Lim", phone: "09222222222", address: "Barangay San Jose, Binan City, Laguna", brand: "Yamaha", model: "Mio i125", cash: "68000.00", installment: "81600.00", dp: "10000.00", term: 24, start: "2026-04-15", day: 10 },
-    { name: "Fely Gomez", phone: "09333333333", address: "Barangay San Isidro, Binan City, Laguna", brand: "Suzuki", model: "Smash 115", cash: "55000.00", installment: "66000.00", dp: "8000.00", term: 18, start: "2026-05-01", day: 20 },
-    { name: "Mario Reyes", phone: "09444444444", address: "Barangay San Vicente, Binan City, Laguna", brand: "Kawasaki", model: "CT 100", cash: "50000.00", installment: "60000.00", dp: "8000.00", term: 18, start: "2026-05-15", day: 20 },
+    { name: "Diana Flores", phone: "09111111111", address: "Barangay San Francisco, Binan City, Laguna", brand: "Honda", model: "Beat", cash: "72000.00", installment: "86400.00", dp: "10000.00", term: 24, start: "2026-04-01", day: 8 },
+    { name: "Gregorio Lim", phone: "09222222222", address: "Barangay San Jose, Binan City, Laguna", brand: "Yamaha", model: "Mio i125", cash: "68000.00", installment: "81600.00", dp: "10000.00", term: 24, start: "2026-04-15", day: 13 },
+    { name: "Fely Gomez", phone: "09333333333", address: "Barangay San Isidro, Binan City, Laguna", brand: "Suzuki", model: "Smash 115", cash: "55000.00", installment: "66000.00", dp: "8000.00", term: 18, start: "2026-05-01", day: 21 },
+    { name: "Mario Reyes", phone: "09444444444", address: "Barangay San Vicente, Binan City, Laguna", brand: "Kawasaki", model: "CT 100", cash: "50000.00", installment: "60000.00", dp: "8000.00", term: 18, start: "2026-05-15", day: 26 },
   ];
 
   for (const a of activesM) {
@@ -265,9 +267,9 @@ async function main() {
       dueDays: [a.day],
     });
   }
-  console.log("✓ 9–12. Active monthly (due day 10 / 20)");
+  console.log("✓ 9–12. Active monthly (diverse due days)");
 
-  // ── 13. OVERDUE (semi-monthly, due 15+30, paid March only) ──
+  // ── 13. OVERDUE (semi-monthly, due 3+18) ──
   const carlos = await createInstallmentAccount({
     customerName: "Carlos Cruz",
     customerPhone: "09361234567",
@@ -282,23 +284,23 @@ async function main() {
     startDate: "2026-03-01",
     status: "ACTIVE",
     scheduleType: "SEMI_MONTHLY",
-    dueDays: [15, 30],
+    dueDays: [3, 18],
   });
 
   const carlosPeriod = new Decimal(carlos.monthlyInstallment.toString()).div(2);
-  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-15", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
-  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-30", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-03", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-18", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
   await prisma.installmentSchedule.updateMany({
     where: { installmentAccountId: carlos.id, status: "PENDING", dueDate: { lt: new Date() } },
     data: { status: "OVERDUE" },
   });
   await prisma.installmentAccount.update({
     where: { id: carlos.id },
-    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-15T00:00:00+08:00") },
+    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-03T00:00:00+08:00") },
   });
-  console.log("✓ 13. Carlos Cruz — OVERDUE (semi-monthly, paid March)");
+  console.log("✓ 13. Carlos Cruz — OVERDUE (semi-monthly, due 3+18)");
 
-  // ── 14. OVERDUE (semi-monthly, due 15+30, paid first period only) ──
+  // ── 14. OVERDUE (semi-monthly, due 8+23) ──
   const ana = await createInstallmentAccount({
     customerName: "Ana Lopez",
     customerPhone: "09459876543",
@@ -313,22 +315,22 @@ async function main() {
     startDate: "2026-03-15",
     status: "ACTIVE",
     scheduleType: "SEMI_MONTHLY",
-    dueDays: [15, 30],
+    dueDays: [8, 23],
   });
 
   const anaPeriod = new Decimal(ana.monthlyInstallment.toString()).div(2);
-  await postPayment({ installmentAccountId: ana.id, totalAmount: decimalToString(anaPeriod), paymentDate: "2026-03-15", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  await postPayment({ installmentAccountId: ana.id, totalAmount: decimalToString(anaPeriod), paymentDate: "2026-04-08", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
   await prisma.installmentSchedule.updateMany({
     where: { installmentAccountId: ana.id, status: "PENDING", dueDate: { lt: new Date() } },
     data: { status: "OVERDUE" },
   });
   await prisma.installmentAccount.update({
     where: { id: ana.id },
-    data: { status: "OVERDUE", nextDueDate: new Date("2026-03-30T00:00:00+08:00") },
+    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-23T00:00:00+08:00") },
   });
-  console.log("✓ 14. Ana Lopez — OVERDUE (semi-monthly, paid 1 period)");
+  console.log("✓ 14. Ana Lopez — OVERDUE (semi-monthly, due 8+23)");
 
-  // ── 15. OVERDUE (monthly, due 10) ──
+  // ── 15. OVERDUE (monthly, due 14) ──
   const tomas = await createInstallmentAccount({
     customerName: "Tomas Rivera",
     customerPhone: "09555555555",
@@ -343,20 +345,20 @@ async function main() {
     startDate: "2026-03-01",
     status: "ACTIVE",
     scheduleType: "MONTHLY",
-    dueDays: [10],
+    dueDays: [14],
   });
 
   const tomasPeriod = new Decimal(tomas.monthlyInstallment.toString());
-  await postPayment({ installmentAccountId: tomas.id, totalAmount: decimalToString(tomasPeriod), paymentDate: "2026-03-10", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  await postPayment({ installmentAccountId: tomas.id, totalAmount: decimalToString(tomasPeriod), paymentDate: "2026-03-14", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
   await prisma.installmentSchedule.updateMany({
     where: { installmentAccountId: tomas.id, status: "PENDING", dueDate: { lt: new Date() } },
     data: { status: "OVERDUE" },
   });
   await prisma.installmentAccount.update({
     where: { id: tomas.id },
-    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-10T00:00:00+08:00") },
+    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-14T00:00:00+08:00") },
   });
-  console.log("✓ 15. Tomas Rivera — OVERDUE (monthly, due day 10)");
+  console.log("✓ 15. Tomas Rivera — OVERDUE (monthly, due 14)");
 
   // ── SUMMARY ──
   console.log("\n═══════════════════════════════════════");
@@ -364,21 +366,21 @@ async function main() {
   console.log("═══════════════════════════════════════\n");
 
   console.log("15 accounts created:");
-  console.log("   1. Juan Dela Cruz — APPLIED");
-  console.log("   2. Maria Santos — ACTIVE (semi-monthly)");
-  console.log("   3. Pedro Reyes — ACTIVE (semi-monthly)");
-  console.log("   4. Lina Mercado — ACTIVE (semi-monthly)");
-  console.log("   5. Josefa Villanueva — ACTIVE (semi-monthly)");
-  console.log("   6. Ramon Bautista — ACTIVE (semi-monthly)");
-  console.log("   7. Cecilia Tan — ACTIVE (semi-monthly)");
-  console.log("   8. Nestor Santos — ACTIVE (semi-monthly)");
-  console.log("   9. Diana Flores — ACTIVE (monthly, due 10)");
-  console.log("  10. Gregorio Lim — ACTIVE (monthly, due 10)");
-  console.log("  11. Fely Gomez — ACTIVE (monthly, due 20)");
-  console.log("  12. Mario Reyes — ACTIVE (monthly, due 20)");
-  console.log("  13. Carlos Cruz — OVERDUE (semi-monthly)");
-  console.log("  14. Ana Lopez — OVERDUE (semi-monthly)");
-  console.log("  15. Tomas Rivera — OVERDUE (monthly, due 10)\n");
+  console.log("   1. Juan Dela Cruz — APPLIED (due 1+16)");
+  console.log("   2. Maria Santos — ACTIVE (due 5+20)");
+  console.log("   3. Pedro Reyes — ACTIVE (due 7+22)");
+  console.log("   4. Lina Mercado — ACTIVE (due 10+25)");
+  console.log("   5. Josefa Villanueva — ACTIVE (due 12+28)");
+  console.log("   6. Ramon Bautista — ACTIVE (due 14+30)");
+  console.log("   7. Cecilia Tan — ACTIVE (due 2+18)");
+  console.log("   8. Nestor Santos — ACTIVE (due 9+24)");
+  console.log("   9. Diana Flores — ACTIVE (monthly, due 8)");
+  console.log("  10. Gregorio Lim — ACTIVE (monthly, due 13)");
+  console.log("  11. Fely Gomez — ACTIVE (monthly, due 21)");
+  console.log("  12. Mario Reyes — ACTIVE (monthly, due 26)");
+  console.log("  13. Carlos Cruz — OVERDUE (semi-monthly, due 3+18)");
+  console.log("  14. Ana Lopez — OVERDUE (semi-monthly, due 8+23)");
+  console.log("  15. Tomas Rivera — OVERDUE (monthly, due 14)\n");
 }
 
 main()
