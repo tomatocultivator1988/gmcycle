@@ -26,6 +26,7 @@ export async function GET(request: Request) {
 
     const allAccounts = await prisma.installmentAccount.findMany({
       where: whereBase,
+      orderBy: { customerName: "asc" },
     });
 
     const accountIds = allAccounts.map((a) => a.id);
