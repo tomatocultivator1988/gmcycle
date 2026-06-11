@@ -83,6 +83,20 @@ export async function GET(request: Request) {
 
     const paymentMap = new Map(lastPayments.map((p) => [p.installmentAccountId, p]));
 
+    const totalPaidPerAccount = pagedIds.length > 0
+      ? await prisma.payment.groupBy({
+          by: ["installmentAccountId"],
+          where: {
+            installmentAccountId: { in: pagedIds },
+            voided: false,
+          },
+          _sum: { totalAmount: true },
+        })
+      : [];
+    const totalPaidMap = new Map(
+      totalPaidPerAccount.map((r) => [r.installmentAccountId, r._sum.totalAmount ?? new Decimal(0)]),
+    );
+
     const allDueDays = [...new Set(allAccounts.flatMap((a) => a.dueDays))].sort((a, b) => a - b);
     const totalBalance = allAccounts.reduce(
       (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
@@ -138,6 +152,7 @@ export async function GET(request: Request) {
         daysOverdue,
         lastPaymentDate: lastPay ? dateToManilaDateOnly(lastPay.paymentDate) : null,
         lastPaymentAmount: lastPay ? decimalToString(lastPay.totalAmount) : null,
+        totalPaid: decimalToString(totalPaidMap.get(a.id) ?? new Decimal(0)),
       };
     });
 

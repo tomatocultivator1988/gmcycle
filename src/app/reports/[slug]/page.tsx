@@ -192,6 +192,12 @@ const reportConfigs: Record<string, ReportConfig> = {
           : <span className="text-slate-400">—</span>,
         hideOnMobile: true,
       },
+      {
+        key: "totalPaid",
+        label: "Total Paid",
+        render: (r) => <span className="font-semibold text-emerald-700">{formatPeso(r.totalPaid)}</span>,
+        hideOnMobile: true,
+      },
     ],
   },
 };
