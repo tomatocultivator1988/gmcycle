@@ -17,7 +17,9 @@ export async function GET(request: Request) {
 
     const scheduleEndDate = date ? new Date(date + "T23:59:59.999+08:00") : undefined;
 
-    const whereBase: Record<string, unknown> = {};
+    const whereBase: Record<string, unknown> = {
+      status: { notIn: ["APPLIED", "CLOSED"] },
+    };
     if (scheduleEndDate) {
       whereBase.schedule = { some: { dueDate: { lte: scheduleEndDate } } };
     }
