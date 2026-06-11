@@ -34,41 +34,23 @@ export const createInstallmentAccountSchema = z.object({
   unitDescription: requiredString,
   itemType: z.enum(["GADGET", "CASH"]).default("GADGET"),
   cashPrice: moneyString,
-  installmentPrice: moneyString.optional(),
   downPayment: moneyString,
   processingFee: moneyString.optional(),
-  pricingType: z.enum(["FLAT_RATE", "INTEREST_PERCENTAGE"]).default("FLAT_RATE"),
-  interestRate: moneyString.optional(),
+  interestRate: moneyString,
   term: z.coerce.number().int().min(6, "Minimum term is 6 months").max(48, "Maximum term is 48 months"),
   startDate: dateOnlyString.optional(),
   scheduleType: z.enum(["SEMI_MONTHLY", "MONTHLY"]).default("SEMI_MONTHLY"),
   dueDays: z.array(z.number().int().min(1).max(31)).min(1, "At least one due day required"),
   firstDueDate: dateOnlyString,
   customFields: z.record(z.string(), z.string()).optional(),
-}).refine(
-  (data) => {
-    if (data.pricingType === "FLAT_RATE") {
-      return !!data.installmentPrice;
-    }
-    return true;
-  },
-  { message: "Installment price is required for flat rate", path: ["installmentPrice"] },
-).refine(
-  (data) => {
-    if (data.pricingType === "INTEREST_PERCENTAGE") {
-      return !!data.interestRate && /^\d+(\.\d{1,2})?$/.test(data.interestRate) && Number(data.interestRate) > 0;
-    }
-    return true;
-  },
-  { message: "Interest rate is required and must be > 0", path: ["interestRate"] },
-);
+});
 
 export const createPaymentSchema = z.object({
   installmentAccountId: requiredString,
   totalAmount: moneyString,
   paymentDate: dateOnlyString,
   method: z.enum(paymentMethods),
-  paymentType: z.enum(paymentTypes),
+  paymentType: z.enum(paymentTypes).optional(),
   notes: z.string().optional(),
   cashier: z.string().optional(),
   proofUrl: z.string().optional(),

@@ -1,4 +1,4 @@
-import type { AccountStatusValue, PricingTypeValue } from "@/types/api";
+import type { AccountStatusValue } from "@/types/api";
 import { formatPeso } from "@/lib/money";
 
 export function formatAccountStatus(status: AccountStatusValue): string {
@@ -18,11 +18,8 @@ export function formatAccountStatus(status: AccountStatusValue): string {
   }
 }
 
-export function formatPricingType(type: PricingTypeValue, rate?: string | null): string {
-  if (type === "INTEREST_PERCENTAGE" && rate) {
-    return `Interest ${rate}%`;
-  }
-  return "Flat Rate";
+export function formatPricingLabel(rate?: string | null): string {
+  return rate ? `Monthly ${rate}% Interest` : "Monthly Interest";
 }
 
 export function formatAccountSummary(account: {

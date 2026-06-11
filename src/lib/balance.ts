@@ -41,13 +41,17 @@ export async function recalculateBalance(
     else if (todayStr === dueStr) status = "DUE_TODAY";
   }
 
+  const updateData: Record<string, unknown> = {
+    remainingBalance: decimalToString(newBalance),
+    status,
+  };
+  if (nextDue) {
+    updateData.nextDueDate = nextDue;
+  }
+
   await tx.installmentAccount.update({
     where: { id: installmentAccountId },
-    data: {
-      remainingBalance: decimalToString(newBalance),
-      status,
-      nextDueDate: nextDue,
-    },
+    data: updateData,
   });
 
   return { balance: newBalance, status, nextDueDate: nextDue };

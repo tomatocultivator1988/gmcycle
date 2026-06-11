@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson, withRetry } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { sendPaymentReceipt } from "@/lib/email";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
@@ -66,7 +66,21 @@ export async function POST(request: Request) {
       }
 
       const totalAmount = new Decimal(body.totalAmount);
-      const paymentType = body.paymentType;
+      const paymentType = body.paymentType || (() => {
+        const remaining = account.schedule
+          .filter((s) => s.status !== "PAID")
+          .reduce((sum, s) => {
+            const ramt = new Decimal(s.amount).minus(s.paidAmount ? new Decimal(s.paidAmount) : 0);
+            return sum.plus(ramt).plus(new Decimal(s.penaltyAmount));
+          }, new Decimal(0));
+
+        if (totalAmount.gte(remaining)) return "FULL";
+        const monthly = new Decimal(account.monthlyInstallment);
+        if (totalAmount.lt(monthly)) return "PARTIAL";
+        return "REGULAR";
+      })();
+
+      // ADVANCE is same as REGULAR now — both apply forward
 
       const currentPeriod = account.schedule.find(
         (s) => s.status === "PENDING" || s.status === "PARTIAL",
@@ -76,25 +90,11 @@ export async function POST(request: Request) {
         throw new NotFoundError("No unpaid periods found");
       }
 
-      // FULL: validate amount covers remaining balance
-      if (paymentType === "FULL") {
-        const remaining = account.schedule
-          .filter((s) => s.status !== "PAID")
-          .reduce((sum, s) => {
-            const remainingAmt = new Decimal(s.amount).minus(s.paidAmount ? new Decimal(s.paidAmount) : 0);
-            return sum.plus(remainingAmt).plus(new Decimal(s.penaltyAmount));
-          }, new Decimal(0));
-
-        if (totalAmount.lt(remaining)) {
-          throw new Error(`FULL payment requires at least ₱${remaining.toFixed(2)} (remaining balance)`);
-        }
-      }
-
       // Update overdue schedule periods before processing
       await tx.installmentSchedule.updateMany({
         where: {
           installmentAccountId: account.id,
-          status: "PENDING",
+          status: { in: ["PENDING", "PARTIAL"] },
           dueDate: { lt: paymentDate },
         },
         data: { status: "OVERDUE" },
@@ -104,6 +104,20 @@ export async function POST(request: Request) {
         where: { installmentAccountId: account.id },
         orderBy: { periodNumber: "asc" },
       });
+
+      // FULL: validate amount covers remaining balance (after overdue update)
+      if (paymentType === "FULL") {
+        const remaining = updatedSchedule
+          .filter((s) => s.status !== "PAID")
+          .reduce((sum, s) => {
+            const remainingAmt = new Decimal(s.amount).minus(s.paidAmount ? new Decimal(s.paidAmount) : 0);
+            return sum.plus(remainingAmt).plus(new Decimal(s.penaltyAmount));
+          }, new Decimal(0));
+
+        if (totalAmount.lt(remaining)) {
+          throw new ValidationError(`FULL payment requires at least ₱${remaining.toFixed(2)} (remaining balance)`);
+        }
+      }
 
       let remainingToApply = totalAmount;
       let totalPenalty = new Decimal(0);
@@ -156,24 +170,9 @@ export async function POST(request: Request) {
         remainingToApply = remainingToApply.minus(paidForPeriod);
 
         // REGULAR/PARTIAL: stop after first period
-        if (paymentType === "REGULAR" || paymentType === "PARTIAL") {
+        if (paymentType === "PARTIAL") {
           break;
         }
-      }
-
-      // Mark all as PAID for FULL payments
-      if (paymentType === "FULL") {
-        await tx.installmentSchedule.updateMany({
-          where: {
-            installmentAccountId: account.id,
-            status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
-          },
-          data: {
-            status: "PAID",
-            paidDate: paymentDate,
-            paymentId: "__pending__",
-          },
-        });
       }
 
       const createdPayment = await tx.payment.create({
@@ -183,7 +182,7 @@ export async function POST(request: Request) {
           totalAmount: decimalToString(totalAmount),
           paymentDate,
           method: body.method,
-          paymentType: body.paymentType,
+          paymentType,
           penaltyAmount: decimalToString(totalPenalty),
           notes: body.notes || null,
           cashier: body.cashier || null,

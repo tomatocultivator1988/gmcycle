@@ -254,7 +254,13 @@ export function DashboardClient() {
                 <span className="text-xs text-red-600">View →</span>
               </Link>
             ) : null}
-            {actions.dueToday === 0 && actions.overdue31plus === 0 && actions.unactivated === 0 && actions.badRecords === 0 ? (
+            {actions.unsecuredDevices > 0 ? (
+              <Link href="/installment-accounts?status=ACTIVE" className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 hover:bg-blue-100 transition-colors">
+                <span className="text-sm font-medium text-blue-800">{actions.unsecuredDevices} unsecured devices</span>
+                <span className="text-xs text-blue-600">View →</span>
+              </Link>
+            ) : null}
+            {actions.dueToday === 0 && actions.overdue31plus === 0 && actions.unactivated === 0 && actions.badRecords === 0 && actions.unsecuredDevices === 0 ? (
               <span className="text-sm text-slate-500 col-span-full">All clear — no items need attention.</span>
             ) : null}
           </div>

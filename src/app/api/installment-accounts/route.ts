@@ -61,18 +61,21 @@ export async function POST(request: Request) {
     const processingFee = body.processingFee?.trim()
       ? parsePositiveMoney(body.processingFee, "processingFee")
       : new Decimal(0);
-    const pricingType = body.pricingType ?? "FLAT_RATE";
 
-    let installmentPrice: Decimal;
-    if (pricingType === "INTEREST_PERCENTAGE") {
-      if (!body.interestRate) {
-        throw new ValidationError("Interest rate is required");
-      }
-      const interestRate = new Decimal(body.interestRate).div(100);
-      installmentPrice = cashPrice.plus(cashPrice.times(interestRate)).toDecimalPlaces(2);
-    } else {
-      installmentPrice = parsePositiveMoney(body.installmentPrice!, "installmentPrice");
+    // Interest-based formula:
+    // Financed = Cash Price - Down Payment
+    // For GADGET: Monthly Interest = Financed × Rate%, Total Interest = Monthly Interest × Term
+    // For CASH:   Total Interest = Financed × Rate% (one-time)
+    if (!body.interestRate) {
+      throw new ValidationError("Interest rate is required");
     }
+    const rate = new Decimal(body.interestRate).div(100);
+    const financed = cashPrice.minus(downPayment);
+    const monthlyInterest = financed.times(rate);
+    const totalInterest = body.itemType === "CASH"
+      ? monthlyInterest  // one-time interest for cash
+      : monthlyInterest.times(body.term);  // per-month × term for gadgets
+    const installmentPrice = cashPrice.plus(totalInterest).toDecimalPlaces(2);
 
     if (downPayment.gte(installmentPrice)) {
       throw new ValidationError("Down payment cannot equal or exceed installment price");
@@ -106,7 +109,6 @@ export async function POST(request: Request) {
           remainingBalance: decimalToString(remainingBalance),
           term,
           monthlyInstallment: decimalToString(monthlyInstallment),
-          pricingType,
           interestRate: body.interestRate?.trim() || null,
           status: "APPLIED",
           scheduleType,

@@ -1,6 +1,5 @@
 export type AccountStatusValue = "APPLIED" | "ACTIVE" | "DUE_TODAY" | "OVERDUE" | "FULLY_PAID" | "CLOSED";
 export type ScheduleTypeValue = "SEMI_MONTHLY" | "MONTHLY";
-export type PricingTypeValue = "FLAT_RATE" | "INTEREST_PERCENTAGE";
 export type PaymentMethod = "CASH" | "GCASH" | "BANK";
 export type PaymentTypeValue = "REGULAR" | "PARTIAL" | "ADVANCE" | "FULL";
 export type ScheduleStatusValue = "PENDING" | "PAID" | "OVERDUE" | "PARTIAL";
@@ -21,7 +20,6 @@ export type InstallmentAccountDto = {
   processingFee: string;
   remainingBalance: string;
   grossProfit: string;
-  pricingType: PricingTypeValue;
   interestRate: string | null;
   term: number;
   monthlyInstallment: string;
@@ -34,6 +32,7 @@ export type InstallmentAccountDto = {
   badRecord: boolean;
   badRecordRemark: string | null;
   deviceEmail: string | null;
+  deviceEmailPassword: string | null;
   deviceAccountHolderEmail: string | null;
   remarks: string | null;
   customFields: Record<string, string> | null;
@@ -87,6 +86,7 @@ export type DashboardActionsDto = {
   overdue31plus: number;
   unactivated: number;
   badRecords: number;
+  unsecuredDevices: number;
 };
 
 export type DashboardMetricsDto = {

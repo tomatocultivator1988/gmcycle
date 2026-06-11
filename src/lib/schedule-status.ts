@@ -6,7 +6,7 @@ export async function updateOverdueSchedule(installmentAccountId: string): Promi
   await prisma.installmentSchedule.updateMany({
     where: {
       installmentAccountId,
-      status: "PENDING",
+      status: { in: ["PENDING", "PARTIAL"] },
       dueDate: { lt: today },
     },
     data: { status: "OVERDUE" },

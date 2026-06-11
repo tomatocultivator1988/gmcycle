@@ -16,12 +16,12 @@ type StatementData = {
   brand: string;
   model: string;
   unitDescription: string;
+  itemType: string;
   cashPrice: string;
   installmentPrice: string;
   downPayment: string;
   remainingBalance: string;
   grossProfit: string;
-  pricingType: string;
   interestRate: string | null;
   term: number;
   monthlyInstallment: string;
@@ -151,7 +151,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             <div><span className="text-slate-500">Down Payment:</span> <span className="text-slate-700">{formatPeso(data.downPayment)}</span></div>
             <div><span className="text-slate-500">Term:</span> <span className="text-slate-700">{data.term} months</span></div>
             <div><span className="text-slate-500">Monthly:</span> <span className="text-slate-700">{formatPeso(data.monthlyInstallment)}</span></div>
-            <div><span className="text-slate-500">Pricing:</span> <span className="text-slate-700">{data.pricingType === "INTEREST_PERCENTAGE" ? `Interest ${data.interestRate}%` : "Flat Rate"}</span></div>
+            <div><span className="text-slate-500">Interest:</span> <span className="text-slate-700">{data.interestRate ? `${data.interestRate}%${data.itemType === "CASH" ? " one-time" : " /mo"}` : "N/A"}</span></div>
             <div><span className="text-slate-500">Start:</span> <span className="text-slate-700">{data.startDate}</span></div>
           </div>
         </div>
@@ -167,94 +167,138 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
         </div>
 
         {/* Payment History Table */}
-        <div className="border-t border-slate-100 px-8 py-5 print:border-slate-200">
+        <div className="border-t border-slate-100 px-4 sm:px-8 py-5 print:border-slate-200 print:px-8">
           <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Payment History ({data.payments.length})</h2>
           {data.payments.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="py-2 pr-3 font-medium">Date</th>
-                  <th className="py-2 pr-3 font-medium text-right">Amount</th>
-                  <th className="py-2 pr-3 font-medium">Type</th>
-                  <th className="py-2 pr-3 font-medium">Method</th>
-                  <th className="py-2 pr-3 font-medium text-right">Penalty</th>
-                  <th className="py-2 pr-3 font-medium">Cashier</th>
-                  <th className="py-2 pr-3 font-medium">Proof</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile: Cards */}
+              <div className="block sm:hidden space-y-2">
                 {data.payments.map((p, i) => (
-                  <tr key={i} className="border-b border-slate-100 text-slate-700">
-                    <td className="py-2 pr-3">{p.date}</td>
-                    <td className="py-2 pr-3 text-right font-medium">{formatPeso(p.amount)}</td>
-                    <td className="py-2 pr-3"><span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium">{p.type}</span></td>
-                    <td className="py-2 pr-3">{p.method}</td>
-                    <td className="py-2 pr-3 text-right">{p.penalty !== "0.00" ? <span className="text-rose-600">{formatPeso(p.penalty)}</span> : "—"}</td>
-                    <td className="py-2 pr-3">{p.cashier || "—"}</td>
-                    <td className="py-2 pr-3">{p.proofUrl ? <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="text-red-600 underline text-xs">View</a> : "—"}</td>
-                  </tr>
+                  <div key={i} className="rounded-lg border border-slate-200 bg-white p-3 text-xs space-y-1.5">
+                    <div className="flex justify-between"><span className="text-slate-500">Date</span><span className="font-medium">{p.date}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-semibold">{formatPeso(p.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Type</span><span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium">{p.type}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Method</span><span>{p.method}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span>{p.penalty !== "0.00" ? <span className="text-rose-600">{formatPeso(p.penalty)}</span> : "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Cashier</span><span>{p.cashier || "—"}</span></div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              {/* Desktop: Table */}
+              <div className="hidden sm:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                      <th className="py-2 pr-3 font-medium">Date</th>
+                      <th className="py-2 pr-3 font-medium text-right">Amount</th>
+                      <th className="py-2 pr-3 font-medium">Type</th>
+                      <th className="py-2 pr-3 font-medium">Method</th>
+                      <th className="py-2 pr-3 font-medium text-right">Penalty</th>
+                      <th className="py-2 pr-3 font-medium">Cashier</th>
+                      <th className="py-2 pr-3 font-medium">Proof</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.payments.map((p, i) => (
+                      <tr key={i} className="border-b border-slate-100 text-slate-700">
+                        <td className="py-2 pr-3">{p.date}</td>
+                        <td className="py-2 pr-3 text-right font-medium">{formatPeso(p.amount)}</td>
+                        <td className="py-2 pr-3"><span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium">{p.type}</span></td>
+                        <td className="py-2 pr-3">{p.method}</td>
+                        <td className="py-2 pr-3 text-right">{p.penalty !== "0.00" ? <span className="text-rose-600">{formatPeso(p.penalty)}</span> : "—"}</td>
+                        <td className="py-2 pr-3">{p.cashier || "—"}</td>
+                        <td className="py-2 pr-3">{p.proofUrl ? <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="text-red-600 underline text-xs">View</a> : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : (
             <p className="text-sm text-slate-400">No payments recorded.</p>
           )}
         </div>
 
         {/* Schedule Table */}
-        <div className="border-t border-slate-100 px-8 py-5 print:border-slate-200">
+        <div className="border-t border-slate-100 px-4 sm:px-8 py-5 print:border-slate-200 print:px-8">
           <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Installment Schedule ({data.schedule.length} periods)</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                <th className="py-2 pr-3 font-medium">#</th>
-                <th className="py-2 pr-3 font-medium">Due Date</th>
-                <th className="py-2 pr-3 font-medium text-right">Amount</th>
-                <th className="py-2 pr-3 font-medium">Status</th>
-                <th className="py-2 pr-3 font-medium">Paid Date</th>
-                <th className="py-2 pr-3 font-medium text-right">Paid</th>
-                  <th className="py-2 pr-3 font-medium text-right">Penalty</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.schedule.map((s) => (
-                <tr key={s.period} className={`border-b border-slate-100 text-slate-700 ${s.status === "PAID" ? "bg-emerald-50/50" : s.status === "OVERDUE" ? "bg-rose-50/50" : s.status === "PARTIAL" ? "bg-amber-50/50" : ""}`}>
-                  <td className="py-1.5 pr-3 font-medium">{s.period}</td>
-                  <td className="py-1.5 pr-3">{s.dueDate}</td>
-                  <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
-                  <td className="py-1.5 pr-3"><span className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></td>
-                  <td className="py-1.5 pr-3">{s.paidDate || "—"}</td>
-                  <td className="py-1.5 pr-3 text-right">{s.paidAmount ? formatPeso(s.paidAmount) : "—"}</td>
-                  <td className="py-1.5 pr-3 text-right">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Penalty Records */}
-        {data.penalties.length > 0 ? (
-          <div className="border-t border-slate-100 px-8 py-5 print:border-slate-200">
-            <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Penalty Records ({data.penalties.length})</h2>
+          {/* Mobile: Cards */}
+          <div className="block sm:hidden space-y-1.5">
+            {data.schedule.map((s) => (
+              <div key={s.period} className={`rounded-lg border p-2.5 text-xs space-y-1 ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50/50" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50/50" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50/50" : "border-slate-200"}`}>
+                <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className={`rounded border px-1 py-px text-[10px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-semibold">{formatPeso(s.amount)}</span></div>
+                {s.paidAmount ? <div className="flex justify-between"><span className="text-slate-500">Paid</span><span>{formatPeso(s.paidAmount)}</span></div> : null}
+                {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
+              </div>
+            ))}
+          </div>
+          {/* Desktop: Table */}
+          <div className="hidden sm:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="py-2 pr-3 font-medium">Date</th>
+                  <th className="py-2 pr-3 font-medium">#</th>
+                  <th className="py-2 pr-3 font-medium">Due Date</th>
                   <th className="py-2 pr-3 font-medium text-right">Amount</th>
-                  <th className="py-2 pr-3 font-medium">Reason</th>
+                  <th className="py-2 pr-3 font-medium">Status</th>
+                  <th className="py-2 pr-3 font-medium">Paid Date</th>
+                  <th className="py-2 pr-3 font-medium text-right">Paid</th>
+                  <th className="py-2 pr-3 font-medium text-right">Penalty</th>
                 </tr>
               </thead>
               <tbody>
-                {data.penalties.map((p, i) => (
-                  <tr key={i} className="border-b border-slate-100 text-slate-700">
-                    <td className="py-1.5 pr-3">{new Date(p.appliedDate).toLocaleDateString()}</td>
-                    <td className="py-1.5 pr-3 text-right font-medium text-rose-600">{formatPeso(p.amount)}</td>
-                    <td className="py-1.5 pr-3 text-xs">{p.reason || "—"}</td>
+                {data.schedule.map((s) => (
+                  <tr key={s.period} className={`border-b border-slate-100 text-slate-700 ${s.status === "PAID" ? "bg-emerald-50/50" : s.status === "OVERDUE" ? "bg-rose-50/50" : s.status === "PARTIAL" ? "bg-amber-50/50" : ""}`}>
+                    <td className="py-1.5 pr-3 font-medium">{s.period}</td>
+                    <td className="py-1.5 pr-3">{s.dueDate}</td>
+                    <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
+                    <td className="py-1.5 pr-3"><span className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></td>
+                    <td className="py-1.5 pr-3">{s.paidDate || "—"}</td>
+                    <td className="py-1.5 pr-3 text-right">{s.paidAmount ? formatPeso(s.paidAmount) : "—"}</td>
+                    <td className="py-1.5 pr-3 text-right">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Penalty Records */}
+        {data.penalties.length > 0 ? (
+            <div className="border-t border-slate-100 px-4 sm:px-8 py-5 print:border-slate-200 print:px-8">
+              <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Penalty Records ({data.penalties.length})</h2>
+              {/* Mobile: Cards */}
+              <div className="block sm:hidden space-y-2">
+                {data.penalties.map((p, i) => (
+                  <div key={i} className="rounded-lg border border-rose-100 bg-rose-50/50 p-3 text-xs space-y-1.5">
+                    <div className="flex justify-between"><span className="text-slate-500">{new Date(p.appliedDate).toLocaleDateString()}</span><span className="font-semibold text-rose-600">{formatPeso(p.amount)}</span></div>
+                    {p.reason ? <div className="text-slate-600">{p.reason}</div> : null}
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: Table */}
+              <div className="hidden sm:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                      <th className="py-2 pr-3 font-medium">Date</th>
+                      <th className="py-2 pr-3 font-medium text-right">Amount</th>
+                      <th className="py-2 pr-3 font-medium">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.penalties.map((p, i) => (
+                      <tr key={i} className="border-b border-slate-100 text-slate-700">
+                        <td className="py-1.5 pr-3">{new Date(p.appliedDate).toLocaleDateString()}</td>
+                        <td className="py-1.5 pr-3 text-right font-medium text-rose-600">{formatPeso(p.amount)}</td>
+                        <td className="py-1.5 pr-3 text-xs">{p.reason || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
         ) : null}
 
         {/* Footer */}

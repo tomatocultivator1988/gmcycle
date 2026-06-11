@@ -34,11 +34,6 @@ enum PaymentType {
   FULL
 }
 
-enum PricingType {
-  FLAT_RATE
-  INTEREST_PERCENTAGE
-}
-
 enum ItemType {
   GADGET
   CASH
@@ -68,7 +63,6 @@ model InstallmentAccount {
   remainingBalance   Decimal       @db.Decimal(14, 2)
   term               Int
   monthlyInstallment Decimal       @db.Decimal(14, 2)
-  pricingType        PricingType   @default(FLAT_RATE)
   interestRate       Decimal?      @db.Decimal(5, 2)
   status             AccountStatus @default(APPLIED)
   scheduleType       ScheduleType  @default(SEMI_MONTHLY)

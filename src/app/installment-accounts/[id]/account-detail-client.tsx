@@ -672,18 +672,29 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-2">Pricing</div>
         <div className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700">
-          {account.pricingType === "INTEREST_PERCENTAGE"
-            ? `Interest ${account.interestRate}%`
-            : "Flat Rate"}
+          {account.interestRate
+            ? `${account.interestRate}%${account.itemType === "CASH" ? " one-time" : " /mo"}`
+            : "Interest"}
         </div>
       </div>
+
+      {account.deviceEmail ? (
+        <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 shadow-sm">
+          <p className="text-xs font-semibold font-heading uppercase tracking-wider text-blue-600 mb-2">Device Security</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <span className="text-slate-600">📱 <span className="font-medium">{account.deviceEmail}</span></span>
+            <span className="text-slate-600">🔑 <span className="font-medium">{account.deviceEmailPassword}</span></span>
+            <span className="text-slate-600">👤 <span className="font-medium">{account.deviceAccountHolderEmail}</span></span>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Cash Price" value={formatPeso(account.cashPrice)} />
         <StatCard label="Installment Price" value={formatPeso(account.installmentPrice)} />
         <StatCard label="Down Payment" value={formatPeso(account.downPayment)} />
         <StatCard label="Processing Fee" value={formatPeso(account.processingFee)} />
-        <StatCard label="Monthly" value={formatPeso(account.monthlyInstallment)} />
+        <StatCard label={account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"} value={formatPeso(account.monthlyInstallment)} />
         <StatCard label="Gross Profit" value={formatPeso(account.grossProfit)} valueClass="text-emerald-700" />
       </div>
 
@@ -983,19 +994,23 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700">
-                    Payment Type
-                    <select
-                      value={form.paymentType}
-                      onChange={(e) => updatePaymentField("paymentType", e.target.value)}
-                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                    >
-                      <option value="REGULAR">Regular</option>
-                      <option value="PARTIAL">Partial</option>
-                      <option value="ADVANCE">Advance</option>
-                      <option value="FULL">Full Payment</option>
-                    </select>
+                    Type
                   </label>
-                  <FieldError error={fieldErrors.paymentType} />
+                  {(() => {
+                    const amt = parseFloat(form.totalAmount) || 0;
+                    const remaining = parseFloat(account.remainingBalance);
+                    const monthly = parseFloat(account.monthlyInstallment);
+                    let type = "REGULAR";
+                    let color = "border-blue-200 bg-blue-50 text-blue-700";
+                    if (amt >= remaining) { type = "FULL"; color = "border-emerald-200 bg-emerald-50 text-emerald-700"; }
+                    else if (amt < monthly) { type = "PARTIAL"; color = "border-amber-200 bg-amber-50 text-amber-700"; }
+                    else { type = "REGULAR"; color = "border-blue-200 bg-blue-50 text-blue-700"; }
+                    return (
+                      <span className={`mt-1.5 inline-flex items-center rounded-lg border px-3 py-2 text-sm font-semibold ${color}`}>
+                        {type === "FULL" ? "FULL — Pays entire balance" : type === "PARTIAL" ? "PARTIAL — Less than monthly" : "REGULAR"}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1304,7 +1319,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       <ConfirmModal
         open={showPaymentConfirm}
         title="Post Payment?"
-        message={`${formatPeso(form.totalAmount || "0")} — ${form.paymentType} payment for ${account.brand} ${account.model}.`}
+        message={`${formatPeso(form.totalAmount || "0")} payment for ${account.brand} ${account.model}.`}
         confirmLabel="Yes, post payment"
         onConfirm={confirmPostPayment}
         onCancel={() => setShowPaymentConfirm(false)}

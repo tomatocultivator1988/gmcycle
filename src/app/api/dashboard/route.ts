@@ -143,6 +143,7 @@ export async function GET() {
         overdue31plus: days31to60 + days61to90 + days90plus,
         unactivated: appliedAccounts,
         badRecords: await prisma.installmentAccount.count({ where: { badRecord: true, status: { notIn: ["FULLY_PAID", "CLOSED"] as any } } }),
+        unsecuredDevices: await prisma.installmentAccount.count({ where: { status: "ACTIVE" as any, deviceEmail: null } }),
       },
     });
   } catch (error) {

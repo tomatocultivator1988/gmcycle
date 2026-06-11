@@ -42,10 +42,8 @@ export function InstallmentAccountForm() {
     unitDescription: "",
     itemType: "GADGET" as "GADGET" | "CASH",
     cashPrice: "",
-    installmentPrice: "",
     downPayment: "",
     processingFee: "",
-    pricingType: "FLAT_RATE" as "FLAT_RATE" | "INTEREST_PERCENTAGE",
     interestRate: "",
     term: 24,
     scheduleType: "SEMI_MONTHLY" as "SEMI_MONTHLY" | "MONTHLY",
@@ -69,13 +67,18 @@ export function InstallmentAccountForm() {
   }
 
   const cashPrice = parseDecimal(form.cashPrice);
-  const interestRateDecimal = parseDecimal(form.interestRate);
-  const hasInterestRate = form.pricingType === "INTEREST_PERCENTAGE" && interestRateDecimal.gt(0);
-  const computedInstallmentPrice = hasInterestRate
-    ? cashPrice.plus(cashPrice.times(interestRateDecimal.div(100))).toDecimalPlaces(2)
-    : parseDecimal(form.installmentPrice);
-  const installmentPrice = form.pricingType === "FLAT_RATE" ? parseDecimal(form.installmentPrice) : computedInstallmentPrice;
   const downPayment = parseDecimal(form.downPayment);
+  const interestRateDecimal = parseDecimal(form.interestRate);
+  // Financed = Cash Price - Down Payment
+  // Monthly Interest = Financed × Rate%
+  // Total Interest = Monthly Interest × Term
+  // Installment Price = Cash Price + Total Interest
+  const financed = cashPrice.minus(downPayment);
+  const monthlyInterest = interestRateDecimal.gt(0) ? financed.times(interestRateDecimal.div(100)) : new Decimal(0);
+  const totalInterest = form.itemType === "CASH"
+    ? monthlyInterest  // one-time for cash
+    : monthlyInterest.times(form.term);  // per-month × term for gadgets
+  const installmentPrice = cashPrice.plus(totalInterest);
   const totalPeriods = form.scheduleType === "SEMI_MONTHLY" ? form.term * 2 : form.term;
   const remainingBalance = installmentPrice.minus(downPayment);
   const monthlyInstallment = remainingBalance.gt(0) && form.term > 0
@@ -93,7 +96,7 @@ export function InstallmentAccountForm() {
     form.model.trim() &&
     form.unitDescription.trim() &&
     cashPrice.gt(0) &&
-    (form.pricingType === "FLAT_RATE" ? installmentPrice.gt(0) : interestRateDecimal.gt(0)) &&
+    interestRateDecimal.gt(0) &&
     downPayment.gt(0) &&
     downPayment.lt(installmentPrice);
 
@@ -124,7 +127,7 @@ export function InstallmentAccountForm() {
         cashPrice: form.cashPrice,
         downPayment: form.downPayment,
         processingFee: form.processingFee || undefined,
-        pricingType: form.pricingType,
+        interestRate: form.interestRate,
         term: form.term,
         startDate: form.firstDueDate,
         scheduleType: form.scheduleType,
@@ -135,11 +138,6 @@ export function InstallmentAccountForm() {
           return acc;
         }, {} as Record<string, string>),
       };
-      if (form.pricingType === "FLAT_RATE") {
-        dataToValidate.installmentPrice = form.installmentPrice;
-      } else {
-        dataToValidate.interestRate = form.interestRate;
-      }
       const validation = validateForm(createInstallmentAccountSchema, dataToValidate);
 
       if (!validation.success) {
@@ -174,7 +172,7 @@ export function InstallmentAccountForm() {
         cashPrice: form.cashPrice,
         downPayment: form.downPayment,
         processingFee: form.processingFee || undefined,
-        pricingType: form.pricingType,
+        interestRate: form.interestRate,
         term: form.term,
         startDate: form.firstDueDate,
         scheduleType: form.scheduleType,
@@ -185,11 +183,6 @@ export function InstallmentAccountForm() {
           return acc;
         }, {} as Record<string, string>),
       };
-      if (form.pricingType === "FLAT_RATE") {
-        body.installmentPrice = form.installmentPrice;
-      } else {
-        body.interestRate = form.interestRate;
-      }
       const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
         "/api/installment-accounts",
         { method: "POST", body: JSON.stringify(body) },
@@ -424,35 +417,6 @@ export function InstallmentAccountForm() {
               <p className="text-xs text-slate-500">Pricing, terms, and payment schedule</p>
             </div>
           </div>
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Pricing Type</label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setForm({ ...form, pricingType: "FLAT_RATE", interestRate: "" }); if (fieldErrors.pricingType || fieldErrors.interestRate) clearFieldError(setFieldErrors, "pricingType"); if (fieldErrors.interestRate) clearFieldError(setFieldErrors, "interestRate"); }}
-                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
-                  form.pricingType === "FLAT_RATE"
-                    ? "border-red-500 bg-red-50 text-red-700"
-                    : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
-                }`}
-              >
-                Flat Rate
-              </button>
-              <button
-                type="button"
-                onClick={() => { setForm({ ...form, pricingType: "INTEREST_PERCENTAGE", installmentPrice: "" }); if (fieldErrors.pricingType || fieldErrors.installmentPrice) clearFieldError(setFieldErrors, "pricingType"); }}
-                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
-                  form.pricingType === "INTEREST_PERCENTAGE"
-                    ? "border-red-500 bg-red-50 text-red-700"
-                    : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
-                }`}
-              >
-                Interest %
-              </button>
-            </div>
-            <FieldError error={fieldErrors.pricingType} />
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700">
@@ -467,37 +431,19 @@ export function InstallmentAccountForm() {
               </label>
               <FieldError error={fieldErrors.cashPrice} />
             </div>
-
-            {form.pricingType === "FLAT_RATE" ? (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Installment Price
-                  <input
-                    required
-                    inputMode="decimal"
-                    value={form.installmentPrice}
-                    onChange={(e) => updateField("installmentPrice", e.target.value.replace(/[^\d.]/g, ""))}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  />
-                </label>
-                <FieldError error={fieldErrors.installmentPrice} />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Interest Rate (%)
-                  <input
-                    required
-                    inputMode="decimal"
-                    value={form.interestRate}
-                    onChange={(e) => updateField("interestRate", e.target.value.replace(/[^\d.]/g, ""))}
-                    placeholder="e.g. 20"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  />
-                </label>
-                <FieldError error={fieldErrors.interestRate} />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Interest Rate (% per month)
+                <input
+                  required
+                  inputMode="decimal"
+                  value={form.interestRate}
+                  onChange={(e) => updateField("interestRate", e.target.value.replace(/[^\d.]/g, ""))}
+                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+              <FieldError error={fieldErrors.interestRate} />
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">
                 Down Payment
