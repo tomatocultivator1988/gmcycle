@@ -154,6 +154,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     summaryFields: [
       { label: "Total Accounts", getValue: (d) => String(d.totalAccounts) },
       { label: "Total Balance Outstanding", getValue: (d) => formatPeso(d.totalBalance) },
+      { label: "Total Collected", getValue: (d) => formatPeso(d.totalCollected) },
     ],
     columns: [
       {

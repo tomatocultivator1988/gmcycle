@@ -89,6 +89,23 @@ export async function GET(request: Request) {
       new Decimal(0),
     );
 
+    const paymentWhere: Record<string, unknown> = {
+      installmentAccountId: { in: accountIds },
+      voided: false,
+    };
+    if (scheduleEndDate) {
+      paymentWhere.paymentDate = { lte: scheduleEndDate };
+    }
+    const totalCollectedResult = accountIds.length > 0
+      ? await prisma.payment.aggregate({
+          where: paymentWhere,
+          _sum: { totalAmount: true },
+        })
+      : null;
+    const totalCollected = totalCollectedResult?._sum?.totalAmount
+      ? decimalToString(totalCollectedResult._sum.totalAmount)
+      : "0.00";
+
     const todayStr = getManilaTodayDateString();
 
     const rows = pagedAccounts.map((a) => {
@@ -131,6 +148,7 @@ export async function GET(request: Request) {
       unpaidCount: unpaid.length,
       totalAccounts: allAccounts.length,
       totalBalance: decimalToString(totalBalance),
+      totalCollected,
       dueDays: allDueDays,
       pagination: { page, limit, total: totalFiltered, totalPages: Math.ceil(totalFiltered / limit) },
     });
