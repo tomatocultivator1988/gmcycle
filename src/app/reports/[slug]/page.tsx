@@ -214,7 +214,9 @@ export default function ReportPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedPaidStatus, setSelectedPaidStatus] = useState("");
   const hasDateFilter = slug === "overdue-accounts" || slug === "account-master-list";
+  const hasStatusFilter = slug === "account-master-list";
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -224,6 +226,7 @@ export default function ReportPage() {
 
     let url = `/api/reports/${slug}?page=${page}&limit=50`;
     if (selectedDate) url += `&date=${selectedDate}`;
+    if (selectedPaidStatus) url += `&paidStatus=${selectedPaidStatus}`;
 
     apiRequest<any>(url)
       .then((res) => {
@@ -236,7 +239,7 @@ export default function ReportPage() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page, selectedDate]);
+  }, [slug, config, page, selectedDate, selectedPaidStatus]);
 
   if (!config) {
     return (
@@ -302,6 +305,34 @@ export default function ReportPage() {
           <span className="text-xs text-slate-500">
             {rows.length} of {data.pagination?.total ?? 0} accounts
           </span>
+        </div>
+      ) : null}
+
+      {!loading && data && hasStatusFilter ? (
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {[
+            { key: "", label: "All", count: data.allCount },
+            { key: "paid", label: "Paid", count: data.paidCount },
+            { key: "unpaid", label: "Unpaid", count: data.unpaidCount },
+          ].map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => { setSelectedPaidStatus(opt.key); setPage(1); }}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-150 active:scale-[0.97] ${
+                selectedPaidStatus === opt.key
+                  ? "bg-red-800 text-white shadow-sm"
+                  : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {opt.label}
+              {opt.count !== undefined ? (
+                <span className={`text-xs tabular-nums ${selectedPaidStatus === opt.key ? "text-red-200" : "text-slate-400"}`}>
+                  {opt.count}
+                </span>
+              ) : null}
+            </button>
+          ))}
         </div>
       ) : null}
 

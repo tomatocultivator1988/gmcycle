@@ -13,40 +13,64 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
     const date = searchParams.get("date");
+    const paidStatus = searchParams.get("paidStatus");
 
     const whereBase: Record<string, unknown> = {};
     if (date) {
       whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
     }
 
-    const [accounts, totalCount, allAccountsForMeta] = await Promise.all([
-      prisma.installmentAccount.findMany({
-        where: whereBase,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.installmentAccount.count({ where: whereBase }),
-      prisma.installmentAccount.findMany({
-        where: whereBase,
-        select: { dueDays: true, remainingBalance: true },
-      }),
-    ]);
+    const allAccounts = await prisma.installmentAccount.findMany({
+      where: whereBase,
+    });
 
-    const allDueDays = [
-      ...new Set(allAccountsForMeta.flatMap((a) => a.dueDays)),
-    ].sort((a, b) => a - b);
-
-    const totalBalance = allAccountsForMeta.reduce(
-      (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
-      new Decimal(0),
-    );
-
-    const accountIds = accounts.map((a) => a.id);
-    const lastPayments = accountIds.length > 0
-      ? await prisma.payment.findMany({
+    const scheduleEndDate = date ? new Date(date + "T23:59:59.999+08:00") : undefined;
+    const accountIds = allAccounts.map((a) => a.id);
+    const schedules = accountIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
           where: {
             installmentAccountId: { in: accountIds },
+            ...(scheduleEndDate ? { dueDate: { lte: scheduleEndDate } } : {}),
+          },
+        })
+      : [];
+
+    const scheduleMap = new Map<string, typeof schedules>();
+    for (const s of schedules) {
+      if (!scheduleMap.has(s.installmentAccountId)) {
+        scheduleMap.set(s.installmentAccountId, []);
+      }
+      scheduleMap.get(s.installmentAccountId)!.push(s);
+    }
+
+    const paid: typeof allAccounts = [];
+    const unpaid: typeof allAccounts = [];
+    for (const a of allAccounts) {
+      const accountSchedules = scheduleMap.get(a.id) ?? [];
+      if (accountSchedules.length > 0 && accountSchedules.every((s) => s.status === "PAID")) {
+        paid.push(a);
+      } else {
+        unpaid.push(a);
+      }
+    }
+
+    let filteredAccounts: typeof allAccounts;
+    if (paidStatus === "paid") {
+      filteredAccounts = paid;
+    } else if (paidStatus === "unpaid") {
+      filteredAccounts = unpaid;
+    } else {
+      filteredAccounts = allAccounts;
+    }
+
+    const totalFiltered = filteredAccounts.length;
+    const pagedAccounts = filteredAccounts.slice((page - 1) * limit, page * limit);
+
+    const pagedIds = pagedAccounts.map((a) => a.id);
+    const lastPayments = pagedIds.length > 0
+      ? await prisma.payment.findMany({
+          where: {
+            installmentAccountId: { in: pagedIds },
             voided: false,
           },
           orderBy: { paymentDate: "desc" },
@@ -56,9 +80,15 @@ export async function GET(request: Request) {
 
     const paymentMap = new Map(lastPayments.map((p) => [p.installmentAccountId, p]));
 
+    const allDueDays = [...new Set(allAccounts.flatMap((a) => a.dueDays))].sort((a, b) => a - b);
+    const totalBalance = allAccounts.reduce(
+      (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
+      new Decimal(0),
+    );
+
     const todayStr = getManilaTodayDateString();
 
-    const rows = accounts.map((a) => {
+    const rows = pagedAccounts.map((a) => {
       const nextDue = dateToManilaDateOnly(a.nextDueDate);
       const daysOverdue = nextDue < todayStr
         ? Math.floor((new Date().getTime() - a.nextDueDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -93,10 +123,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       accounts: rows,
-      totalAccounts: totalCount,
+      allCount: allAccounts.length,
+      paidCount: paid.length,
+      unpaidCount: unpaid.length,
+      totalAccounts: allAccounts.length,
       totalBalance: decimalToString(totalBalance),
       dueDays: allDueDays,
-      pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
+      pagination: { page, limit, total: totalFiltered, totalPages: Math.ceil(totalFiltered / limit) },
     });
   } catch (error) {
     return handleApiError(error);
