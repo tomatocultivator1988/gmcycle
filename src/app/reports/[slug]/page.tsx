@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
 import { Pagination } from "@/components/pagination";
@@ -74,7 +74,7 @@ const reportConfigs: Record<string, ReportConfig> = {
       {
         key: "customerName",
         label: "Customer",
-        render: (r) => <Link href={`/installment-accounts/${r.id}`} className="font-medium text-red-800 hover:text-red-600 hover:underline">{r.customerName}</Link>,
+        render: (r) => <Link href={`/installment-accounts/${r.id}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
       },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "phone", label: "Contact", render: (r) => r.customerPhone },
@@ -208,17 +208,29 @@ export default function ReportPage() {
     : allRows;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-4">
       <PageHeader
         title={config.title}
         description={config.description}
         actions={
-          <Link
-            href="/reports"
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
-          >
-            <ArrowLeft size={16} /> All Reports
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {slug === "overdue-accounts" ? (
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] print:hidden"
+              >
+                <Printer size={16} />
+                Print / Export PDF
+              </button>
+            ) : null}
+            <Link
+              href="/reports"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
+            >
+              <ArrowLeft size={16} /> All Reports
+            </Link>
+          </div>
         }
       />
 
@@ -226,7 +238,7 @@ export default function ReportPage() {
       {loading ? <LoadingBlock label={`Loading ${config.title}`} /> : null}
 
       {!loading && data && slug === "overdue-accounts" ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <span className="text-xs font-semibold text-slate-500 mr-1">Due Day:</span>
           <button
             type="button"
@@ -261,16 +273,16 @@ export default function ReportPage() {
 
       {!loading && data ? (
         <>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 print:gap-3">
             {config.summaryFields.map((field) => (
-              <div key={field.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[180px]">
+              <div key={field.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[180px] print:border print:border-slate-300 print:shadow-none print:p-3">
                 <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">{field.label}</div>
                 <div className="mt-1.5 text-xl font-bold text-slate-900">{field.getValue(data)}</div>
               </div>
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:border print:border-slate-300 print:shadow-none print:rounded-none print:overflow-visible">
             <ResponsiveTable
               columns={config.columns}
               data={rows}
