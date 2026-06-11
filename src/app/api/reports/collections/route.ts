@@ -34,12 +34,15 @@ export async function GET(request: Request) {
     return NextResponse.json({
       collections: payments.map((p) => ({
         id: p.id,
+        accountId: p.installmentAccount.id,
         customerName: p.installmentAccount.customerName,
         brand: p.installmentAccount.brand,
         model: p.installmentAccount.model,
         amount: decimalToString(p.totalAmount),
         paymentDate: dateToManilaDateOnly(p.paymentDate),
         method: p.method,
+        paymentType: p.paymentType,
+        cashier: p.cashier,
       })),
       total: decimalToString(total),
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },

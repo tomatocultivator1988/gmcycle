@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          installmentAccount: { select: { brand: true, model: true, customerName: true } },
+          installmentAccount: { select: { id: true, brand: true, model: true, customerName: true } },
         },
       }),
       prisma.payment.count({ where: { paymentDate: { gte: start, lt: end } } }),
@@ -39,10 +39,12 @@ export async function GET(request: Request) {
       date: dateToManilaDateOnly(start),
       collections: payments.map((p) => ({
         id: p.id,
+        accountId: p.installmentAccount.id,
         customerName: p.installmentAccount.customerName,
         unit: `${p.installmentAccount.brand} ${p.installmentAccount.model}`,
         amount: decimalToString(p.totalAmount),
         method: p.method,
+        paymentType: p.paymentType,
         cashier: p.cashier,
       })),
       total: decimalToString(total),

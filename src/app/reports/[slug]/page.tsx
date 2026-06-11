@@ -27,40 +27,57 @@ const reportConfigs: Record<string, ReportConfig> = {
       { label: "Total Collections", getValue: (d) => formatPeso(d.total) },
     ],
     columns: [
-      { key: "customerName", label: "Customer", render: (r) => r.customerName },
+      {
+        key: "customerName",
+        label: "Customer",
+        render: (r) => <Link href={`/installment-accounts/${r.accountId}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
+      },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "amount", label: "Amount", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.amount)}</span> },
       { key: "paymentDate", label: "Date", render: (r) => r.paymentDate },
       { key: "method", label: "Method", render: (r) => r.method, hideOnMobile: true },
+      { key: "paymentType", label: "Type", render: (r) => r.paymentType ? r.paymentType.replace("_", " ") : "—", hideOnMobile: true },
     ],
   },
   "daily-collections": {
     title: "Daily Collection Report",
-    description: "Today's collections summary",
+    description: "Collections for the selected date",
     summaryFields: [
       { label: "Date", getValue: (d) => d.date },
       { label: "Today's Total", getValue: (d) => formatPeso(d.total) },
     ],
     columns: [
-      { key: "customerName", label: "Customer", render: (r) => r.customerName },
+      {
+        key: "customerName",
+        label: "Customer",
+        render: (r) => <Link href={`/installment-accounts/${r.accountId}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
+      },
       { key: "unit", label: "Unit", render: (r) => r.unit },
       { key: "amount", label: "Amount", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.amount)}</span> },
       { key: "method", label: "Method", render: (r) => r.method, hideOnMobile: true },
+      { key: "paymentType", label: "Type", render: (r) => r.paymentType ? r.paymentType.replace("_", " ") : "—", hideOnMobile: true },
       { key: "cashier", label: "Cashier", render: (r) => r.cashier ?? "—", hideOnMobile: true },
     ],
   },
   "monthly-collections": {
     title: "Monthly Collection Report",
-    description: "Monthly breakdown of collections",
+    description: "Detailed collections for the selected month",
     summaryFields: [
       { label: "Month", getValue: (d) => d.month },
       { label: "Total", getValue: (d) => formatPeso(d.total) },
       { label: "Transactions", getValue: (d) => String(d.count) },
     ],
     columns: [
-      { key: "month", label: "Month", render: (r) => r.month },
-      { key: "total", label: "Total", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.total)}</span> },
-      { key: "count", label: "Transactions", render: (r) => String(r.count) },
+      {
+        key: "customerName",
+        label: "Customer",
+        render: (r) => <Link href={`/installment-accounts/${r.accountId}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
+      },
+      { key: "unit", label: "Unit", render: (r) => r.unit },
+      { key: "amount", label: "Amount", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.amount)}</span> },
+      { key: "paymentDate", label: "Date", render: (r) => r.paymentDate },
+      { key: "method", label: "Method", render: (r) => r.method, hideOnMobile: true },
+      { key: "paymentType", label: "Type", render: (r) => r.paymentType ? r.paymentType.replace("_", " ") : "—", hideOnMobile: true },
     ],
   },
   "overdue-accounts": {
@@ -204,7 +221,7 @@ const reportConfigs: Record<string, ReportConfig> = {
 const listKeys: Record<string, string> = {
   collections: "collections",
   "daily-collections": "collections",
-  "monthly-collections": "monthlyBreakdown",
+  "monthly-collections": "collections",
   "overdue-accounts": "accounts",
   penalties: "penalties",
   "outstanding-balances": "accounts",
@@ -420,9 +437,7 @@ export default function ReportPage() {
               emptyMessage="No data for this report."
               mobileAccordion={slug === "account-master-list" || slug === "overdue-accounts" ? { summaryColumns: ["customerName", "status"] } : undefined}
             />
-            {slug !== "monthly-collections" ? (
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="print:hidden" />
-            ) : null}
           </div>
         </>
       ) : null}

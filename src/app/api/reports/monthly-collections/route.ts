@@ -4,7 +4,7 @@ import { handleApiError } from "@/lib/api";
 import { getManilaDayRange, dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { startOfMonth, endOfMonth, startOfYear, format } from "date-fns";
+import { startOfMonth, endOfMonth, startOfYear } from "date-fns";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,9 @@ export async function GET(request: Request) {
         orderBy: { paymentDate: "desc" },
         skip: (page - 1) * limit,
         take: limit,
+        include: {
+          installmentAccount: { select: { id: true, brand: true, model: true, customerName: true } },
+        },
       }),
       prisma.payment.count({ where: { paymentDate: { gte: monthStart, lt: monthEnd }, voided: false } }),
     ]);
@@ -61,10 +64,23 @@ export async function GET(request: Request) {
       count: Number(r.count),
     }));
 
+    const collections = payments.map((p) => ({
+      id: p.id,
+      accountId: p.installmentAccount.id,
+      customerName: p.installmentAccount.customerName,
+      unit: `${p.installmentAccount.brand} ${p.installmentAccount.model}`,
+      amount: decimalToString(p.totalAmount),
+      paymentDate: dateToManilaDateOnly(p.paymentDate),
+      method: p.method,
+      paymentType: p.paymentType,
+      cashier: p.cashier,
+    }));
+
     return NextResponse.json({
       month: dateToManilaDateOnly(monthStart).slice(0, 7),
       total: decimalToString(monthlyTotal),
       count: totalCount,
+      collections,
       monthlyBreakdown,
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
