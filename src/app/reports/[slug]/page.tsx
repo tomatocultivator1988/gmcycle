@@ -162,6 +162,7 @@ const reportConfigs: Record<string, ReportConfig> = {
         render: (r) => <Link href={`/installment-accounts/${r.id}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
       },
       { key: "contact", label: "Contact", render: (r) => r.customerPhone },
+      { key: "address", label: "Address", render: (r) => r.customerAddress, hideOnMobile: true },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "cashPrice", label: "Cash Price", render: (r) => formatPeso(r.cashPrice), hideOnMobile: true },
       { key: "downPayment", label: "Down Pmt", render: (r) => formatPeso(r.downPayment), hideOnMobile: true },
