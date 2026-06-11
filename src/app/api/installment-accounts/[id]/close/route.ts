@@ -8,6 +8,8 @@ import { closeAccountSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
+const ADMIN_PASSWORD = "myfave2026";
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -31,15 +33,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    const config = await prisma.adminConfig.findFirst();
-    if (!config?.adminPassword) {
-      return NextResponse.json(
-        { error: "Admin password not set. Configure it in Settings first." },
-        { status: 400 },
-      );
-    }
-
-    if (body.password !== config.adminPassword) {
+    if (body.password !== ADMIN_PASSWORD) {
       return NextResponse.json(
         { error: "Incorrect admin password" },
         { status: 401 },
@@ -47,7 +41,6 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const balance = new Decimal(existing.remainingBalance.toString());
-    const writtenOff = balance.gt(0) ? balance.toFixed(2) : "0.00";
     const paidPeriods = existing.schedule.length;
     const totalPaid = existing.schedule.length > 0 ? `${paidPeriods} schedules paid` : "";
 
@@ -76,7 +69,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({
       installmentAccount: serializeInstallmentAccount(updated),
-      writtenOff,
+      writtenOff: balance.gt(0) ? balance.toFixed(2) : "0.00",
     });
   } catch (error) {
     return handleApiError(error);

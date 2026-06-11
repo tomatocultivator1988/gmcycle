@@ -75,7 +75,6 @@ export const updateInstallmentAccountSchema = z.object({
 export const updateAdminConfigSchema = z.object({
   penaltyPerDay: moneyString,
   adminEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
-  adminPassword: z.string().optional(),
 });
 
 export const markBadRecordSchema = z.object({

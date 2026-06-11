@@ -154,7 +154,6 @@ model AdminConfig {
   id             String         @id @default(cuid())
   penaltyPerDay  Decimal        @default(50.00) @db.Decimal(14, 2)
   adminEmail     String?
-  adminPassword  String?
   updatedAt      DateTime       @updatedAt
 }
 
