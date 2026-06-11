@@ -132,7 +132,7 @@ export default function PaymentsPage() {
     },
     {
       key: "actions",
-      label: "",
+      label: "Receipt",
       render: (p) => (
         <Link
           href={`/payments/${p.id}/receipt`}
@@ -142,7 +142,6 @@ export default function PaymentsPage() {
           Receipt
         </Link>
       ),
-      hideOnMobile: true,
     },
   ];
 
