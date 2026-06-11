@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, ReceiptText, Save, X } from "lucide-react";
+import { Plus, ReceiptText, Save, X, Printer } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
@@ -30,62 +31,6 @@ const paymentTypeStyles: Record<string, string> = {
   ADVANCE: "bg-purple-50 text-purple-700 border-purple-200",
   FULL: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
-
-const columns: Column<PaymentDto>[] = [
-  {
-    key: "customer",
-    label: "Customer",
-    render: (p) => <span className="text-slate-700">{p.customerName}</span>,
-  },
-  {
-    key: "amount",
-    label: "Amount",
-    render: (p) => <span className="font-semibold text-slate-900">{formatPeso(p.totalAmount)}</span>,
-  },
-  {
-    key: "date",
-    label: "Date",
-    render: (p) => <span className="text-slate-700">{p.paymentDate}</span>,
-  },
-  {
-    key: "method",
-    label: "Method",
-    render: (p) => <span className="text-slate-700">{p.method}</span>,
-    hideOnMobile: true,
-  },
-  {
-    key: "type",
-    label: "Type",
-    render: (p) => (
-      <span className={`inline-flex items-center rounded-xl border px-2 py-0.5 text-xs font-semibold ${paymentTypeStyles[p.paymentType] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
-        {p.paymentType}
-      </span>
-    ),
-  },
-  {
-    key: "penalty",
-    label: "Penalty",
-    render: (p) =>
-      p.penaltyAmount && p.penaltyAmount !== "0.00" ? (
-        <span className="font-medium text-rose-600">{formatPeso(p.penaltyAmount)}</span>
-      ) : (
-        <span className="text-slate-300">—</span>
-      ),
-    hideOnMobile: true,
-  },
-  {
-    key: "proof",
-    label: "Proof",
-    render: (p) =>
-      p.proofUrl ? (
-        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-block rounded border border-slate-200 overflow-hidden hover:opacity-80">
-          <img src={p.proofUrl} alt="Proof" className="size-8 object-cover" />
-        </a>
-      ) : (
-        <span className="text-slate-300">—</span>
-      ),
-  },
-];
 
 function todayDateOnly() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -125,6 +70,81 @@ export default function PaymentsPage() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [proofModal, setProofModal] = useState<string | null>(null);
+
+  const columns: Column<PaymentDto>[] = [
+    {
+      key: "customer",
+      label: "Customer",
+      render: (p) => <span className="text-slate-700">{p.customerName}</span>,
+    },
+    {
+      key: "amount",
+      label: "Amount",
+      render: (p) => <span className="font-semibold text-slate-900">{formatPeso(p.totalAmount)}</span>,
+    },
+    {
+      key: "date",
+      label: "Date",
+      render: (p) => <span className="text-slate-700">{p.paymentDate}</span>,
+    },
+    {
+      key: "method",
+      label: "Method",
+      render: (p) => <span className="text-slate-700">{p.method}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: "type",
+      label: "Type",
+      render: (p) => (
+        <span className={`inline-flex items-center rounded-xl border px-2 py-0.5 text-xs font-semibold ${paymentTypeStyles[p.paymentType] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
+          {p.paymentType}
+        </span>
+      ),
+    },
+    {
+      key: "penalty",
+      label: "Penalty",
+      render: (p) =>
+        p.penaltyAmount && p.penaltyAmount !== "0.00" ? (
+          <span className="font-medium text-rose-600">{formatPeso(p.penaltyAmount)}</span>
+        ) : (
+          <span className="text-slate-300">—</span>
+        ),
+      hideOnMobile: true,
+    },
+    {
+      key: "proof",
+      label: "Proof",
+      render: (p) =>
+        p.proofUrl ? (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); setProofModal(p.proofUrl); }}
+            className="inline-block rounded border border-slate-200 overflow-hidden hover:opacity-80"
+          >
+            <img src={p.proofUrl} alt="Proof" className="size-8 object-cover" />
+          </button>
+        ) : (
+          <span className="text-slate-300">—</span>
+        ),
+    },
+    {
+      key: "actions",
+      label: "",
+      render: (p) => (
+        <Link
+          href={`/payments/${p.id}/receipt`}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
+        >
+          <Printer size={13} />
+          Receipt
+        </Link>
+      ),
+      hideOnMobile: true,
+    },
+  ];
 
   const fetchPayments = useCallback(async (p: number) => {
     setLoading(true);
@@ -487,12 +507,27 @@ export default function PaymentsPage() {
       <ConfirmModal
         open={showConfirm}
         title="Post Payment?"
-        message={`${formatPeso(form.totalAmount || "0")} — ${form.paymentType} payment ${selectedAccount ? `for ${selectedAccount.customerName}` : ""}.`}
+        message={`${formatPeso(form.totalAmount || "0")} — ${detectedType} payment ${selectedAccount ? `for ${selectedAccount.customerName}` : ""}.`}
         confirmLabel="Yes, post payment"
         onConfirm={confirmPost}
         onCancel={() => setShowConfirm(false)}
         loading={saving}
       />
+
+      {proofModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setProofModal(null)}>
+          <div className="relative max-w-2xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setProofModal(null)}
+              className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            >
+              <X size={16} />
+            </button>
+            <img src={proofModal} alt="Payment Proof" className="max-w-full max-h-[85vh] rounded-xl shadow-2xl" />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
