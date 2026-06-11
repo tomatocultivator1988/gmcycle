@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
-import { handleApiError } from "@/lib/api";
+import { handleApiError, readJson } from "@/lib/api";
 import { dateToManilaDateOnly } from "@/lib/dates";
 import { sendEmail } from "@/lib/email";
 import { decimalToString, formatPeso } from "@/lib/money";
@@ -8,13 +8,19 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const body = (await readJson(request)) as { accountIds?: string[] } | null;
+    const where: Record<string, unknown> = {
+      status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any },
+      customerEmail: { not: null },
+    };
+    if (body?.accountIds?.length) {
+      where.id = { in: body.accountIds };
+    }
+
     const accounts = await prisma.installmentAccount.findMany({
-      where: {
-        status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any },
-        customerEmail: { not: null },
-      },
+      where,
       include: {
         schedule: { orderBy: { periodNumber: "asc" } },
         payments: { orderBy: { paymentDate: "desc" } },
