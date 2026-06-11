@@ -84,7 +84,6 @@ const columns: Column<PaymentDto>[] = [
       ) : (
         <span className="text-slate-300">—</span>
       ),
-    hideOnMobile: true,
   },
 ];
 
@@ -185,6 +184,7 @@ export default function PaymentsPage() {
 
     const validation = validateForm(createPaymentSchema, {
       ...form,
+      paymentType: selectedAccount ? detectedType : form.paymentType,
       notes: form.notes || undefined,
       cashier: form.cashier || undefined,
     });
@@ -228,7 +228,7 @@ export default function PaymentsPage() {
     try {
       await apiRequest<{ payment: PaymentDto }>("/api/payments", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, paymentType: detectedType }),
       });
 
       setPostSuccess(selectedAccount?.customerEmail
@@ -252,6 +252,25 @@ export default function PaymentsPage() {
 
   const selectedAccount = accounts.find((a) => a.id === form.installmentAccountId);
 
+  const detectedType: PaymentTypeValue = (() => {
+    if (!selectedAccount) return form.paymentType;
+    const amt = parseFloat(form.totalAmount) || 0;
+    const remaining = parseFloat(selectedAccount.remainingBalance);
+    const monthly = parseFloat(selectedAccount.monthlyInstallment);
+    if (amt >= remaining) return "FULL";
+    if (amt < monthly) return "PARTIAL";
+    return "REGULAR";
+  })();
+
+  const typeLabel = detectedType.charAt(0) + detectedType.slice(1).toLowerCase();
+
+  const typeColors: Record<string, string> = {
+    REGULAR: "inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700",
+    PARTIAL: "inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700",
+    ADVANCE: "inline-flex items-center rounded-xl border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700",
+    FULL: "inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700",
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -274,12 +293,13 @@ export default function PaymentsPage() {
 
       {!loading ? (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <ResponsiveTable
-            columns={columns}
-            data={payments}
-            rowKey={(p) => p.id}
-            emptyMessage="No payments yet."
-          />
+            <ResponsiveTable
+              columns={columns}
+              data={payments}
+              rowKey={(p) => p.id}
+              emptyMessage="No payments yet."
+              mobileAccordion={{ summaryColumns: ["customer", "type"] }}
+            />
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       ) : null}
@@ -369,18 +389,14 @@ export default function PaymentsPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700">
                     Payment Type
-                    <select
-                      value={form.paymentType}
-                      onChange={(e) => updateField("paymentType", e.target.value)}
-                      className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                    >
-                      <option value="REGULAR">Regular</option>
-                      <option value="PARTIAL">Partial</option>
-                      <option value="ADVANCE">Advance</option>
-                      <option value="FULL">Full Payment</option>
-                    </select>
+                    <div className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 flex items-center text-sm">
+                      {selectedAccount ? (
+                        <span className={typeColors[detectedType]}>{typeLabel}</span>
+                      ) : (
+                        <span className="text-slate-400">Select account first</span>
+                      )}
+                    </div>
                   </label>
-                  <FieldError error={fieldErrors.paymentType} />
                 </div>
               </div>
 
