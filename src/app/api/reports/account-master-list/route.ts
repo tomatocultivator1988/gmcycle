@@ -15,16 +15,17 @@ export async function GET(request: Request) {
     const date = searchParams.get("date");
     const paidStatus = searchParams.get("paidStatus");
 
+    const scheduleEndDate = date ? new Date(date + "T23:59:59.999+08:00") : undefined;
+
     const whereBase: Record<string, unknown> = {};
-    if (date) {
-      whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
+    if (scheduleEndDate) {
+      whereBase.schedule = { some: { dueDate: { lte: scheduleEndDate } } };
     }
 
     const allAccounts = await prisma.installmentAccount.findMany({
       where: whereBase,
     });
 
-    const scheduleEndDate = date ? new Date(date + "T23:59:59.999+08:00") : undefined;
     const accountIds = allAccounts.map((a) => a.id);
     const schedules = accountIds.length > 0
       ? await prisma.installmentSchedule.findMany({
