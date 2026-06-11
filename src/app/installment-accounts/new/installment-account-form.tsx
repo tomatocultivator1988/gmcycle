@@ -37,6 +37,7 @@ export function InstallmentAccountForm() {
     customerPhone: "",
     customerEmail: "",
     customerAddress: "",
+    fbLink: "",
     brand: "",
     model: "",
     unitDescription: "",
@@ -121,6 +122,7 @@ export function InstallmentAccountForm() {
         customerPhone: form.customerPhone,
         customerEmail: form.customerEmail,
         customerAddress: form.customerAddress,
+        fbLink: form.fbLink || undefined,
         brand: form.brand,
         model: form.model,
         unitDescription: form.unitDescription,
@@ -167,6 +169,7 @@ export function InstallmentAccountForm() {
         customerPhone: form.customerPhone,
         customerEmail: form.customerEmail,
         customerAddress: form.customerAddress,
+        fbLink: form.fbLink || undefined,
         brand: form.brand,
         model: form.model,
         unitDescription: form.unitDescription,
@@ -278,6 +281,24 @@ export function InstallmentAccountForm() {
                 />
               </label>
               <FieldError error={fieldErrors.customerAddress} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Facebook Profile Link <span className="text-slate-400">(optional)</span>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="flex items-center justify-center size-10 rounded-xl border border-slate-300 bg-slate-50 text-blue-600 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  </span>
+                  <input
+                    type="url"
+                    value={form.fbLink}
+                    onChange={(e) => updateField("fbLink", e.target.value)}
+                    placeholder="https://facebook.com/username"
+                    className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </div>
+              </label>
+              <FieldError error={fieldErrors.fbLink} />
             </div>
           </div>
 

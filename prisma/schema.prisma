@@ -52,6 +52,7 @@ model InstallmentAccount {
   customerPhone      String
   customerEmail      String?
   customerAddress    String
+  fbLink             String?
   brand              String
   model              String
   unitDescription    String

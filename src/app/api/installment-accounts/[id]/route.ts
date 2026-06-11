@@ -47,6 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       customerPhone: body.customerPhone,
       customerEmail: body.customerEmail ?? null,
       customerAddress: body.customerAddress,
+      fbLink: body.fbLink || null,
       brand: body.brand,
       model: body.model,
       unitDescription: body.unitDescription,

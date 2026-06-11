@@ -124,6 +124,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     customerPhone: "",
     customerEmail: "",
     customerAddress: "",
+    fbLink: "",
     brand: "",
     model: "",
     unitDescription: "",
@@ -363,6 +364,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       customerPhone: account.customerPhone,
       customerEmail: account.customerEmail ?? "",
       customerAddress: account.customerAddress,
+      fbLink: account.fbLink ?? "",
       brand: account.brand,
       model: account.model,
       unitDescription: account.unitDescription,
@@ -651,6 +653,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
             <div className="font-medium">{account.customerName}</div>
             <div className="text-xs text-slate-500 mt-0.5">{account.customerPhone}</div>
             {account.customerEmail ? <div className="text-xs text-slate-400 mt-0.5">{account.customerEmail}</div> : null}
+            {account.fbLink ? (
+              <a href={account.fbLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Facebook Profile
+              </a>
+            ) : null}
           </div>
         } />
         <InfoCard icon={MapPin} label="Address" value={account.customerAddress} />
@@ -1164,6 +1172,24 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     onChange={(e) => setEditForm((p) => ({ ...p, customerAddress: e.target.value }))}
                     className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   />
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Facebook Profile Link <span className="text-slate-400">(optional)</span>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="flex items-center justify-center size-10 rounded-xl border border-slate-300 bg-slate-50 text-blue-600 shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </span>
+                    <input
+                      type="url"
+                      value={editForm.fbLink}
+                      onChange={(e) => setEditForm((p) => ({ ...p, fbLink: e.target.value }))}
+                      placeholder="https://facebook.com/username"
+                      className="h-10 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                  </div>
                 </label>
               </div>
 

@@ -99,6 +99,7 @@ export async function POST(request: Request) {
           customerPhone: body.customerPhone,
           customerEmail: body.customerEmail || null,
           customerAddress: body.customerAddress,
+          fbLink: body.fbLink || null,
           itemType: body.itemType ?? "GADGET",
           brand: body.itemType === "CASH" ? "N/A" : body.brand,
           model: body.itemType === "CASH" ? "N/A" : body.model,

@@ -10,6 +10,7 @@ export type InstallmentAccountDto = {
   customerPhone: string;
   customerEmail: string | null;
   customerAddress: string;
+  fbLink: string | null;
   brand: string;
   model: string;
   unitDescription: string;

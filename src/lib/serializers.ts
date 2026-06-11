@@ -14,6 +14,7 @@ export function serializeInstallmentAccount(account: InstallmentAccountShape) {
     customerPhone: account.customerPhone,
     customerEmail: account.customerEmail ?? null,
     customerAddress: account.customerAddress,
+    fbLink: account.fbLink ?? null,
     brand: account.brand,
     model: account.model,
     unitDescription: account.unitDescription,
