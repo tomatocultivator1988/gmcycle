@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { getManilaDayRange, dateToManilaDateOnly } from "@/lib/dates";
+import { getManilaDayRange, dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth, startOfYear, format } from "date-fns";
@@ -10,10 +10,13 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const { start: today } = getManilaDayRange();
-    const monthStart = startOfMonth(today);
-    const monthEnd = endOfMonth(today);
     const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get("month");
+    const referenceDate = monthParam
+      ? parseDateOnly(monthParam + "-01")
+      : getManilaDayRange().start;
+    const monthStart = startOfMonth(referenceDate);
+    const monthEnd = endOfMonth(referenceDate);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
@@ -32,7 +35,7 @@ export async function GET(request: Request) {
       new Decimal(0),
     );
 
-    const yearStart = startOfYear(today);
+    const yearStart = startOfYear(referenceDate);
     const breakdown = await prisma.$queryRawUnsafe<Array<{
       month: string;
       total: string;

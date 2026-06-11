@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { getManilaDayRange, dateToManilaDateOnly } from "@/lib/dates";
+import { getManilaDayRange, dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
@@ -9,8 +9,11 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const { start, end } = getManilaDayRange();
     const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get("date");
+    const { start, end } = dateParam
+      ? (() => { const d = parseDateOnly(dateParam); return { start: d, end: new Date(d.getTime() + 24 * 60 * 60 * 1000) }; })()
+      : getManilaDayRange();
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 

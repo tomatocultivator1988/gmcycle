@@ -221,7 +221,10 @@ export default function ReportPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedPaidStatus, setSelectedPaidStatus] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
   const hasDateFilter = slug === "overdue-accounts" || slug === "account-master-list";
+  const hasDailyFilter = slug === "daily-collections";
+  const hasMonthFilter = slug === "monthly-collections";
   const hasStatusFilter = slug === "account-master-list";
 
   useEffect(() => {
@@ -233,6 +236,7 @@ export default function ReportPage() {
     let url = `/api/reports/${slug}?page=${page}&limit=50`;
     if (selectedDate) url += `&date=${selectedDate}`;
     if (selectedPaidStatus) url += `&paidStatus=${selectedPaidStatus}`;
+    if (selectedMonth) url += `&month=${selectedMonth}`;
 
     apiRequest<any>(url)
       .then((res) => {
@@ -245,7 +249,7 @@ export default function ReportPage() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page, selectedDate, selectedPaidStatus]);
+  }, [slug, config, page, selectedDate, selectedPaidStatus, selectedMonth]);
 
   if (!config) {
     return (
@@ -309,6 +313,54 @@ export default function ReportPage() {
           ) : null}
           <span className="text-xs text-slate-500">
             {rows.length} of {data.pagination?.total ?? 0} accounts
+          </span>
+        </div>
+      ) : null}
+
+      {!loading && data && hasDailyFilter ? (
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <span className="text-xs font-semibold text-slate-500">Date:</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
+            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+          />
+          {selectedDate ? (
+            <button
+              type="button"
+              onClick={() => { setSelectedDate(""); setPage(1); }}
+              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Clear Filter
+            </button>
+          ) : null}
+          <span className="text-xs text-slate-500">
+            {rows.length} of {data.pagination?.total ?? 0} collections
+          </span>
+        </div>
+      ) : null}
+
+      {!loading && data && hasMonthFilter ? (
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <span className="text-xs font-semibold text-slate-500">Month:</span>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => { setSelectedMonth(e.target.value); setPage(1); }}
+            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+          />
+          {selectedMonth ? (
+            <button
+              type="button"
+              onClick={() => { setSelectedMonth(""); setPage(1); }}
+              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Clear Filter
+            </button>
+          ) : null}
+          <span className="text-xs text-slate-500">
+            {rows.length} of {data.pagination?.total ?? 0} transactions
           </span>
         </div>
       ) : null}
