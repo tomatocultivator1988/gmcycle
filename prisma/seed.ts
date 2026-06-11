@@ -27,6 +27,7 @@ async function createInstallmentAccount(input: {
   installmentPrice: string;
   downPayment: string;
   term: number;
+  interestRate?: string;
   startDate: string;
   status?: "APPLIED" | "ACTIVE";
 }) {
@@ -55,6 +56,7 @@ async function createInstallmentAccount(input: {
       remainingBalance: decimalToString(remainingBalance),
       term: input.term,
       monthlyInstallment: decimalToString(monthlyInstallment),
+      interestRate: input.interestRate ?? null,
       status: input.status ?? "APPLIED",
       scheduleType: "SEMI_MONTHLY",
       dueDays: [15, 30],
@@ -228,14 +230,77 @@ async function main() {
   await postPayment({ installmentAccountId: maria.id, totalAmount: decimalToString(mariaPeriod), paymentDate: "2026-06-15", method: "GCASH", paymentType: "REGULAR", cashier: "Megan" });
   console.log(`✓ Maria: 3 period payments`);
 
+  // ── ACCOUNT 3: OVERDUE — paid March, missed April/May/June ──
+  const carlos = await createInstallmentAccount({
+    customerName: "Carlos Cruz",
+    customerPhone: "09361234567",
+    customerAddress: "Barangay San Antonio, Binan City, Laguna",
+    brand: "Xiaomi",
+    model: "Redmi Note 14 Pro",
+    unitDescription: "Xiaomi Redmi Note 14 Pro 256GB, Midnight Black",
+    cashPrice: "30000.00",
+    installmentPrice: "36000.00",
+    downPayment: "5000.00",
+    term: 12,
+    startDate: "2026-03-01",
+    status: "ACTIVE",
+  });
+  console.log(`✓ Carlos Cruz — Redmi Note 14 Pro, ACTIVE (will be overdue)`);
+
+  const carlosPeriod = new Decimal(carlos.monthlyInstallment.toString()).div(2);
+  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-15", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  await postPayment({ installmentAccountId: carlos.id, totalAmount: decimalToString(carlosPeriod), paymentDate: "2026-03-30", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  // Force OVERDUE status — today is past the missed April/May periods
+  await prisma.installmentSchedule.updateMany({
+    where: { installmentAccountId: carlos.id, status: "PENDING", dueDate: { lt: new Date() } },
+    data: { status: "OVERDUE" },
+  });
+  await prisma.installmentAccount.update({
+    where: { id: carlos.id },
+    data: { status: "OVERDUE", nextDueDate: new Date("2026-04-15T00:00:00+08:00") },
+  });
+  console.log(`✓ Carlos: paid March only, missed April onwards → OVERDUE`);
+
+  // ── ACCOUNT 4: OVERDUE — paid only first period, missed rest ──
+  const ana = await createInstallmentAccount({
+    customerName: "Ana Lopez",
+    customerPhone: "09459876543",
+    customerAddress: "Barangay San Francisco, Binan City, Laguna",
+    brand: "Oppo",
+    model: "Find X8",
+    unitDescription: "Oppo Find X8 512GB, Pearl White",
+    cashPrice: "45000.00",
+    installmentPrice: "54000.00",
+    downPayment: "8000.00",
+    term: 18,
+    startDate: "2026-03-15",
+    status: "ACTIVE",
+  });
+  console.log(`✓ Ana Lopez — Oppo Find X8, ACTIVE (will be overdue)`);
+
+  const anaPeriod = new Decimal(ana.monthlyInstallment.toString()).div(2);
+  await postPayment({ installmentAccountId: ana.id, totalAmount: decimalToString(anaPeriod), paymentDate: "2026-03-15", method: "CASH", paymentType: "REGULAR", cashier: "Megan" });
+  // Force OVERDUE status
+  await prisma.installmentSchedule.updateMany({
+    where: { installmentAccountId: ana.id, status: "PENDING", dueDate: { lt: new Date() } },
+    data: { status: "OVERDUE" },
+  });
+  await prisma.installmentAccount.update({
+    where: { id: ana.id },
+    data: { status: "OVERDUE", nextDueDate: new Date("2026-03-30T00:00:00+08:00") },
+  });
+  console.log(`✓ Ana: paid first period only, missed rest → OVERDUE`);
+
   // ── SUMMARY ──
   console.log("\n═══════════════════════════════════════");
   console.log("  SEED COMPLETE");
   console.log("═══════════════════════════════════════\n");
 
-  console.log("2 accounts created:");
-  console.log("  1. Juan Dela Cruz — iPhone 16 Pro Max — APPLIED (needs requirements)");
-  console.log("  2. Maria Santos — Galaxy S25 Ultra — ACTIVE (with 3 payments)\n");
+  console.log("4 accounts created:");
+  console.log("  1. Juan Dela Cruz — iPhone 16 Pro Max — APPLIED");
+  console.log("  2. Maria Santos — Galaxy S25 Ultra — ACTIVE (with 3 payments)");
+  console.log("  3. Carlos Cruz — Redmi Note 14 Pro — OVERDUE (missed Apr/May/Jun)");
+  console.log("  4. Ana Lopez — Oppo Find X8 — OVERDUE (missed after 1st payment)\n");
 }
 
 main()

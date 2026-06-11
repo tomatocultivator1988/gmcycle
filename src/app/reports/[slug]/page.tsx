@@ -234,10 +234,13 @@ export default function ReportPage() {
       {!loading && data && slug === "overdue-accounts" ? (
         <div className="flex flex-wrap items-center gap-3">
           <input
-            type="date"
+            type="number"
+            min={1}
+            max={31}
             value={dueDate}
             onChange={(e) => { setDueDate(e.target.value); setPage(1); }}
-            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+            placeholder="Day of month (1–31)"
+            className="h-10 w-48 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
           />
           {dueDate ? (
             <button
@@ -248,7 +251,7 @@ export default function ReportPage() {
               Clear Filter
             </button>
           ) : null}
-          <span className="text-xs text-slate-500">Showing {data.totalFiltered} accounts{dueDate ? ` due on ${dueDate}` : ""}</span>
+          <span className="text-xs text-slate-500">Showing {data.totalFiltered} accounts{dueDate ? ` due on day ${dueDate}` : ""}</span>
         </div>
       ) : null}
 

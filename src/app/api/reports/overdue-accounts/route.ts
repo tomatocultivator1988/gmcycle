@@ -18,10 +18,10 @@ export async function GET(request: Request) {
     };
 
     if (dueDateFilter) {
-      const filterDate = new Date(dueDateFilter + "T00:00:00+08:00");
-      const nextDay = new Date(filterDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      whereBase.nextDueDate = { gte: filterDate, lt: nextDay };
+      const dayNum = parseInt(dueDateFilter, 10);
+      if (dayNum >= 1 && dayNum <= 31) {
+        whereBase.dueDays = { has: dayNum };
+      }
     }
 
     const [accounts, totalCount, overdueCount] = await Promise.all([
