@@ -11,10 +11,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+    const date = searchParams.get("date");
 
     const whereBase: Record<string, unknown> = {
       status: { in: ["ACTIVE", "DUE_TODAY", "OVERDUE"] },
     };
+
+    if (date) {
+      whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
+    }
 
     const [accounts, totalCount, overdueCount] = await Promise.all([
       prisma.installmentAccount.findMany({

@@ -12,15 +12,23 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
+    const date = searchParams.get("date");
+
+    const whereBase: Record<string, unknown> = {};
+    if (date) {
+      whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
+    }
 
     const [accounts, totalCount, allAccountsForMeta] = await Promise.all([
       prisma.installmentAccount.findMany({
+        where: whereBase,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.installmentAccount.count(),
+      prisma.installmentAccount.count({ where: whereBase }),
       prisma.installmentAccount.findMany({
+        where: whereBase,
         select: { dueDays: true, remainingBalance: true },
       }),
     ]);

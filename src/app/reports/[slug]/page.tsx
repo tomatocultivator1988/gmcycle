@@ -222,13 +222,13 @@ export default function ReportPage() {
     let active = true;
     setLoading(true);
 
-    const url = `/api/reports/${slug}?page=${page}&limit=50`;
+    let url = `/api/reports/${slug}?page=${page}&limit=50`;
+    if (selectedDate) url += `&date=${selectedDate}`;
 
     apiRequest<any>(url)
       .then((res) => {
         if (active) {
           setData(res);
-          setSelectedDate("");
           if (res.pagination) setTotalPages(res.pagination.totalPages);
         }
       })
@@ -236,7 +236,7 @@ export default function ReportPage() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page]);
+  }, [slug, config, page, selectedDate]);
 
   if (!config) {
     return (
@@ -249,10 +249,7 @@ export default function ReportPage() {
     );
   }
 
-  const allRows = data ? (data[listKeys[slug]] ?? []) : [];
-  const rows = hasDateFilter && selectedDate
-    ? allRows.filter((r: any) => r.nextDueDate && r.nextDueDate <= selectedDate)
-    : allRows;
+  const rows = data ? (data[listKeys[slug]] ?? []) : [];
 
   return (
     <div className="space-y-6 print:space-y-4">
@@ -290,7 +287,7 @@ export default function ReportPage() {
           <input
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
             className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
           />
           {selectedDate ? (
@@ -303,7 +300,7 @@ export default function ReportPage() {
             </button>
           ) : null}
           <span className="text-xs text-slate-500">
-            {rows.length} of {allRows.length} accounts
+            {rows.length} of {data.pagination?.total ?? 0} accounts
           </span>
         </div>
       ) : null}
