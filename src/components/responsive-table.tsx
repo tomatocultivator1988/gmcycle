@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 export type Column<T> = {
   key: string;
@@ -17,6 +19,9 @@ type ResponsiveTableProps<T> = {
   loading?: boolean;
   error?: string;
   onRowClick?: (row: T) => void;
+  mobileAccordion?: {
+    summaryColumns: string[];
+  };
 };
 
 export function ResponsiveTable<T>({
@@ -25,8 +30,26 @@ export function ResponsiveTable<T>({
   rowKey,
   emptyMessage = "No data found.",
   onRowClick,
+  mobileAccordion,
 }: ResponsiveTableProps<T>) {
   const visibleMobile = columns.filter((c) => !c.hideOnMobile);
+  const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
+
+  const toggleRow = (id: string | number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const summaryCols = mobileAccordion
+    ? columns.filter((c) => mobileAccordion.summaryColumns.includes(c.key))
+    : [];
+  const detailCols = mobileAccordion
+    ? visibleMobile.filter((c) => !mobileAccordion.summaryColumns.includes(c.key))
+    : [];
 
   return (
     <>
@@ -36,6 +59,51 @@ export function ResponsiveTable<T>({
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
             {emptyMessage}
           </div>
+        ) : mobileAccordion ? (
+          data.map((row, i) => {
+            const id = rowKey(row, i);
+            const isExpanded = expandedRows.has(id);
+
+            return (
+              <div
+                key={id}
+                className={`rounded-xl border border-slate-200 bg-white shadow-sm ${
+                  onRowClick ? "cursor-pointer" : ""
+                }`}
+              >
+                <div
+                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+                  onClick={() => toggleRow(id)}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {summaryCols.map((col, ci) => (
+                      <div key={col.key} className={ci === 0 ? "truncate font-medium text-slate-900" : ""}>
+                        {col.render(row)}
+                      </div>
+                    ))}
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 text-slate-400 transition-transform duration-200 ml-2 ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+                {isExpanded && (
+                  <div className="border-t border-slate-100 px-4 pb-3 pt-2 space-y-2">
+                    {detailCols.map((col) => (
+                      <div key={col.key} className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-slate-500 shrink-0">{col.label}</span>
+                        <span className="text-right text-sm font-medium text-slate-900">
+                          {col.render(row)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         ) : (
           data.map((row, i) => (
             <div
