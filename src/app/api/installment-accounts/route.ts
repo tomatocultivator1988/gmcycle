@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const [accounts, total] = await Promise.all([
       prisma.installmentAccount.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { customerName: "asc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
