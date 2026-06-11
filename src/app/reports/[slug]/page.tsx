@@ -362,7 +362,7 @@ export default function ReportPage() {
               data={rows}
               rowKey={(row: any, idx: number) => row.id ?? idx}
               emptyMessage="No data for this report."
-              mobileAccordion={slug === "account-master-list" ? { summaryColumns: ["customerName", "status"] } : undefined}
+              mobileAccordion={slug === "account-master-list" || slug === "overdue-accounts" ? { summaryColumns: ["customerName", "status"] } : undefined}
             />
             {slug !== "monthly-collections" ? (
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="print:hidden" />
