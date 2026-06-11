@@ -31,7 +31,7 @@ export function ResponsiveTable<T>({
   return (
     <>
       {/* Mobile: card layout */}
-      <div className="block sm:hidden space-y-3">
+      <div className="block sm:hidden print:hidden space-y-3">
         {data.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
             {emptyMessage}
@@ -69,7 +69,7 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Desktop: table layout */}
-      <div className="hidden sm:block overflow-x-auto">
+      <div className="hidden sm:block print:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
