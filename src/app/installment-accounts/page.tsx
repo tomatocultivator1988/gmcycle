@@ -38,6 +38,7 @@ export default function InstallmentAccountsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDate, setPreviewDate] = useState("");
   const [previewStatus, setPreviewStatus] = useState("");
+  const [showClosed, setShowClosed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchAccounts = useCallback(async (p: number, search: string) => {
@@ -279,21 +280,34 @@ export default function InstallmentAccountsPage() {
 
       {!loading ? (
         <>
-          <div className="relative max-w-sm">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by customer, brand, or model..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative max-w-sm">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by customer, brand, or model..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowClosed(!showClosed)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium transition-all ${
+                showClosed
+                  ? "bg-slate-700 text-white shadow-sm"
+                  : "border border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {showClosed ? "Hide Closed" : "Show Closed"}
+            </button>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <ResponsiveTable
               columns={columns}
-              data={accounts}
+              data={showClosed ? accounts : accounts.filter((a) => a.status !== "CLOSED")}
               rowKey={(a) => a.id}
               emptyMessage={debouncedSearch ? "No accounts match your search." : "No accounts yet. Create your first account."}
             />

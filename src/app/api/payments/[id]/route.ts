@@ -19,18 +19,20 @@ export async function GET(
     const payment = await prisma.payment.findUnique({
       where: { id },
       include: {
-        installmentAccount: {
-          select: {
-            customerName: true,
-            customerPhone: true,
-            customerAddress: true,
-            brand: true,
-            model: true,
-            unitDescription: true,
-            monthlyInstallment: true,
-            remainingBalance: true,
+          installmentAccount: {
+            select: {
+              customerName: true,
+              customerPhone: true,
+              customerAddress: true,
+              brand: true,
+              model: true,
+              unitDescription: true,
+              monthlyInstallment: true,
+              remainingBalance: true,
+              term: true,
+              scheduleType: true,
+            },
           },
-        },
       },
     });
 
@@ -46,6 +48,14 @@ export async function GET(
       .reduce((sum, p) => sum.plus(new Decimal(p.totalAmount)), new Decimal(0))
       .toFixed(2);
 
+    const paidCount = await prisma.installmentSchedule.count({
+      where: {
+        installmentAccountId: payment.installmentAccountId,
+        status: "PAID",
+      },
+    });
+    const totalPeriods = payment.installmentAccount.term;
+
     return NextResponse.json({
       payment: {
         ...serializePayment(payment),
@@ -59,6 +69,8 @@ export async function GET(
           monthlyInstallment: decimalToString(payment.installmentAccount.monthlyInstallment),
           remainingBalance: decimalToString(payment.installmentAccount.remainingBalance),
           totalPaid,
+          paidCount,
+          totalPeriods,
         },
       },
     });

@@ -15,7 +15,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const body = closeAccountSchema.parse(await readJson(request));
 
-    const existing = await prisma.installmentAccount.findUnique({ where: { id } });
+    const existing = await prisma.installmentAccount.findUnique({
+      where: { id },
+      include: { schedule: { where: { status: "PAID" } } },
+    });
 
     if (!existing) {
       throw new NotFoundError("Installment account not found");
@@ -28,24 +31,52 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    const balance = new Decimal(existing.remainingBalance.toString());
-    if (balance.gt(0)) {
+    const config = await prisma.adminConfig.findFirst();
+    if (!config?.adminPassword) {
       return NextResponse.json(
-        { error: `Cannot close account with outstanding balance of ₱${balance.toFixed(2)}` },
+        { error: "Admin password not set. Configure it in Settings first." },
         { status: 400 },
       );
     }
 
-    const updated = await prisma.installmentAccount.update({
-      where: { id },
-      data: {
-        status: "CLOSED",
-        remarks: body.remarks,
-      },
+    if (body.password !== config.adminPassword) {
+      return NextResponse.json(
+        { error: "Incorrect admin password" },
+        { status: 401 },
+      );
+    }
+
+    const balance = new Decimal(existing.remainingBalance.toString());
+    const writtenOff = balance.gt(0) ? balance.toFixed(2) : "0.00";
+    const paidPeriods = existing.schedule.length;
+    const totalPaid = existing.schedule.length > 0 ? `${paidPeriods} schedules paid` : "";
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.installmentAccount.update({
+        where: { id },
+        data: {
+          status: "CLOSED",
+          remainingBalance: new Decimal("0.00"),
+          remarks: body.remarks
+            ? `${body.remarks} | Written off: ₱${balance.toFixed(2)}`
+            : `Written off: ₱${balance.toFixed(2)}`,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          accountId: id,
+          action: "CLOSED",
+          details: `Account closed. ₱${balance.toFixed(2)} written off. ${totalPaid}`,
+        },
+      });
+
+      return result;
     });
 
     return NextResponse.json({
       installmentAccount: serializeInstallmentAccount(updated),
+      writtenOff,
     });
   } catch (error) {
     return handleApiError(error);

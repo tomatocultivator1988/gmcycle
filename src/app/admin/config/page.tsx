@@ -15,6 +15,8 @@ export default function AdminConfigPage() {
   const [config, setConfig] = useState<AdminConfigDto | null>(null);
   const [penaltyPerDay, setPenaltyPerDay] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [hasPassword, setHasPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,7 @@ export default function AdminConfigPage() {
         setConfig(data.config);
         setPenaltyPerDay(data.config.penaltyPerDay);
         setAdminEmail(data.config.adminEmail ?? "");
+        setHasPassword(data.config.hasPassword ?? false);
       })
       .catch((requestError: Error) => setError(requestError.message))
       .finally(() => setLoading(false));
@@ -59,6 +62,7 @@ export default function AdminConfigPage() {
         body: JSON.stringify({
           penaltyPerDay,
           adminEmail,
+          adminPassword,
         }),
       });
       setConfig(data.config);
@@ -124,6 +128,20 @@ export default function AdminConfigPage() {
                   />
                 </label>
                 <FieldError error={fieldErrors.adminEmail} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Admin Password (for closing accounts)
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder={hasPassword ? "Leave blank to keep current" : "Set a password"}
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                {hasPassword ? <p className="mt-1 text-xs text-slate-400">Password is set. Leave blank to keep unchanged.</p> : null}
               </div>
             </div>
 

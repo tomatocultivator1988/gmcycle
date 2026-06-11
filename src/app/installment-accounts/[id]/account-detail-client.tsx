@@ -154,6 +154,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [voidConfirm, setVoidConfirm] = useState("");
   const [voiding, setVoiding] = useState(false);
   const [closeRemarks, setCloseRemarks] = useState("");
+  const [closePassword, setClosePassword] = useState("");
   const [closing, setClosing] = useState(false);
   const [showDeviceSecurity, setShowDeviceSecurity] = useState(false);
   const [deviceEmail, setDeviceEmail] = useState("");
@@ -468,7 +469,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     try {
       await apiRequest(`/api/installment-accounts/${account.id}/close`, {
         method: "PATCH",
-        body: JSON.stringify({ remarks: closeRemarks }),
+        body: JSON.stringify({ remarks: closeRemarks, password: closePassword }),
       });
       setShowCloseModal(false);
       loadData();
@@ -1441,6 +1442,11 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 <p className="mt-1.5 text-sm text-slate-500">
                   {account.brand} {account.model} — {account.customerName}
                 </p>
+                {account.remainingBalance !== "0.00" ? (
+                  <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-medium text-amber-800">
+                    ⚠️ Outstanding balance of <strong>{formatPeso(account.remainingBalance)}</strong> will be written off. This action requires admin password.
+                  </p>
+                ) : null}
               </div>
 
               <div className="mt-4">
@@ -1456,10 +1462,24 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </label>
               </div>
 
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Admin Password
+                  <input
+                    type="password"
+                    required
+                    value={closePassword}
+                    onChange={(e) => setClosePassword(e.target.value)}
+                    placeholder="Enter admin password"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+
               <div className="mt-6 flex flex-col gap-2">
                 <button
                   type="button"
-                  disabled={closing || !closeRemarks.trim()}
+                  disabled={closing || !closeRemarks.trim() || !closePassword.trim()}
                   onClick={handleCloseAccount}
                   className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-rose-500 active:scale-[0.98] disabled:bg-slate-300"
                 >

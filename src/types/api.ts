@@ -120,4 +120,5 @@ export type AdminConfigDto = {
   id: string;
   penaltyPerDay: string;
   adminEmail: string | null;
+  hasPassword: boolean;
 };

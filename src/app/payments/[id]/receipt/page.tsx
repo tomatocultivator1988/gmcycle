@@ -20,6 +20,8 @@ type ReceiptData = PaymentDto & {
     monthlyInstallment: string;
     remainingBalance: string;
     totalPaid: string;
+    paidCount: number;
+    totalPeriods: number;
   };
 };
 
@@ -110,6 +112,9 @@ export default function ReceiptPage() {
           <p className="text-xs text-slate-500">{data.account.unitDescription}</p>
           <p className="text-xs text-slate-500 mt-1">
             Monthly: {formatPeso(data.account.monthlyInstallment)}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Payment {data.account.paidCount} of {data.account.totalPeriods} {data.account.totalPeriods <= 24 ? "payments" : "months"}
           </p>
         </div>
 

@@ -75,6 +75,7 @@ export const updateInstallmentAccountSchema = z.object({
 export const updateAdminConfigSchema = z.object({
   penaltyPerDay: moneyString,
   adminEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  adminPassword: z.string().optional(),
 });
 
 export const markBadRecordSchema = z.object({
@@ -84,6 +85,7 @@ export const markBadRecordSchema = z.object({
 
 export const closeAccountSchema = z.object({
   remarks: z.string().min(1, "Remarks are required"),
+  password: z.string().min(1, "Admin password is required"),
 });
 
 export const deviceSecuritySchema = z.object({
