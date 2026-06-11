@@ -167,14 +167,13 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [dueDateInput, setDueDateInput] = useState("");
   const [dueDate, setDueDate] = useState("");
 
-  function todayString() {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Manila",
-      year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date());
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => setDueDate(dueDateInput), 300);
+    return () => clearTimeout(timer);
+  }, [dueDateInput]);
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -237,15 +236,15 @@ export default function ReportPage() {
             type="number"
             min={1}
             max={31}
-            value={dueDate}
-            onChange={(e) => { setDueDate(e.target.value); setPage(1); }}
+            value={dueDateInput}
+            onChange={(e) => { setDueDateInput(e.target.value); setPage(1); }}
             placeholder="Day of month (1–31)"
             className="h-10 w-48 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
           />
           {dueDate ? (
             <button
               type="button"
-              onClick={() => { setDueDate(""); setPage(1); }}
+              onClick={() => { setDueDateInput(""); setDueDate(""); setPage(1); }}
               className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
             >
               Clear Filter
