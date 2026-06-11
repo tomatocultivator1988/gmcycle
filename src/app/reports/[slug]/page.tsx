@@ -265,7 +265,8 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] print:hidden"
+                disabled={loading}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] print:hidden disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Printer size={16} />
                 Print / Export PDF
@@ -336,6 +337,14 @@ export default function ReportPage() {
         </div>
       ) : null}
 
+      {!loading && data && hasDateFilter && selectedDate ? (
+        <div className="hidden print:block text-xs text-slate-600 mb-2">
+          <span className="font-semibold">Filter:</span> Due on or before <span className="font-semibold">{selectedDate}</span>
+          {selectedPaidStatus ? <span> · Status: <span className="font-semibold capitalize">{selectedPaidStatus}</span></span> : null}
+          <span className="ml-2 text-slate-400">({data.pagination?.total ?? 0} accounts)</span>
+        </div>
+      ) : null}
+
       {!loading && data ? (
         <>
           <div className="flex flex-wrap gap-4 print:gap-3">
@@ -355,7 +364,7 @@ export default function ReportPage() {
               emptyMessage="No data for this report."
             />
             {slug !== "monthly-collections" ? (
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="print:hidden" />
             ) : null}
           </div>
         </>

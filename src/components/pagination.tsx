@@ -4,13 +4,14 @@ type PaginationProps = {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  className?: string;
 };
 
-export function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
+export function Pagination({ page, totalPages, onPageChange, className }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+    <div className={`flex items-center justify-between border-t border-slate-200 px-4 py-3 ${className ?? ""}`}>
       <div className="text-sm text-slate-500">
         Page {page} of {totalPages}
       </div>

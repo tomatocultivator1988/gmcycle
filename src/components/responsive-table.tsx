@@ -70,13 +70,13 @@ export function ResponsiveTable<T>({
 
       {/* Desktop: table layout */}
       <div className="hidden sm:block print:block">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-sm print:text-[9px]">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3.5 text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 whitespace-nowrap ${col.headerClassName ?? ""}`}
+                  className={`px-4 py-3.5 text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 whitespace-nowrap print:px-1 print:py-0.5 ${col.headerClassName ?? ""}`}
                 >
                   {col.label}
                 </th>
@@ -96,7 +96,7 @@ export function ResponsiveTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-4 py-3 text-slate-700 ${col.className ?? ""}`}
+                      className={`px-4 py-3 text-slate-700 print:px-1 print:py-0.5 ${col.className ?? ""}`}
                     >
                       {col.render(row)}
                     </td>

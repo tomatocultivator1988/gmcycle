@@ -72,3 +72,13 @@ button:disabled {
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-1px);
 }
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 12mm;
+  }
+  body {
+    font-size: 11px;
+  }
+}
