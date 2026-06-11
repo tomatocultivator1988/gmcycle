@@ -262,7 +262,6 @@ export default function ReportPage() {
         description={config.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {hasDateFilter ? (
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -272,7 +271,6 @@ export default function ReportPage() {
                 <Printer size={16} />
                 Print / Export PDF
               </button>
-            ) : null}
             <Link
               href="/reports"
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
