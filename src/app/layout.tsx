@@ -51,9 +51,9 @@ export default function RootLayout({
                 <span className="flex size-16 items-center justify-center">
                   <img src="/logo.png" alt="MyFaveGadgets" className="h-12 w-auto object-contain" />
                 </span>
-                <span className="hidden sm:block">
+                <span>
                   <span className="block text-lg font-bold font-heading text-slate-900">MyFaveGadgets</span>
-                  <span className="block text-[11px] font-medium text-slate-500 leading-tight">Gadget Installment</span>
+                  <span className="hidden sm:block text-[11px] font-medium text-slate-500 leading-tight">Gadget Installment</span>
                 </span>
               </Link>
               <nav className="flex items-center gap-1">
