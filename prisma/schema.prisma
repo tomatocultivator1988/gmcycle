@@ -68,6 +68,7 @@ model InstallmentAccount {
   scheduleType       ScheduleType  @default(SEMI_MONTHLY)
   dueDays            Int[]         @default([15, 30])
   firstDueDate       DateTime?
+  dateGiven          DateTime?
   startDate          DateTime
   nextDueDate        DateTime
   badRecord          Boolean       @default(false)

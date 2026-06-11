@@ -75,6 +75,8 @@ export async function GET(_request: Request, context: RouteContext) {
         monthlyInstallment: decimalToString(account.monthlyInstallment),
         status: account.status,
         startDate: dateToManilaDateOnly(account.startDate),
+        dateGiven: account.dateGiven ? dateToManilaDateOnly(account.dateGiven) : null,
+        firstDueDate: account.firstDueDate ? dateToManilaDateOnly(account.firstDueDate) : null,
         nextDueDate: dateToManilaDateOnly(account.nextDueDate),
         // Summary
         totalPayments: decimalToString(totalPayments),

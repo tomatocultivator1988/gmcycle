@@ -27,6 +27,7 @@ export type InstallmentAccountDto = {
   scheduleType: ScheduleTypeValue;
   dueDays: number[];
   firstDueDate: string | null;
+  dateGiven: string | null;
   startDate: string;
   nextDueDate: string;
   badRecord: boolean;

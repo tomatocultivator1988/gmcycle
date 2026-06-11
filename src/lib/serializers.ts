@@ -30,6 +30,7 @@ export function serializeInstallmentAccount(account: InstallmentAccountShape) {
     scheduleType: account.scheduleType,
     dueDays: account.dueDays,
     firstDueDate: account.firstDueDate ? dateToManilaDateOnly(account.firstDueDate) : null,
+    dateGiven: account.dateGiven ? dateToManilaDateOnly(account.dateGiven) : null,
     term: account.term,
     startDate: dateToManilaDateOnly(account.startDate),
     nextDueDate: dateToManilaDateOnly(account.nextDueDate),

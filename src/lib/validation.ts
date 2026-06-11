@@ -42,6 +42,7 @@ export const createInstallmentAccountSchema = z.object({
   scheduleType: z.enum(["SEMI_MONTHLY", "MONTHLY"]).default("SEMI_MONTHLY"),
   dueDays: z.array(z.number().int().min(1).max(31)).min(1, "At least one due day required"),
   firstDueDate: dateOnlyString,
+  dateGiven: dateOnlyString.optional(),
   customFields: z.record(z.string(), z.string()).optional(),
 });
 

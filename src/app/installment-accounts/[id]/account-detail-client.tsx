@@ -667,6 +667,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         <StatCard label="Remaining Balance" value={formatPeso(account.remainingBalance)} />
         <StatCard label="Next Due Date" value={account.nextDueDate} />
         <StatCard label="Days Overdue" value={String(daysOverdue)} valueClass={daysOverdue > 0 ? "text-rose-600" : "text-slate-900"} />
+        <StatCard label="Date Given" value={account.dateGiven ?? "—"} />
+        <StatCard label="First Due Date" value={account.firstDueDate ?? "—"} />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

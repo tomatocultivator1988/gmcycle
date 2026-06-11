@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     const monthlyInstallment = remainingBalance.div(body.term).toDecimalPlaces(2);
     const startDate = parseDateOnly(body.startDate || body.firstDueDate, "startDate");
     const firstDueDate = parseDateOnly(body.firstDueDate, "firstDueDate");
+    const dateGiven = body.dateGiven?.trim() ? parseDateOnly(body.dateGiven, "dateGiven") : null;
     const term = body.term;
     const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
     const dueDays = body.dueDays ?? [15, 30];
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
           scheduleType,
           dueDays,
           firstDueDate,
+          dateGiven,
           startDate,
           customFields: body.customFields ?? {},
           nextDueDate: firstDueDate,

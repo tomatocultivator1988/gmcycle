@@ -27,6 +27,8 @@ type StatementData = {
   monthlyInstallment: string;
   status: string;
   startDate: string;
+  dateGiven: string | null;
+  firstDueDate: string | null;
   nextDueDate: string;
   totalPayments: string;
   totalPenalties: string;
@@ -152,7 +154,8 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             <div><span className="text-slate-500">Term:</span> <span className="text-slate-700">{data.term} months</span></div>
             <div><span className="text-slate-500">Monthly:</span> <span className="text-slate-700">{formatPeso(data.monthlyInstallment)}</span></div>
             <div><span className="text-slate-500">Interest:</span> <span className="text-slate-700">{data.interestRate ? `${data.interestRate}%${data.itemType === "CASH" ? " one-time" : " /mo"}` : "N/A"}</span></div>
-            <div><span className="text-slate-500">Start:</span> <span className="text-slate-700">{data.startDate}</span></div>
+            <div><span className="text-slate-500">First Due:</span> <span className="text-slate-700">{data.firstDueDate ?? "—"}</span></div>
+            <div><span className="text-slate-500">Date Given:</span> <span className="text-slate-700">{data.dateGiven ?? "—"}</span></div>
           </div>
         </div>
 
