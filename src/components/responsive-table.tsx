@@ -69,7 +69,7 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Desktop: table layout */}
-      <div className="hidden sm:block print:block overflow-x-auto">
+      <div className="hidden sm:block print:block">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
@@ -96,7 +96,7 @@ export function ResponsiveTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-4 py-3 text-slate-700 whitespace-nowrap ${col.className ?? ""}`}
+                      className={`px-4 py-3 text-slate-700 ${col.className ?? ""}`}
                     >
                       {col.render(row)}
                     </td>
