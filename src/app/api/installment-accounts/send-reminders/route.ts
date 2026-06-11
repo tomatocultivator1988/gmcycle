@@ -19,13 +19,19 @@ export async function POST(request: Request) {
       where.id = { in: body.accountIds };
     }
 
-    const accounts = await prisma.installmentAccount.findMany({
-      where,
-      include: {
-        schedule: { orderBy: { periodNumber: "asc" } },
-        payments: { orderBy: { paymentDate: "desc" } },
-      },
-    });
+    const [accounts, config] = await Promise.all([
+      prisma.installmentAccount.findMany({
+        where,
+        include: {
+          schedule: { orderBy: { periodNumber: "asc" } },
+          payments: { orderBy: { paymentDate: "desc" } },
+        },
+      }),
+      prisma.adminConfig.findFirst(),
+    ]);
+
+    const penaltyPerDay = new Decimal(config?.penaltyPerDay ?? "50");
+    const now = new Date();
 
     let sent = 0;
     let failed = 0;
@@ -36,27 +42,67 @@ export async function POST(request: Request) {
       const unpaidSchedule = account.schedule.filter(
         (s) => s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE",
       );
-      const nextPeriod = unpaidSchedule[0];
-      if (!nextPeriod) continue;
+      if (unpaidSchedule.length === 0) continue;
 
       const totalPaid = account.payments
         .filter((p) => !p.voided)
         .reduce((sum, p) => sum.plus(new Decimal(p.totalAmount.toString())), new Decimal(0));
 
+      const periodRows = unpaidSchedule.map((s) => {
+        const dueDate = new Date(s.dueDate);
+        const daysOverdue = Math.max(
+          0,
+          Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)),
+        );
+        const accruedPenalty = daysOverdue > 0
+          ? penaltyPerDay.times(daysOverdue)
+          : new Decimal(0);
+        const totalDue = new Decimal(s.amount.toString()).plus(accruedPenalty);
+        return { period: s.periodNumber, dueDate, amount: s.amount, daysOverdue, accruedPenalty, totalDue };
+      });
+
+      const totalDueAll = periodRows.reduce((sum, r) => sum.plus(r.totalDue), new Decimal(0));
+      const totalPenaltyAll = periodRows.reduce((sum, r) => sum.plus(r.accruedPenalty), new Decimal(0));
+
+      const rowsHtml = periodRows.map((r) => `
+        <tr>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">#${r.period}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${dateToManilaDateOnly(r.dueDate)}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${formatPeso(r.amount)}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${r.daysOverdue > 0 ? `${r.daysOverdue}d` : "—"}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#b91c1c;">${r.accruedPenalty.gt(0) ? formatPeso(r.accruedPenalty) : "—"}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${formatPeso(r.totalDue)}</td>
+        </tr>`).join("");
+
       const html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #991b1b;">Payment Reminder — MyFaveGadgets</h2>
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#991b1b;">Payment Reminder — MyFaveGadgets</h2>
           <p>Dear <strong>${account.customerName}</strong>,</p>
-          <p>This is a reminder that your payment for <strong>${account.brand} ${account.model}</strong> is due.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="padding: 6px 0; color: #64748b;">Next Due Date</td><td style="padding: 6px 0; font-weight: 600;">${dateToManilaDateOnly(nextPeriod.dueDate)}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Amount Due</td><td style="padding: 6px 0; font-weight: 600;">${formatPeso(nextPeriod.amount)}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Remaining Balance</td><td style="padding: 6px 0; font-weight: 600; color: #991b1b;">${formatPeso(account.remainingBalance.toString())}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Total Paid</td><td style="padding: 6px 0;">${formatPeso(totalPaid.toFixed(2))}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Term</td><td style="padding: 6px 0;">${account.term} months &middot; ${formatPeso(account.monthlyInstallment.toString())}/mo</td></tr>
+          <p>This is a reminder for <strong>${account.brand} ${account.model}</strong>.</p>
+          <p>You have <strong>${unpaidSchedule.length}</strong> unpaid period${unpaidSchedule.length > 1 ? "s" : ""}:</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Period</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Due Date</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Amount</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Days</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Penalty</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Total Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
           </table>
-          <p style="color: #b91c1c; font-weight: 600;">⚠️  Late payments incur a penalty of ${formatPeso(String(50))}/day.</p>
-          <p style="margin-top: 24px; color: #64748b; font-size: 12px;">MyFaveGadgets — Binan City, Laguna</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+            <tr><td style="padding:6px 0;color:#64748b;">Total Due</td><td style="padding:6px 0;font-weight:700;font-size:15px;color:#991b1b;">${formatPeso(totalDueAll)} ${totalPenaltyAll.gt(0) ? `(incl. ${formatPeso(totalPenaltyAll)} penalty)` : ""}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Remaining Balance</td><td style="padding:6px 0;font-weight:600;color:#991b1b;">${formatPeso(account.remainingBalance.toString())}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Total Paid</td><td style="padding:6px 0;">${formatPeso(totalPaid.toFixed(2))}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Term</td><td style="padding:6px 0;">${account.term} months &middot; ${formatPeso(account.monthlyInstallment.toString())}/mo</td></tr>
+          </table>
+          <p style="color:#b91c1c;font-weight:600;">⚠️  Late penalty: ${formatPeso(penaltyPerDay)}/day overdue.</p>
+          <p style="margin-top:24px;color:#64748b;font-size:12px;">MyFaveGadgets — Binan City, Laguna</p>
         </div>`;
 
       try {
