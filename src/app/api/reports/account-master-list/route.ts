@@ -63,7 +63,6 @@ export async function GET(request: Request) {
         id: a.id,
         customerName: a.customerName,
         customerPhone: a.customerPhone,
-        customerAddress: a.customerAddress,
         brand: a.brand,
         model: a.model,
         unitDescription: a.unitDescription,
