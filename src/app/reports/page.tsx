@@ -51,6 +51,12 @@ const reportLinks = [
     description: "All active accounts with remaining balances",
     icon: DollarSign,
   },
+  {
+    href: "/reports/account-master-list",
+    label: "Account Master List",
+    description: "All accounts with complete customer, unit, and contract details",
+    icon: FileText,
+  },
 ];
 
 export default function ReportsPage() {

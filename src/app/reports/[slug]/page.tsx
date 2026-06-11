@@ -148,6 +148,51 @@ const reportConfigs: Record<string, ReportConfig> = {
       },
     ],
   },
+  "account-master-list": {
+    title: "Account Master List",
+    description: "All accounts with complete customer, unit, and contract details",
+    summaryFields: [
+      { label: "Total Accounts", getValue: (d) => String(d.totalAccounts) },
+      { label: "Total Balance Outstanding", getValue: (d) => formatPeso(d.totalBalance) },
+    ],
+    columns: [
+      {
+        key: "customerName",
+        label: "Customer",
+        render: (r) => <Link href={`/installment-accounts/${r.id}`} className="font-medium text-red-800 hover:text-red-600 hover:underline print:text-black">{r.customerName}</Link>,
+      },
+      { key: "contact", label: "Contact", render: (r) => r.customerPhone },
+      { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
+      { key: "cashPrice", label: "Cash Price", render: (r) => formatPeso(r.cashPrice), hideOnMobile: true },
+      { key: "downPayment", label: "Down Pmt", render: (r) => formatPeso(r.downPayment), hideOnMobile: true },
+      { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
+      { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment) },
+      { key: "term", label: "Term", render: (r) => `${r.term}mo`, hideOnMobile: true },
+      { key: "dueDay", label: "Due Day", render: (r) => (r.dueDays as number[]).join(", "), hideOnMobile: true },
+      { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },
+      {
+        key: "status",
+        label: "Status",
+        render: (r) => <StatusBadge status={r.status} />,
+      },
+      {
+        key: "daysOverdue",
+        label: "Days Overdue",
+        render: (r) => r.daysOverdue > 0
+          ? <span className="font-semibold text-rose-600">{r.daysOverdue}d</span>
+          : <span className="text-slate-400">—</span>,
+        hideOnMobile: true,
+      },
+      {
+        key: "lastPayment",
+        label: "Last Payment",
+        render: (r) => r.lastPaymentDate
+          ? <span className="text-xs">{r.lastPaymentDate}<br/><span className="text-slate-500">{formatPeso(r.lastPaymentAmount)}</span></span>
+          : <span className="text-slate-400">—</span>,
+        hideOnMobile: true,
+      },
+    ],
+  },
 };
 
 const listKeys: Record<string, string> = {
@@ -157,6 +202,7 @@ const listKeys: Record<string, string> = {
   "overdue-accounts": "accounts",
   penalties: "penalties",
   "outstanding-balances": "accounts",
+  "account-master-list": "accounts",
 };
 
 export default function ReportPage() {
@@ -168,6 +214,7 @@ export default function ReportPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const hasFilterChips = slug === "overdue-accounts" || slug === "account-master-list";
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -203,7 +250,7 @@ export default function ReportPage() {
   }
 
   const allRows = data ? (data[listKeys[slug]] ?? []) : [];
-  const rows = slug === "overdue-accounts" && selectedDay
+  const rows = hasFilterChips && selectedDay
     ? allRows.filter((r: any) => r.dueDays?.includes(selectedDay))
     : allRows;
 
@@ -214,7 +261,7 @@ export default function ReportPage() {
         description={config.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {slug === "overdue-accounts" ? (
+            {hasFilterChips ? (
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -237,7 +284,7 @@ export default function ReportPage() {
       {error ? <ErrorMessage message={error} /> : null}
       {loading ? <LoadingBlock label={`Loading ${config.title}`} /> : null}
 
-      {!loading && data && slug === "overdue-accounts" ? (
+      {!loading && data && hasFilterChips ? (
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <span className="text-xs font-semibold text-slate-500 mr-1">Due Day:</span>
           <button
