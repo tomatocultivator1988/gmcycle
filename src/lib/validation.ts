@@ -22,14 +22,14 @@ const nameString = z
   .min(2, "Name is too short")
   .max(120, "Name is too long")
   .regex(/^[\p{L}][\p{L}\s.'-]*$/u, "Name contains unsupported characters");
-const emailString = z.string().trim().email("Enter a valid email address").optional().or(z.literal(""));
+const emailString = z.string().trim().min(1, "Email is required").email("Enter a valid email address");
 
 export const createInstallmentAccountSchema = z.object({
   customerName: nameString,
   customerPhone: phoneString,
   customerEmail: emailString,
   customerAddress: requiredString,
-  fbLink: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  fbLink: z.string().url("Enter a valid URL").min(1, "Facebook link is required"),
   brand: requiredString,
   model: requiredString,
   unitDescription: requiredString,

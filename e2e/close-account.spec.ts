@@ -19,6 +19,7 @@ test.describe("Close Account Logic", () => {
         customerPhone: "09100000001",
         customerEmail: "close@test.com",
         customerAddress: "Test Address",
+        fbLink: "https://facebook.com/test",
         brand: "Honda",
         model: "Test 125",
         unitDescription: "Test motorcycle for close",

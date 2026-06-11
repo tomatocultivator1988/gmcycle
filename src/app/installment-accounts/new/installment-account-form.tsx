@@ -93,7 +93,9 @@ export function InstallmentAccountForm() {
   const formValid =
     form.customerName.trim() &&
     form.customerPhone.trim() &&
+    form.customerEmail.trim() &&
     form.customerAddress.trim() &&
+    form.fbLink.trim() &&
     form.brand.trim() &&
     form.model.trim() &&
     form.unitDescription.trim() &&
