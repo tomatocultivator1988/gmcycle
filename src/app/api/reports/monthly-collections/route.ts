@@ -4,9 +4,15 @@ import { handleApiError } from "@/lib/api";
 import { getManilaDayRange, dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { startOfMonth, endOfMonth, startOfYear } from "date-fns";
 
 export const runtime = "nodejs";
+
+function getMonthRange(date: Date): { start: Date; end: Date } {
+  const start = new Date(`${dateToManilaDateOnly(date).slice(0, 7)}-01T00:00:00.000+08:00`);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  return { start, end };
+}
 
 export async function GET(request: Request) {
   try {
@@ -15,8 +21,7 @@ export async function GET(request: Request) {
     const referenceDate = monthParam
       ? parseDateOnly(monthParam + "-01")
       : getManilaDayRange().start;
-    const monthStart = startOfMonth(referenceDate);
-    const monthEnd = endOfMonth(referenceDate);
+    const { start: monthStart, end: monthEnd } = getMonthRange(referenceDate);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
@@ -38,7 +43,7 @@ export async function GET(request: Request) {
       new Decimal(0),
     );
 
-    const yearStart = startOfYear(referenceDate);
+    const yearStart = new Date(`${dateToManilaDateOnly(referenceDate).slice(0, 4)}-01-01T00:00:00.000+08:00`);
     const breakdown = await prisma.$queryRawUnsafe<Array<{
       month: string;
       total: string;
