@@ -71,32 +71,36 @@ export async function GET(request: Request) {
     const pagedAccounts = filteredAccounts.slice((page - 1) * limit, page * limit);
 
     const pagedIds = pagedAccounts.map((a) => a.id);
-    const lastPayments = pagedIds.length > 0
-      ? await prisma.payment.findMany({
-          where: {
-            installmentAccountId: { in: pagedIds },
-            voided: false,
-          },
-          orderBy: { paymentDate: "desc" },
-          distinct: ["installmentAccountId"],
-        })
-      : [];
 
-    const paymentMap = new Map(lastPayments.map((p) => [p.installmentAccountId, p]));
+    let lastPaymentMap = new Map<string, { lastPaymentDate: string; lastPaymentAmount: Decimal }>();
+    let totalPaidMap = new Map<string, Decimal>();
 
-    const totalPaidPerAccount = pagedIds.length > 0
-      ? await prisma.payment.groupBy({
-          by: ["installmentAccountId"],
-          where: {
-            installmentAccountId: { in: pagedIds },
-            voided: false,
-          },
-          _sum: { totalAmount: true },
-        })
-      : [];
-    const totalPaidMap = new Map(
-      totalPaidPerAccount.map((r) => [r.installmentAccountId, r._sum.totalAmount ?? new Decimal(0)]),
-    );
+    if (pagedIds.length > 0) {
+      const combined = await prisma.$queryRawUnsafe<Array<{
+        installmentAccountId: string;
+        last_payment_date: Date | null;
+        last_payment_amount: Decimal | null;
+        total_paid: Decimal | null;
+      }>>(
+        `SELECT DISTINCT ON ("installmentAccountId")
+          "installmentAccountId",
+          "paymentDate" AS last_payment_date,
+          "totalAmount" AS last_payment_amount,
+          SUM("totalAmount") OVER (PARTITION BY "installmentAccountId") AS total_paid
+        FROM "Payment"
+        WHERE "installmentAccountId" = ANY($1::text[]) AND "voided" = false
+        ORDER BY "installmentAccountId", "paymentDate" DESC`,
+        pagedIds,
+      );
+
+      for (const r of combined) {
+        lastPaymentMap.set(r.installmentAccountId, {
+          lastPaymentDate: r.last_payment_date ? dateToManilaDateOnly(r.last_payment_date) : "",
+          lastPaymentAmount: r.last_payment_amount ?? new Decimal(0),
+        });
+        totalPaidMap.set(r.installmentAccountId, r.total_paid ?? new Decimal(0));
+      }
+    }
 
     const allDueDays = [...new Set(allAccounts.flatMap((a) => a.dueDays))].sort((a, b) => a - b);
     const totalBalance = allAccounts.reduce(
@@ -128,7 +132,7 @@ export async function GET(request: Request) {
       const daysOverdue = nextDue < todayStr
         ? Math.floor((new Date().getTime() - a.nextDueDate.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
-      const lastPay = paymentMap.get(a.id);
+      const lastPayInfo = lastPaymentMap.get(a.id);
       let dueLabel = daysOverdue > 0 ? `${daysOverdue}d overdue` : nextDue === todayStr ? "Due Today" : nextDue;
       if (a.status === "FULLY_PAID") dueLabel = "Paid";
 
@@ -151,8 +155,8 @@ export async function GET(request: Request) {
         nextDueDate: nextDue,
         dueLabel,
         daysOverdue,
-        lastPaymentDate: lastPay ? dateToManilaDateOnly(lastPay.paymentDate) : null,
-        lastPaymentAmount: lastPay ? decimalToString(lastPay.totalAmount) : null,
+        lastPaymentDate: lastPayInfo ? lastPayInfo.lastPaymentDate : null,
+        lastPaymentAmount: lastPayInfo ? decimalToString(lastPayInfo.lastPaymentAmount) : null,
         totalPaid: decimalToString(totalPaidMap.get(a.id) ?? new Decimal(0)),
       };
     });

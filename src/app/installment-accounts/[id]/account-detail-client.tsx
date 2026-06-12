@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Decimal from "decimal.js";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Smartphone,
   ChevronDown,
@@ -44,11 +44,6 @@ import type {
   PaymentTypeValue,
 } from "@/types/api";
 
-type AccountDetailResponse = { installmentAccount: InstallmentAccountDto };
-type ScheduleResponse = { schedule: InstallmentScheduleDto[] };
-type PaymentsResponse = { payments: PaymentDto[] };
-type PenaltiesResponse = { penalties: PenaltyRecordDto[] };
-
 const scheduleStatusStyles: Record<ScheduleStatusValue, string> = {
   PENDING: "border-slate-200 bg-white",
   PAID: "border-emerald-200 bg-emerald-50",
@@ -65,7 +60,7 @@ function todayDateOnly() {
   }).format(new Date());
 }
 
-function InfoCard({ icon: Icon, label, value, valueClass }: { icon: any; label: string; value: React.ReactNode; valueClass?: string }) {
+const InfoCard = memo(function InfoCard({ icon: Icon, label, value, valueClass }: { icon: any; label: string; value: React.ReactNode; valueClass?: string }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
@@ -77,16 +72,16 @@ function InfoCard({ icon: Icon, label, value, valueClass }: { icon: any; label: 
       </div>
     </div>
   );
-}
+});
 
-function StatCard({ label, value, valueClass = "text-slate-900" }: { label: string; value: React.ReactNode; valueClass?: string }) {
+const StatCard = memo(function StatCard({ label, value, valueClass = "text-slate-900" }: { label: string; value: React.ReactNode; valueClass?: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
       <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">{label}</div>
       <div className={`mt-1.5 text-xl font-bold ${valueClass}`}>{value}</div>
     </div>
   );
-}
+});
 
 export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [account, setAccount] = useState<InstallmentAccountDto | null>(null);

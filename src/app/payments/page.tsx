@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, ReceiptText, Save, X, Printer } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -72,7 +72,7 @@ export default function PaymentsPage() {
   const [uploading, setUploading] = useState(false);
   const [proofModal, setProofModal] = useState<string | null>(null);
 
-  const columns: Column<PaymentDto>[] = [
+  const columns: Column<PaymentDto>[] = useMemo(() => [
     {
       key: "customer",
       label: "Customer",
@@ -143,7 +143,7 @@ export default function PaymentsPage() {
         </Link>
       ),
     },
-  ];
+  ], [setProofModal]);
 
   const fetchPayments = useCallback(async (p: number) => {
     setLoading(true);

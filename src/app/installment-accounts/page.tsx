@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Ban, Plus, Search, ShieldOff, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -110,7 +110,7 @@ export default function InstallmentAccountsPage() {
     }
   }
 
-  const columns: Column<InstallmentAccountDto>[] = [
+  const columns: Column<InstallmentAccountDto>[] = useMemo(() => [
     {
       key: "customer",
       label: "Customer",
@@ -187,7 +187,7 @@ export default function InstallmentAccountsPage() {
       headerClassName: "w-32",
       className: "text-right",
     },
-  ];
+  ], []);
 
   async function fetchPreview(date?: string, status?: string) {
     setPreviewLoading(true);
