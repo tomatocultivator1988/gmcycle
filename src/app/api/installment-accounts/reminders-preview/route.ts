@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     const statusFilter = searchParams.get("status");
+    const limit = Math.min(500, Math.max(1, Number(searchParams.get("limit")) || 200));
 
     const where: Record<string, unknown> = {
       customerEmail: { not: null },
@@ -29,10 +30,14 @@ export async function GET(request: Request) {
       where.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
     }
 
-    const accounts = await prisma.installmentAccount.findMany({
-      where,
-      orderBy: { customerName: "asc" },
-    });
+    const [accounts, total] = await Promise.all([
+      prisma.installmentAccount.findMany({
+        where,
+        orderBy: { customerName: "asc" },
+        take: limit,
+      }),
+      prisma.installmentAccount.count({ where }),
+    ]);
 
     const rows = accounts.map((a) => ({
       id: a.id,
@@ -49,7 +54,7 @@ export async function GET(request: Request) {
       term: a.term,
     }));
 
-    return NextResponse.json({ accounts: rows, total: rows.length });
+    return NextResponse.json({ accounts: rows, total });
   } catch (error) {
     return handleApiError(error);
   }

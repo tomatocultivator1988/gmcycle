@@ -5,6 +5,7 @@ import { dateToManilaDateOnly } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { serializeInstallmentAccount, serializeInstallmentSchedule, serializePayment, serializePenaltyRecord } from "@/lib/serializers";
 
 export const runtime = "nodejs";
 
@@ -43,23 +44,18 @@ export async function GET(_request: Request, context: RouteContext) {
     const grossProfit = installmentPrice.sub(cashPrice);
 
     const generatedAt = new Date();
-    // Full schedule — paid, pending, future — all periods
-    const filteredSchedule = account.schedule;
 
     return NextResponse.json({
       statement: {
         generatedAt: generatedAt.toISOString(),
-        // Customer
         customerName: account.customerName,
         customerPhone: account.customerPhone,
         customerEmail: account.customerEmail,
         customerAddress: account.customerAddress,
-        // Device
         brand: account.brand,
         model: account.model,
         unitDescription: account.unitDescription,
         itemType: account.itemType,
-        // Contract
         cashPrice: decimalToString(cashPrice),
         installmentPrice: decimalToString(installmentPrice),
         downPayment: decimalToString(downPayment),
@@ -73,10 +69,8 @@ export async function GET(_request: Request, context: RouteContext) {
         dateGiven: account.dateGiven ? dateToManilaDateOnly(account.dateGiven) : null,
         firstDueDate: account.firstDueDate ? dateToManilaDateOnly(account.firstDueDate) : null,
         nextDueDate: dateToManilaDateOnly(account.nextDueDate),
-        // Summary
         totalPayments: decimalToString(totalPayments),
         totalPenalties: decimalToString(totalPenalties),
-        // Payments
         payments: account.payments.map((p) => ({
           date: dateToManilaDateOnly(p.paymentDate),
           amount: decimalToString(p.totalAmount),
@@ -87,8 +81,7 @@ export async function GET(_request: Request, context: RouteContext) {
           cashier: p.cashier,
           proofUrl: p.proofUrl,
         })),
-        // Schedule
-        schedule: filteredSchedule.map((s) => ({
+        schedule: account.schedule.map((s) => ({
           period: s.periodNumber,
           dueDate: dateToManilaDateOnly(s.dueDate),
           amount: decimalToString(s.amount),
@@ -97,13 +90,17 @@ export async function GET(_request: Request, context: RouteContext) {
           paidAmount: s.paidAmount ? decimalToString(s.paidAmount) : null,
           penalty: decimalToString(s.penaltyAmount),
         })),
-        // Penalties
         penalties: account.penalties.map((p) => ({
           amount: decimalToString(p.amount),
           appliedDate: p.appliedDate.toISOString(),
           reason: p.reason,
         })),
       },
+      // Raw serialized arrays for account detail page (saves 3 extra HTTP roundtrips)
+      installmentAccount: serializeInstallmentAccount(account),
+      schedule: account.schedule.map(serializeInstallmentSchedule),
+      payments: account.payments.map(serializePayment),
+      penalties: account.penalties.map(serializePenaltyRecord),
     });
   } catch (error) {
     return handleApiError(error);

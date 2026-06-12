@@ -165,18 +165,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const loadData = useCallback(() => {
     let active = true;
 
-    Promise.all([
-      apiRequest<AccountDetailResponse>(`/api/installment-accounts/${accountId}`),
-      apiRequest<ScheduleResponse>(`/api/installment-accounts/${accountId}/schedule`),
-      apiRequest<PaymentsResponse>(`/api/installment-accounts/${accountId}/payments`),
-      apiRequest<PenaltiesResponse>(`/api/installment-accounts/${accountId}/penalties`),
-    ])
-      .then(([a, s, p, pen]) => {
+    apiRequest<any>(`/api/installment-accounts/${accountId}/statement`)
+      .then((res) => {
         if (active) {
-          setAccount(a.installmentAccount);
-          setSchedule(s.schedule);
-          setPayments(p.payments);
-          setPenalties(pen.penalties);
+          setAccount(res.installmentAccount);
+          setSchedule(res.schedule);
+          setPayments(res.payments);
+          setPenalties(res.penalties);
         }
       })
       .catch((requestError: Error) => {

@@ -124,6 +124,7 @@ export async function POST(request: Request) {
 
       let remainingToApply = totalAmount;
       let totalPenalty = new Decimal(0);
+      const scheduleUpdates: Promise<any>[] = [];
 
       for (const period of updatedSchedule) {
         if (remainingToApply.lte(0)) break;
@@ -137,7 +138,6 @@ export async function POST(request: Request) {
 
         const paidForPeriod = Decimal.min(remainingToApply, periodTotalDue);
 
-        // Only count penalty if the payment covers the penalty portion
         const penaltyCovered = paidForPeriod.gt(remainingPeriodAmount)
           ? Decimal.min(periodPenalty, paidForPeriod.minus(remainingPeriodAmount))
           : new Decimal(0);
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
         ).plus(paidForPeriod);
 
         if (paidForPeriod.gte(periodTotalDue)) {
-          await tx.installmentSchedule.update({
+          scheduleUpdates.push(tx.installmentSchedule.update({
             where: { id: period.id },
             data: {
               status: "PAID",
@@ -157,9 +157,9 @@ export async function POST(request: Request) {
               paymentId: "__pending__",
               paidAmount: decimalToString(newPaidAmount),
             },
-          });
+          }));
         } else if (paidForPeriod.gt(0)) {
-          await tx.installmentSchedule.update({
+          scheduleUpdates.push(tx.installmentSchedule.update({
             where: { id: period.id },
             data: {
               status: "PARTIAL",
@@ -167,16 +167,15 @@ export async function POST(request: Request) {
               paymentId: "__pending__",
               paidAmount: decimalToString(newPaidAmount),
             },
-          });
+          }));
         }
 
         remainingToApply = remainingToApply.minus(paidForPeriod);
 
-        // REGULAR/PARTIAL: stop after first period
-        if (paymentType === "PARTIAL") {
-          break;
-        }
+        if (paymentType === "PARTIAL") break;
       }
+
+      await Promise.all(scheduleUpdates);
 
       const createdPayment = await tx.payment.create({
         data: {
