@@ -124,7 +124,15 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     model: "",
     unitDescription: "",
     itemType: "GADGET" as "GADGET" | "CASH",
+    cashPrice: "",
+    downPayment: "",
     processingFee: "",
+    interestRate: "",
+    term: 24,
+    scheduleType: "SEMI_MONTHLY" as "SEMI_MONTHLY" | "MONTHLY",
+    firstDueDate: "",
+    dateGiven: "",
+    editPassword: "",
   });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -360,7 +368,15 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       model: account.model,
       unitDescription: account.unitDescription,
       itemType: (account.itemType as "GADGET" | "CASH") ?? "GADGET",
+      cashPrice: account.cashPrice,
+      downPayment: account.downPayment,
       processingFee: account.processingFee ?? "",
+      interestRate: account.interestRate ?? "",
+      term: account.term,
+      scheduleType: (account.scheduleType as "SEMI_MONTHLY" | "MONTHLY") ?? "SEMI_MONTHLY",
+      firstDueDate: account.firstDueDate ?? "",
+      dateGiven: account.dateGiven ?? "",
+      editPassword: "",
     });
     setEditCustomFields(
       account.customFields
@@ -375,20 +391,22 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     setEditSaving(true);
     setEditError("");
     try {
+      const isFullUpdate = editForm.editPassword.trim().length > 0;
+      const body: Record<string, unknown> = {
+        ...editForm,
+        itemType: editForm.itemType,
+        processingFee: editForm.processingFee || undefined,
+        password: editForm.editPassword || undefined,
+        customFields: editCustomFields.reduce((acc, { key, value }) => {
+          if (key.trim()) acc[key.trim()] = value;
+          return acc;
+        }, {} as Record<string, string>),
+        dueDays: account.dueDays,
+      };
+
       const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
         `/api/installment-accounts/${account.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            ...editForm,
-            itemType: editForm.itemType,
-            processingFee: editForm.processingFee || undefined,
-            customFields: editCustomFields.reduce((acc, { key, value }) => {
-              if (key.trim()) acc[key.trim()] = value;
-              return acc;
-            }, {} as Record<string, string>),
-          }),
-        },
+        { method: "PATCH", body: JSON.stringify(body) },
       );
       setAccount(data.installmentAccount);
       setShowEditModal(false);
@@ -699,7 +717,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Cash Price" value={formatPeso(account.cashPrice)} />
-        <StatCard label="Installment Price" value={formatPeso(account.installmentPrice)} />
+        <StatCard label="Net Price" value={formatPeso((parseFloat(account.installmentPrice) - parseFloat(account.downPayment)).toFixed(2))} valueClass="text-red-800" />
         <StatCard label="Down Payment" value={formatPeso(account.downPayment)} />
         <StatCard label="Processing Fee" value={formatPeso(account.processingFee)} />
         <StatCard label={account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"} value={formatPeso(account.monthlyInstallment)} />
@@ -828,7 +846,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       ) : period.status === "PARTIAL" && period.paidAmount ? (
                         <div className="text-xs text-amber-600 mt-0.5">
                           Paid: {formatPeso(period.paidAmount)} &middot; Balance: {formatPeso((parseFloat(period.amount) - parseFloat(period.paidAmount)).toFixed(2))}
-                        </div>
+              </div>
                       ) : period.status === "PENDING" && period.penaltyAmount !== "0.00" ? (
                         <div className="text-xs text-rose-500 mt-0.5">+ Penalty: {formatPeso(period.penaltyAmount)}</div>
                       ) : null}
@@ -1315,13 +1333,35 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     onClick={() => setEditCustomFields([...editCustomFields, { key: "", value: "" }])}
                     className="inline-flex h-9 items-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white px-3 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-all"
                   >
-                    + Add Field
-                  </button>
-                </div>
+                  + Add Field
+                </button>
               </div>
             </div>
 
-            <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="border-2 border-red-200 rounded-xl p-4 bg-red-50/30 mt-4">
+              <p className="text-xs font-semibold font-heading uppercase tracking-wider text-red-700 mb-2">⚠️ Contract Terms</p>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-4 text-[11px] text-amber-800">
+                Changing contract terms recalculates the installment price and regenerates unpaid schedule periods. Paid periods are preserved.
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[11px] font-medium text-slate-600">Cash Price</label><input inputMode="decimal" value={editForm.cashPrice} onChange={(e) => setEditForm((p) => ({ ...p, cashPrice: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">Down Payment</label><input inputMode="decimal" value={editForm.downPayment} onChange={(e) => setEditForm((p) => ({ ...p, downPayment: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">Interest Rate (%/mo)</label><input inputMode="decimal" value={editForm.interestRate} onChange={(e) => setEditForm((p) => ({ ...p, interestRate: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">Term (months)</label><select value={editForm.term} onChange={(e) => setEditForm((p) => ({ ...p, term: Number(e.target.value) }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"><option value={12}>12</option><option value={24}>24</option><option value={36}>36</option><option value={48}>48</option></select></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">Schedule</label><select value={editForm.scheduleType} onChange={(e) => setEditForm((p) => ({ ...p, scheduleType: e.target.value as any }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"><option value="MONTHLY">Monthly</option><option value="SEMI_MONTHLY">Semi-Monthly</option></select></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">First Due Date</label><input type="date" value={editForm.firstDueDate} onChange={(e) => setEditForm((p) => ({ ...p, firstDueDate: e.target.value }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Admin Password (required to save)
+                <input type="password" value={editForm.editPassword} onChange={(e) => setEditForm((p) => ({ ...p, editPassword: e.target.value }))} placeholder="Enter admin password" className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex-shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}

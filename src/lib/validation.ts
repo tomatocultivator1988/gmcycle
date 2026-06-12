@@ -72,6 +72,29 @@ export const updateInstallmentAccountSchema = z.object({
   customFields: z.record(z.string(), z.string()).optional(),
 });
 
+export const fullUpdateAccountSchema = z.object({
+  customerName: nameString,
+  customerPhone: phoneString,
+  customerEmail: emailString,
+  customerAddress: requiredString,
+  fbLink: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  brand: requiredString,
+  model: requiredString,
+  unitDescription: requiredString,
+  itemType: z.enum(["GADGET", "CASH"]),
+  cashPrice: moneyString,
+  downPayment: moneyString,
+  processingFee: moneyString.optional(),
+  interestRate: moneyString,
+  term: z.coerce.number().int().min(6).max(48),
+  scheduleType: z.enum(["SEMI_MONTHLY", "MONTHLY"]),
+  dueDays: z.array(z.number().int().min(1).max(31)).min(1),
+  firstDueDate: dateOnlyString,
+  dateGiven: dateOnlyString.optional(),
+  customFields: z.record(z.string(), z.string()).optional(),
+  password: z.string().min(1, "Admin password required"),
+});
+
 export const updateAdminConfigSchema = z.object({
   penaltyPerDay: moneyString,
   adminEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
