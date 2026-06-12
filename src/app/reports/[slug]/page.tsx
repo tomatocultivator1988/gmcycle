@@ -202,14 +202,24 @@ const reportConfigs: Record<string, ReportConfig> = {
                 {showTotal}
                 <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span>
               </summary>
-              <span className="absolute left-0 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-3 min-w-[240px] text-xs">
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-3 min-w-[240px] max-w-[300px] text-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-slate-500 text-[11px]">Due Periods</span>
+                  <button
+                    type="button"
+                    className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                    onClick={(e) => { e.stopPropagation(); (e.currentTarget.closest("details") as HTMLDetailsElement).open = false; }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
                 <table className="w-full">
                   <thead>
                     <tr className="text-slate-500 border-b border-slate-100">
                       <th className="text-left py-1">#</th>
                       <th className="text-left py-1">Due</th>
-                      <th className="text-right py-1">Amount</th>
-                      <th className="text-right py-1">Penalty</th>
+                      <th className="text-right py-1">Amt</th>
+                      <th className="text-right py-1">Pen</th>
                     </tr>
                   </thead>
                   <tbody>
