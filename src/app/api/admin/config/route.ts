@@ -24,6 +24,7 @@ export async function GET() {
         id: config.id,
         penaltyPerDay: config.penaltyPerDay.toFixed(2),
         adminEmail: config.adminEmail ?? null,
+        hasPassword: !!config.adminPassword,
       },
     });
   } catch (error) {
@@ -36,24 +37,22 @@ export async function PUT(request: Request) {
     const body = updateAdminConfigSchema.parse(await readJson(request));
     const penaltyPerDay = parseMoney(body.penaltyPerDay, "penaltyPerDay");
     const adminEmail = body.adminEmail?.trim() || null;
+    const adminPassword = body.adminPassword?.trim() || null;
 
     let config = await prisma.adminConfig.findFirst();
 
+    const data: Record<string, unknown> = {
+      penaltyPerDay: penaltyPerDay.toFixed(2),
+      adminEmail,
+    };
+    if (adminPassword !== undefined) {
+      data.adminPassword = adminPassword || null;
+    }
+
     if (config) {
-      config = await prisma.adminConfig.update({
-        where: { id: config.id },
-        data: {
-          penaltyPerDay: penaltyPerDay.toFixed(2),
-          adminEmail,
-        },
-      });
+      config = await prisma.adminConfig.update({ where: { id: config.id }, data });
     } else {
-      config = await prisma.adminConfig.create({
-        data: {
-          penaltyPerDay: penaltyPerDay.toFixed(2),
-          adminEmail,
-        },
-      });
+      config = await prisma.adminConfig.create({ data: { ...data, adminPassword } });
     }
 
     return NextResponse.json({
@@ -61,6 +60,7 @@ export async function PUT(request: Request) {
         id: config.id,
         penaltyPerDay: config.penaltyPerDay.toFixed(2),
         adminEmail: config.adminEmail ?? null,
+        hasPassword: !!config.adminPassword,
       },
     });
   } catch (error) {

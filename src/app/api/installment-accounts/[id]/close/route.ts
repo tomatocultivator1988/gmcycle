@@ -8,9 +8,12 @@ import { closeAccountSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
-const ADMIN_PASSWORD = "myfave2026";
-
 type RouteContext = { params: Promise<{ id: string }> };
+
+async function getAdminPassword(): Promise<string> {
+  const config = await prisma.adminConfig.findFirst();
+  return config?.adminPassword || "myfave2026";
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
@@ -33,7 +36,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    if (body.password !== ADMIN_PASSWORD) {
+    const adminPassword = await getAdminPassword();
+    if (body.password !== adminPassword) {
       return NextResponse.json(
         { error: "Incorrect admin password" },
         { status: 401 },

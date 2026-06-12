@@ -11,7 +11,10 @@ import { updateInstallmentAccountSchema, fullUpdateAccountSchema } from "@/lib/v
 
 export const runtime = "nodejs";
 
-const ADMIN_PASSWORD = "myfave2026";
+async function getAdminPassword(): Promise<string> {
+  const config = await prisma.adminConfig.findFirst();
+  return config?.adminPassword || "myfave2026";
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -76,7 +79,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const body = fullUpdateAccountSchema.parse(raw);
 
-  if (body.password !== ADMIN_PASSWORD) {
+  const adminPassword = await getAdminPassword();
+  if (body.password !== adminPassword) {
     return NextResponse.json({ error: "Incorrect admin password" }, { status: 401 });
   }
 
