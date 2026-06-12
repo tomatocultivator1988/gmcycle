@@ -1,0 +1,17 @@
+﻿node.exe : Γ¿» Failed to start server
+At C:\Program Files\nodejs\npx.ps1:30 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Γ¿» Failed to start server:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error: listen EADDRINUSE: address already in use :::3000
+    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
+    at new Promise (<anonymous>) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+[?25h

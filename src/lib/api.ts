@@ -41,6 +41,7 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
+  console.error("Unhandled API error:", error instanceof Error ? error.message : error, error instanceof Error ? error.stack : "");
   return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
 }
 

@@ -108,11 +108,17 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
     : financed.times(rate).times(term);
   const installmentPrice = cashPrice.plus(totalInterest).toDecimalPlaces(2);
   const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
-  const remainingBalance = installmentPrice.minus(downPayment).toDecimalPlaces(2);
-  const monthlyInstallment = remainingBalance.div(totalPeriods).toDecimalPlaces(2);
 
   const paidPeriods = existing.schedule.filter((s) => s.status === "PAID");
   const paidPeriodNumbers = new Set(paidPeriods.map((s) => s.periodNumber));
+  const paidTotal = paidPeriods.reduce((sum, p) => sum.plus(p.amount), new Decimal(0));
+  const unpaidCount = totalPeriods - paidPeriods.length;
+
+  const contractBalance = installmentPrice.minus(downPayment);
+  const remainingBalance = contractBalance.minus(paidTotal).toDecimalPlaces(2);
+  const monthlyInstallment = unpaidCount > 0
+    ? remainingBalance.div(unpaidCount).toDecimalPlaces(2)
+    : new Decimal(0);
 
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.installmentAccount.update({
@@ -153,13 +159,15 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
     // Generate new periods for the remaining term
     const scheduleEntries: Array<Record<string, unknown>> = [];
     let allocated = new Decimal(0);
+    let generatedCount = 0;
 
     for (let i = 1; i <= totalPeriods; i++) {
       if (paidPeriodNumbers.has(i)) continue;
+      generatedCount++;
 
       const dueDate = computeDueDate(firstDueDate, dueDays, scheduleType, i);
       let amount: Decimal;
-      if (i === totalPeriods) {
+      if (generatedCount === unpaidCount) {
         amount = remainingBalance.minus(allocated);
       } else {
         amount = monthlyInstallment;
