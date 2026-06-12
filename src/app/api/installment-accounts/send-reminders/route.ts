@@ -40,7 +40,9 @@ export async function POST(request: Request) {
       if (!account.customerEmail) continue;
 
       const unpaidSchedule = account.schedule.filter(
-        (s) => s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE",
+        (s) =>
+          (s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE") &&
+          new Date(s.dueDate) <= now,
       );
       if (unpaidSchedule.length === 0) continue;
 
