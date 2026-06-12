@@ -3,7 +3,7 @@
 import Decimal from "decimal.js";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Smartphone, Save, CheckCircle, X } from "lucide-react";
+import { Smartphone, Save, CheckCircle, X, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ErrorMessage, SuccessMessage } from "@/components/ui-state";
 import { FieldError } from "@/components/field-error";
@@ -633,6 +633,14 @@ export function InstallmentAccountForm() {
                 className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98]"
               >
                 View Account
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/installment-accounts/${createdAccountId}/down-payment-receipt`)}
+                className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+              >
+                <Printer size={16} className="mr-2" />
+                Down Payment Receipt
               </button>
             </div>
           </div>

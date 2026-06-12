@@ -111,13 +111,6 @@ export default function DownPaymentReceiptPage() {
           </div>
         </div>
 
-        <div className="mt-4 border-t border-slate-200 pt-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Remaining Balance</span>
-            <span className="font-semibold text-slate-950">{formatPeso(account.remainingBalance)}</span>
-          </div>
-        </div>
-
         <div className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
           <p>Thank you for your purchase!</p>
           <p className="mt-0.5">MyFaveGadgets &mdash; Binan City, Laguna</p>
