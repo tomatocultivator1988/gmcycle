@@ -190,10 +190,27 @@ export async function GET(request: Request) {
 
     const todayStr = getManilaTodayDateString();
 
+    // Fetch earliest overdue schedule period per account
+    const overduePeriods = pagedIds.length > 0
+      ? await prisma.installmentSchedule.groupBy({
+          by: ["installmentAccountId"],
+          where: {
+            installmentAccountId: { in: pagedIds },
+            status: { in: ["PENDING", "OVERDUE", "PARTIAL"] },
+            dueDate: { lt: new Date() },
+          },
+          _min: { dueDate: true },
+        })
+      : [];
+    const earliestOverdueMap = new Map(
+      overduePeriods.map((p) => [p.installmentAccountId, p._min.dueDate]),
+    );
+
     const rows = pagedAccounts.map((a) => {
       const nextDue = dateToManilaDateOnly(a.nextDueDate);
-      const daysOverdue = nextDue < todayStr
-        ? Math.floor((new Date().getTime() - a.nextDueDate.getTime()) / (1000 * 60 * 60 * 24))
+      const earliestOverdue = earliestOverdueMap.get(a.id);
+      const daysOverdue = earliestOverdue
+        ? Math.floor((new Date().getTime() - earliestOverdue.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       const lastPayInfo = lastPaymentMap.get(a.id);
       let dueLabel = daysOverdue > 0 ? `${daysOverdue}d overdue` : nextDue === todayStr ? "Due Today" : nextDue;
