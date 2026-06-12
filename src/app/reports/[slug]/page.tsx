@@ -187,70 +187,6 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment) },
       { key: "nextAmountDue", label: "Next Due", render: (r) => r.nextAmountDue !== "0.00" ? <span className="font-semibold text-red-800">{formatPeso(r.nextAmountDue)}</span> : <span className="text-slate-400">—</span> },
       { key: "totalPenalties", label: "Penalties", render: (r) => r.totalPenalties !== "0.00" ? <span className="font-medium text-rose-600">{formatPeso(r.totalPenalties)}</span> : <span className="text-slate-300">—</span>, hideOnMobile: true },
-      {
-        key: "totalAmountDue",
-        label: "Total Amount Due",
-        render: (r) => {
-          const breakdown = r.dueBreakdown as Array<{ period: number; dueDate: string; amount: string; penalty: string }> | undefined;
-          const hasBreakdown = breakdown && breakdown.length > 0;
-          const total = r.totalAmountDue !== "0.00" ? r.totalAmountDue : r.nextAmountDue;
-          const showTotal = formatPeso(total);
-          const isActive = hasBreakdown;
-          return (
-            <details className="relative group">
-              <summary className={`list-none cursor-pointer inline-flex items-center gap-1 font-bold ${isActive ? "text-red-800" : "text-slate-700"}`}>
-                {showTotal}
-                {hasBreakdown ? <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span> : null}
-              </summary>
-              <span className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-2 w-[280px] text-[10px]">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-semibold text-slate-500">{hasBreakdown ? "Due Periods" : "Next Payment"}</span>
-                  <button
-                    type="button"
-                    className="flex size-4 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-                    onClick={(e) => { e.stopPropagation(); (e.currentTarget.closest("details") as HTMLDetailsElement).open = false; }}
-                  >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
-                </div>
-                {hasBreakdown ? (
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-slate-500 border-b border-slate-100">
-                        <th className="text-left py-0.5 w-6">#</th>
-                        <th className="text-left py-0.5">Due</th>
-                        <th className="text-right py-0.5 w-16">Amt</th>
-                        <th className="text-right py-0.5 w-16">Pen</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {breakdown.map((p) => (
-                        <tr key={p.period} className="border-b border-slate-50">
-                          <td className="py-0.5">{p.period}</td>
-                          <td className="py-0.5">{p.dueDate.slice(5)}</td>
-                          <td className="py-0.5 text-right">{formatPeso(p.amount)}</td>
-                          <td className="py-0.5 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="font-semibold">
-                        <td colSpan={3} className="pt-1 text-right text-slate-600">Total:</td>
-                        <td className="pt-1 text-right text-red-800">{showTotal}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                ) : (
-                  <div className="text-slate-600 space-y-1">
-                    <div className="flex justify-between"><span>Next Payment:</span><span className="font-semibold">{showTotal}</span></div>
-                    <div className="text-slate-400 text-[9px]">No overdue periods. This is the next installment amount.</div>
-                  </div>
-                )}
-              </span>
-            </details>
-          );
-        },
-      },
       { key: "term", label: "Term", render: (r) => `${r.term}mo`, hideOnMobile: true },
       { key: "dueDay", label: "Due Day", render: (r) => (r.dueDays as number[]).join(", "), hideOnMobile: true },
       { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },
@@ -346,6 +282,34 @@ export default function ReportPage() {
   }
 
   const rows = data ? (data[listKeys[slug]] ?? []) : [];
+
+  const [dueModal, setDueModal] = useState<any>(null);
+
+  const columns = slug === "account-master-list"
+    ? [
+        ...config.columns,
+        {
+          key: "totalAmountDue",
+          label: "Total Amount Due",
+          headerClassName: "w-36",
+          render: (r: any) => {
+            const breakdown = r.dueBreakdown as Array<{ period: number; dueDate: string; amount: string; penalty: string }> | undefined;
+            const hasBreakdown = breakdown && breakdown.length > 0;
+            const total = r.totalAmountDue !== "0.00" ? r.totalAmountDue : r.nextAmountDue;
+            return (
+              <button
+                type="button"
+                className={`inline-flex items-center gap-1 font-bold cursor-pointer hover:underline whitespace-nowrap ${hasBreakdown ? "text-red-800" : "text-slate-700"}`}
+                onClick={() => setDueModal(r)}
+              >
+                {formatPeso(total)}
+                {hasBreakdown ? <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span> : null}
+              </button>
+            );
+          },
+        },
+      ]
+    : config.columns;
 
   return (
     <div className="space-y-6 print:space-y-4">
@@ -497,7 +461,7 @@ export default function ReportPage() {
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:border print:border-slate-300 print:shadow-none print:rounded-none print:overflow-visible">
             <ResponsiveTable
-              columns={config.columns}
+              columns={columns}
               data={rows}
               rowKey={(row: any, idx: number) => row.id ?? idx}
               emptyMessage="No data for this report."
@@ -507,6 +471,68 @@ export default function ReportPage() {
           </div>
         </>
       ) : null}
+
+      {dueModal ? (() => {
+        const r = dueModal;
+        const breakdown = (r.dueBreakdown || []) as Array<{ period: number; dueDate: string; amount: string; penalty: string }>;
+        const hasBreakdown = breakdown.length > 0;
+        const total = r.totalAmountDue !== "0.00" ? r.totalAmountDue : r.nextAmountDue;
+        const showTotal = formatPeso(total);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 print:hidden" onClick={() => setDueModal(null)}>
+            <div className="rounded-2xl bg-white shadow-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold font-heading text-slate-900">{r.customerName}</h3>
+                  <p className="text-xs text-slate-500">{hasBreakdown ? `${breakdown.length} period${breakdown.length > 1 ? "s" : ""} due` : "Next payment"}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDueModal(null)}
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              {hasBreakdown ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                      <th className="py-1.5 w-8">#</th>
+                      <th className="py-1.5">Due Date</th>
+                      <th className="py-1.5 text-right">Amount</th>
+                      <th className="py-1.5 text-right">Penalty</th>
+                      <th className="py-1.5 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdown.map((p: any) => (
+                      <tr key={p.period} className="border-b border-slate-50">
+                        <td className="py-1.5">{p.period}</td>
+                        <td className="py-1.5">{p.dueDate}</td>
+                        <td className="py-1.5 text-right">{formatPeso(p.amount)}</td>
+                        <td className="py-1.5 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
+                        <td className="py-1.5 text-right font-semibold">{formatPeso((parseFloat(p.amount) + parseFloat(p.penalty || "0")).toFixed(2))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold text-red-800 text-sm">
+                      <td colSpan={4} className="pt-2 text-right">Total Amount Due:</td>
+                      <td className="pt-2 text-right">{showTotal}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-2xl font-bold text-slate-800">{showTotal}</p>
+                  <p className="text-xs text-slate-400 mt-1">Next installment — no overdue periods</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })() : null}
     </div>
   );
 }
