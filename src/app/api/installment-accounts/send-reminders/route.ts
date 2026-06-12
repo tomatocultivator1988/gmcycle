@@ -56,15 +56,17 @@ export async function POST(request: Request) {
           0,
           Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)),
         );
-        const accruedPenalty = daysOverdue > 0
+        const storedPenalty = new Decimal(s.penaltyAmount?.toString() ?? "0");
+        const computedPenalty = daysOverdue > 0 && storedPenalty.eq(0)
           ? penaltyPerDay.times(daysOverdue)
           : new Decimal(0);
-        const totalDue = new Decimal(s.amount.toString()).plus(accruedPenalty);
-        return { period: s.periodNumber, dueDate, amount: s.amount, daysOverdue, accruedPenalty, totalDue };
+        const effectivePenalty = storedPenalty.gt(0) ? storedPenalty : computedPenalty;
+        const totalDue = new Decimal(s.amount.toString()).plus(effectivePenalty);
+        return { period: s.periodNumber, dueDate, amount: s.amount, daysOverdue, effectivePenalty, totalDue };
       });
 
       const totalDueAll = periodRows.reduce((sum, r) => sum.plus(r.totalDue), new Decimal(0));
-      const totalPenaltyAll = periodRows.reduce((sum, r) => sum.plus(r.accruedPenalty), new Decimal(0));
+      const totalPenaltyAll = periodRows.reduce((sum, r) => sum.plus(r.effectivePenalty), new Decimal(0));
 
       const rowsHtml = periodRows.map((r) => `
         <tr>
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${dateToManilaDateOnly(r.dueDate)}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${formatPeso(r.amount)}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${r.daysOverdue > 0 ? `${r.daysOverdue}d` : "—"}</td>
-          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#b91c1c;">${r.accruedPenalty.gt(0) ? formatPeso(r.accruedPenalty) : "—"}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#b91c1c;">${r.effectivePenalty.gt(0) ? formatPeso(r.effectivePenalty) : "—"}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${formatPeso(r.totalDue)}</td>
         </tr>`).join("");
 
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
             <tr><td style="padding:6px 0;color:#64748b;">Total Paid</td><td style="padding:6px 0;">${formatPeso(totalPaid.toFixed(2))}</td></tr>
             <tr><td style="padding:6px 0;color:#64748b;">Term</td><td style="padding:6px 0;">${account.term} months &middot; ${formatPeso(account.monthlyInstallment.toString())}/mo</td></tr>
           </table>
-          <p style="color:#b91c1c;font-weight:600;">⚠️  Late penalty: ${formatPeso(penaltyPerDay)}/day overdue.</p>
+          <p style="color:#b91c1c;font-weight:600;">⚠️  Late penalty: ${formatPeso(penaltyPerDay)}/day overdue (if not yet applied).</p>
           <p style="margin-top:24px;color:#64748b;font-size:12px;">MyFaveGadgets — Binan City, Laguna</p>
         </div>`;
 
