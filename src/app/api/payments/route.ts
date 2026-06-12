@@ -100,10 +100,13 @@ export async function POST(request: Request) {
         data: { status: "OVERDUE" },
       });
 
-      const updatedSchedule = await tx.installmentSchedule.findMany({
-        where: { installmentAccountId: account.id },
-        orderBy: { periodNumber: "asc" },
-      });
+      // Update in-memory schedule instead of re-fetching from DB
+      for (const s of account.schedule) {
+        if ((s.status === "PENDING" || s.status === "PARTIAL") && s.dueDate < paymentDate) {
+          s.status = "OVERDUE";
+        }
+      }
+      const updatedSchedule = account.schedule;
 
       // FULL: validate amount covers remaining balance (after overdue update)
       if (paymentType === "FULL") {
@@ -206,39 +209,46 @@ export async function POST(request: Request) {
 
     const serialized = serializePayment(payment);
 
-    const account = await prisma.installmentAccount.findUnique({
-      where: { id: body.installmentAccountId },
-    });
-
-    if (account?.customerEmail) {
-      const allPayments = await prisma.payment.findMany({
-        where: { installmentAccountId: body.installmentAccountId, voided: false },
-      });
-      const totalPaid = allPayments.reduce((sum, p) => sum.plus(new Decimal(p.totalAmount)), new Decimal(0));
-      const latestBalance = account.remainingBalance;
-
-      sendPaymentReceipt({
-        customerEmail: account.customerEmail,
-        customerName: account.customerName,
-        paymentId: payment.id,
-        paymentDate: serialized.paymentDate,
-        paymentType: payment.paymentType,
-        method: payment.method,
-        totalAmount: serialized.totalAmount,
-        penaltyAmount: serialized.penaltyAmount,
-        remainingBalance: latestBalance.toString(),
-        totalPaid: totalPaid.toFixed(2),
-        brand: account.brand,
-        model: account.model,
-        unitDescription: account.unitDescription,
-        monthlyInstallment: account.monthlyInstallment.toString(),
-        notes: payment.notes,
-        cashier: payment.cashier,
-      }).catch((err) => console.error("Receipt email failed:", err));
-    }
+    // Fire-and-forget email (do not block response)
+    sendReceiptEmail(body.installmentAccountId, payment, serialized);
 
     return NextResponse.json({ payment: serialized }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
+  }
+}
+
+async function sendReceiptEmail(accountId: string, payment: any, serialized: any) {
+  try {
+    const account = await prisma.installmentAccount.findUnique({
+      where: { id: accountId },
+    });
+    if (!account?.customerEmail) return;
+
+    const allPayments = await prisma.payment.findMany({
+      where: { installmentAccountId: accountId, voided: false },
+    });
+    const totalPaid = allPayments.reduce((sum, p) => sum.plus(new Decimal(p.totalAmount)), new Decimal(0));
+
+    sendPaymentReceipt({
+      customerEmail: account.customerEmail,
+      customerName: account.customerName,
+      paymentId: payment.id,
+      paymentDate: serialized.paymentDate,
+      paymentType: payment.paymentType,
+      method: payment.method,
+      totalAmount: serialized.totalAmount,
+      penaltyAmount: serialized.penaltyAmount,
+      remainingBalance: account.remainingBalance.toString(),
+      totalPaid: totalPaid.toFixed(2),
+      brand: account.brand,
+      model: account.model,
+      unitDescription: account.unitDescription,
+      monthlyInstallment: account.monthlyInstallment.toString(),
+      notes: payment.notes,
+      cashier: payment.cashier,
+    }).catch((err) => console.error("Receipt email failed:", err));
+  } catch {
+    // Silently ignore email failures
   }
 }

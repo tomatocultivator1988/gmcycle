@@ -108,6 +108,7 @@ model InstallmentSchedule {
   @@index([installmentAccountId])
   @@index([dueDate])
   @@index([status])
+  @@index([paymentId])
   @@unique([installmentAccountId, periodNumber])
 }
 
@@ -133,6 +134,8 @@ model Payment {
 
   @@index([installmentAccountId])
   @@index([paymentDate])
+  @@index([installmentAccountId, voided])
+  @@index([voided, paymentDate])
 }
 
 model PenaltyRecord {
@@ -148,6 +151,7 @@ model PenaltyRecord {
 
   @@index([installmentAccountId])
   @@index([appliedDate])
+  @@index([paymentId])
 }
 
 model AdminConfig {
