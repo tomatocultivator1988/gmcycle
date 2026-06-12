@@ -158,7 +158,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
         <div className="border-t border-slate-100 px-8 py-5 print:border-slate-200">
           <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500 mb-3">Contract Details</h2>
           <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-            <div><span className="text-slate-500">Installment Price:</span> <span className="font-medium text-slate-900">{formatPeso(data.installmentPrice)}</span></div>
+            <div><span className="text-slate-500">Net Price:</span> <span className="font-semibold text-red-800">{formatPeso((parseFloat(data.installmentPrice) - parseFloat(data.downPayment)).toFixed(2))}</span></div>
             <div><span className="text-slate-500">Down Payment:</span> <span className="text-slate-700">{formatPeso(data.downPayment)}</span></div>
             <div><span className="text-slate-500">Term:</span> <span className="text-slate-700">{data.term} months</span></div>
             <div><span className="text-slate-500">Monthly:</span> <span className="text-slate-700">{formatPeso(data.monthlyInstallment)}</span></div>
