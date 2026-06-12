@@ -92,7 +92,7 @@ export async function POST(request: Request) {
                 <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Amount</th>
                 <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Days</th>
                 <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Penalty</th>
-                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Total Due</th>
+                <th style="padding:6px 8px;text-align:left;font-weight:600;color:#475569;">Amount Due</th>
               </tr>
             </thead>
             <tbody>
