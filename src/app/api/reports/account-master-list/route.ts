@@ -48,6 +48,7 @@ export async function GET(request: Request) {
     }
 
     const nextDueAmountMap = new Map<string, Decimal>();
+    const totalPenaltiesMap = new Map<string, Decimal>();
     if (accountIds.length > 0) {
       const nextUnpaid = await prisma.installmentSchedule.findMany({
         where: {
@@ -60,6 +61,18 @@ export async function GET(request: Request) {
       for (const s of nextUnpaid) {
         const amt = new Decimal(s.amount.toString()).plus(new Decimal(s.penaltyAmount?.toString() ?? "0"));
         nextDueAmountMap.set(s.installmentAccountId, amt);
+      }
+
+      const penaltySums = await prisma.installmentSchedule.groupBy({
+        by: ["installmentAccountId"],
+        where: {
+          installmentAccountId: { in: accountIds },
+          status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+        },
+        _sum: { penaltyAmount: true },
+      });
+      for (const r of penaltySums) {
+        totalPenaltiesMap.set(r.installmentAccountId, r._sum.penaltyAmount ?? new Decimal(0));
       }
     }
 
@@ -175,6 +188,7 @@ export async function GET(request: Request) {
         lastPaymentAmount: lastPayInfo ? decimalToString(lastPayInfo.lastPaymentAmount) : null,
         totalPaid: decimalToString(totalPaidMap.get(a.id) ?? new Decimal(0)),
         nextAmountDue: decimalToString(nextDueAmountMap.get(a.id) ?? new Decimal(0)),
+        totalPenalties: decimalToString(totalPenaltiesMap.get(a.id) ?? new Decimal(0)),
       };
     });
 
