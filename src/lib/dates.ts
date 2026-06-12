@@ -37,7 +37,8 @@ export function parseDateOnly(value: unknown, field = "date"): Date {
   return date;
 }
 
-export function dateToManilaDateOnly(date: Date): string {
+export function dateToManilaDateOnly(date: Date | null | undefined): string {
+  if (!date) return "";
   return formatDateParts(date);
 }
 

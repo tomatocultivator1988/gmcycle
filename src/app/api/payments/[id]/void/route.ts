@@ -29,21 +29,19 @@ export async function POST(request: Request, context: RouteContext) {
         where: { paymentId: id },
       });
 
-      // 2. For each affected period, find previous payment state
-      for (const period of affectedPeriods) {
-        // Restore period to PENDING state (balance recalc will fix totals)
-        const restoreStatus: "PENDING" = "PENDING";
-
-        await tx.installmentSchedule.update({
+      // 2. Reset all affected periods to PENDING in parallel
+      const resetPromises = affectedPeriods.map((period) =>
+        tx.installmentSchedule.update({
           where: { id: period.id },
           data: {
-            status: restoreStatus,
+            status: "PENDING" as const,
             paidDate: null,
             paymentId: null,
             paidAmount: null,
           },
-        });
-      }
+        }),
+      );
+      await Promise.all(resetPromises);
 
       // 3. Delete penalty records linked to this payment
       await tx.penaltyRecord.deleteMany({ where: { paymentId: id } });
