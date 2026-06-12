@@ -309,6 +309,7 @@ export default function InstallmentAccountsPage() {
               data={showClosed ? accounts : accounts.filter((a) => a.status !== "CLOSED")}
               rowKey={(a) => a.id}
               emptyMessage={debouncedSearch ? "No accounts match your search." : "No accounts yet. Create your first account."}
+              mobileAccordion={{ summaryColumns: ["customer", "status"] }}
             />
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
