@@ -185,6 +185,7 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "downPayment", label: "Down Pmt", render: (r) => formatPeso(r.downPayment), hideOnMobile: true },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment) },
+      { key: "nextAmountDue", label: "Next Due Amt", render: (r) => r.nextAmountDue !== "0.00" ? <span className="font-semibold text-red-800">{formatPeso(r.nextAmountDue)}</span> : <span className="text-slate-400">—</span> },
       { key: "term", label: "Term", render: (r) => `${r.term}mo`, hideOnMobile: true },
       { key: "dueDay", label: "Due Day", render: (r) => (r.dueDays as number[]).join(", "), hideOnMobile: true },
       { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },

@@ -47,6 +47,22 @@ export async function GET(request: Request) {
       scheduleMap.get(s.installmentAccountId)!.push(s);
     }
 
+    const nextDueAmountMap = new Map<string, Decimal>();
+    if (accountIds.length > 0) {
+      const nextUnpaid = await prisma.installmentSchedule.findMany({
+        where: {
+          installmentAccountId: { in: accountIds },
+          status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+        },
+        orderBy: { periodNumber: "asc" },
+        distinct: ["installmentAccountId"],
+      });
+      for (const s of nextUnpaid) {
+        const amt = new Decimal(s.amount.toString()).plus(new Decimal(s.penaltyAmount?.toString() ?? "0"));
+        nextDueAmountMap.set(s.installmentAccountId, amt);
+      }
+    }
+
     const paid: typeof allAccounts = [];
     const unpaid: typeof allAccounts = [];
     for (const a of allAccounts) {
@@ -158,6 +174,7 @@ export async function GET(request: Request) {
         lastPaymentDate: lastPayInfo ? lastPayInfo.lastPaymentDate : null,
         lastPaymentAmount: lastPayInfo ? decimalToString(lastPayInfo.lastPaymentAmount) : null,
         totalPaid: decimalToString(totalPaidMap.get(a.id) ?? new Decimal(0)),
+        nextAmountDue: decimalToString(nextDueAmountMap.get(a.id) ?? new Decimal(0)),
       };
     });
 
