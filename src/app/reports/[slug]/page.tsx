@@ -195,16 +195,16 @@ const reportConfigs: Record<string, ReportConfig> = {
           const hasBreakdown = breakdown && breakdown.length > 0;
           const total = r.totalAmountDue !== "0.00" ? r.totalAmountDue : r.nextAmountDue;
           const showTotal = formatPeso(total);
-          if (!hasBreakdown) return <span className="font-bold text-slate-700">{showTotal}</span>;
+          const isActive = hasBreakdown;
           return (
             <details className="relative group">
-              <summary className="list-none cursor-pointer inline-flex items-center gap-1 font-bold text-red-800">
+              <summary className={`list-none cursor-pointer inline-flex items-center gap-1 font-bold ${isActive ? "text-red-800" : "text-slate-700"}`}>
                 {showTotal}
-                <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span>
+                {hasBreakdown ? <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span> : null}
               </summary>
-              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-2 w-[280px] text-[10px]">
+              <span className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-2 w-[280px] text-[10px]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-semibold text-slate-500">Due Periods</span>
+                  <span className="font-semibold text-slate-500">{hasBreakdown ? "Due Periods" : "Next Payment"}</span>
                   <button
                     type="button"
                     className="flex size-4 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
@@ -213,32 +213,39 @@ const reportConfigs: Record<string, ReportConfig> = {
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-slate-500 border-b border-slate-100">
-                      <th className="text-left py-0.5 w-6">#</th>
-                      <th className="text-left py-0.5">Due</th>
-                      <th className="text-right py-0.5 w-16">Amt</th>
-                      <th className="text-right py-0.5 w-16">Pen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {breakdown.map((p) => (
-                      <tr key={p.period} className="border-b border-slate-50">
-                        <td className="py-0.5">{p.period}</td>
-                        <td className="py-0.5">{p.dueDate.slice(5)}</td>
-                        <td className="py-0.5 text-right">{formatPeso(p.amount)}</td>
-                        <td className="py-0.5 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
+                {hasBreakdown ? (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-slate-500 border-b border-slate-100">
+                        <th className="text-left py-0.5 w-6">#</th>
+                        <th className="text-left py-0.5">Due</th>
+                        <th className="text-right py-0.5 w-16">Amt</th>
+                        <th className="text-right py-0.5 w-16">Pen</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="font-semibold">
-                      <td colSpan={3} className="pt-1 text-right text-slate-600">Total:</td>
-                      <td className="pt-1 text-right text-red-800">{showTotal}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody>
+                      {breakdown.map((p) => (
+                        <tr key={p.period} className="border-b border-slate-50">
+                          <td className="py-0.5">{p.period}</td>
+                          <td className="py-0.5">{p.dueDate.slice(5)}</td>
+                          <td className="py-0.5 text-right">{formatPeso(p.amount)}</td>
+                          <td className="py-0.5 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="font-semibold">
+                        <td colSpan={3} className="pt-1 text-right text-slate-600">Total:</td>
+                        <td className="pt-1 text-right text-red-800">{showTotal}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                ) : (
+                  <div className="text-slate-600 space-y-1">
+                    <div className="flex justify-between"><span>Next Payment:</span><span className="font-semibold">{showTotal}</span></div>
+                    <div className="text-slate-400 text-[9px]">No overdue periods. This is the next installment amount.</div>
+                  </div>
+                )}
               </span>
             </details>
           );
