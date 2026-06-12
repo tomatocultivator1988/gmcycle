@@ -238,12 +238,13 @@ export function InstallmentAccountForm() {
             <div>
               <label className="block text-sm font-medium text-slate-700">
                 Full Name
-                <input
-                  required
-                  value={form.customerName}
-                  onChange={(e) => updateField("customerName", e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
+              <input
+                required
+                value={form.customerName}
+                onChange={(e) => updateField("customerName", e.target.value)}
+                autoComplete="name"
+                className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              />
               </label>
               <FieldError error={fieldErrors.customerName} />
             </div>
@@ -255,6 +256,7 @@ export function InstallmentAccountForm() {
                   inputMode="numeric"
                   value={form.customerPhone}
                   onChange={(e) => updateField("customerPhone", e.target.value.replace(/\D/g, ""))}
+                  autoComplete="tel"
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>
@@ -267,6 +269,7 @@ export function InstallmentAccountForm() {
                   type="email"
                   value={form.customerEmail}
                   onChange={(e) => updateField("customerEmail", e.target.value)}
+                  autoComplete="email"
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>
@@ -279,6 +282,7 @@ export function InstallmentAccountForm() {
                   required
                   value={form.customerAddress}
                   onChange={(e) => updateField("customerAddress", e.target.value)}
+                  autoComplete="street-address"
                   className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>

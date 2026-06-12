@@ -38,8 +38,8 @@ export function NavLink({
     return (
       <Link
         href={href}
-        className={`flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors duration-150 ${
-          isActive ? "text-red-700" : "text-slate-500 hover:text-red-700"
+        className={`flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors duration-150 rounded-lg ${
+          isActive ? "text-red-700 bg-red-50" : "text-slate-500 hover:text-red-700"
         }`}
       >
         <Icon size={20} aria-hidden="true" />

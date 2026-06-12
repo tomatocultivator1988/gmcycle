@@ -136,7 +136,7 @@ export default function PaymentsPage() {
       render: (p) => (
         <Link
           href={`/payments/${p.id}/receipt`}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
+          className="inline-flex h-8 sm:h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98] min-h-[44px] sm:min-h-0"
         >
           <Printer size={13} />
           Receipt

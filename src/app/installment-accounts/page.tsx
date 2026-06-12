@@ -168,19 +168,19 @@ export default function InstallmentAccountsPage() {
         <div className="flex items-center gap-2 justify-end">
           {a.badRecord ? null : (
             <button
-              type="button"
-              onClick={() => toggleBadRecord(a)}
-              className="inline-flex h-8 items-center rounded-xl border border-red-200 bg-red-50 px-2.5 text-xs font-medium text-red-700 transition-all hover:bg-red-100 active:scale-[0.98]"
-            >
-              Bad Record
-            </button>
-          )}
-          <Link
-            href={`/installment-accounts/${a.id}`}
-            className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
-          >
-            View
-          </Link>
+                  type="button"
+                  onClick={() => toggleBadRecord(a)}
+                  className="inline-flex h-8 sm:h-8 items-center rounded-xl border border-red-200 bg-red-50 px-2.5 sm:px-2.5 text-xs font-medium text-red-700 transition-all hover:bg-red-100 active:scale-[0.98] min-h-[44px] sm:min-h-0"
+                >
+                  Bad Record
+                </button>
+              )}
+              <Link
+                href={`/installment-accounts/${a.id}`}
+                className="inline-flex h-8 sm:h-8 items-center rounded-xl border border-slate-300 bg-white px-3 sm:px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98] min-h-[44px] sm:min-h-0"
+              >
+                View
+              </Link>
         </div>
       ),
       hideOnMobile: false,
