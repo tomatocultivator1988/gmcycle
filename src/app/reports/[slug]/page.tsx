@@ -183,10 +183,57 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "cashPrice", label: "Cash Price", render: (r) => formatPeso(r.cashPrice), hideOnMobile: true },
       { key: "downPayment", label: "Down Pmt", render: (r) => formatPeso(r.downPayment), hideOnMobile: true },
-      { key: "balance", label: "Total Due", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
+      { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
       { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment) },
-      { key: "nextAmountDue", label: "Next Due Amt", render: (r) => r.nextAmountDue !== "0.00" ? <span className="font-semibold text-red-800">{formatPeso(r.nextAmountDue)}</span> : <span className="text-slate-400">—</span> },
+      { key: "nextAmountDue", label: "Next Due", render: (r) => r.nextAmountDue !== "0.00" ? <span className="font-semibold text-red-800">{formatPeso(r.nextAmountDue)}</span> : <span className="text-slate-400">—</span> },
       { key: "totalPenalties", label: "Penalties", render: (r) => r.totalPenalties !== "0.00" ? <span className="font-medium text-rose-600">{formatPeso(r.totalPenalties)}</span> : <span className="text-slate-300">—</span>, hideOnMobile: true },
+      {
+        key: "totalAmountDue",
+        label: "Total Amount Due",
+        render: (r) => {
+          const breakdown = r.dueBreakdown as Array<{ period: number; dueDate: string; amount: string; penalty: string }> | undefined;
+          const hasBreakdown = breakdown && breakdown.length > 0;
+          const total = r.totalAmountDue !== "0.00" ? r.totalAmountDue : r.nextAmountDue;
+          const showTotal = formatPeso(total);
+          if (!hasBreakdown) return <span className="font-bold text-slate-700">{showTotal}</span>;
+          return (
+            <details className="relative group">
+              <summary className="list-none cursor-pointer inline-flex items-center gap-1 font-bold text-red-800">
+                {showTotal}
+                <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span>
+              </summary>
+              <span className="absolute left-0 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-3 min-w-[240px] text-xs">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-slate-500 border-b border-slate-100">
+                      <th className="text-left py-1">#</th>
+                      <th className="text-left py-1">Due</th>
+                      <th className="text-right py-1">Amount</th>
+                      <th className="text-right py-1">Penalty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdown.map((p) => (
+                      <tr key={p.period} className="border-b border-slate-50">
+                        <td className="py-1">{p.period}</td>
+                        <td className="py-1">{p.dueDate}</td>
+                        <td className="py-1 text-right">{formatPeso(p.amount)}</td>
+                        <td className="py-1 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-semibold">
+                      <td colSpan={3} className="pt-1.5 text-right text-slate-600">Total:</td>
+                      <td className="pt-1.5 text-right text-red-800">{showTotal}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </span>
+            </details>
+          );
+        },
+      },
       { key: "term", label: "Term", render: (r) => `${r.term}mo`, hideOnMobile: true },
       { key: "dueDay", label: "Due Day", render: (r) => (r.dueDays as number[]).join(", "), hideOnMobile: true },
       { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },

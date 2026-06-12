@@ -76,6 +76,40 @@ export async function GET(request: Request) {
       }
     }
 
+    const totalAmountDueMap = new Map<string, Decimal>();
+    const dueBreakdownMap = new Map<string, Array<{ period: number; dueDate: string; amount: string; penalty: string }>>();
+    if (accountIds.length > 0) {
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(todayMidnight.getTime() + 86400000);
+
+      const dueNow = await prisma.installmentSchedule.findMany({
+        where: {
+          installmentAccountId: { in: accountIds },
+          status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+          dueDate: { lt: tomorrow },
+        },
+        orderBy: { periodNumber: "asc" },
+      });
+
+      for (const s of dueNow) {
+        const penalty = new Decimal(s.penaltyAmount?.toString() ?? "0");
+        const total = new Decimal(s.amount.toString()).plus(penalty);
+        const current = totalAmountDueMap.get(s.installmentAccountId) ?? new Decimal(0);
+        totalAmountDueMap.set(s.installmentAccountId, current.plus(total));
+
+        if (!dueBreakdownMap.has(s.installmentAccountId)) {
+          dueBreakdownMap.set(s.installmentAccountId, []);
+        }
+        dueBreakdownMap.get(s.installmentAccountId)!.push({
+          period: s.periodNumber,
+          dueDate: dateToManilaDateOnly(s.dueDate),
+          amount: decimalToString(s.amount),
+          penalty: decimalToString(penalty),
+        });
+      }
+    }
+
     const paid: typeof allAccounts = [];
     const unpaid: typeof allAccounts = [];
     for (const a of allAccounts) {
@@ -189,6 +223,8 @@ export async function GET(request: Request) {
         totalPaid: decimalToString(totalPaidMap.get(a.id) ?? new Decimal(0)),
         nextAmountDue: decimalToString(nextDueAmountMap.get(a.id) ?? new Decimal(0)),
         totalPenalties: decimalToString(totalPenaltiesMap.get(a.id) ?? new Decimal(0)),
+        totalAmountDue: decimalToString(totalAmountDueMap.get(a.id) ?? new Decimal(0)),
+        dueBreakdown: dueBreakdownMap.get(a.id) ?? [],
       };
     });
 

@@ -312,6 +312,61 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             </div>
         ) : null}
 
+        {/* Total Amount Due (due on/before today) */}
+        {(() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const dueNow = (data.schedule || []).filter(
+            (s: any) => (s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE") && s.dueDate <= today
+          );
+          if (dueNow.length === 0) return null;
+          const totalDue = dueNow.reduce((sum: number, s: any) => sum + parseFloat(s.amount) + parseFloat(s.penalty || "0"), 0);
+          return (
+            <div className="border-t-2 border-red-200 px-4 sm:px-8 py-5 print:border-red-300 print:px-8 bg-red-50/30">
+              <h2 className="text-xs font-semibold font-heading uppercase tracking-wider text-red-700 mb-3">Total Amount Due ({dueNow.length} period{dueNow.length > 1 ? "s" : ""} due on or before today)</h2>
+              <div className="hidden sm:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-red-100 text-left text-xs text-slate-500">
+                      <th className="py-2 pr-3 font-medium">#</th>
+                      <th className="py-2 pr-3 font-medium">Due Date</th>
+                      <th className="py-2 pr-3 font-medium text-right">Amount</th>
+                      <th className="py-2 pr-3 font-medium text-right">Penalty</th>
+                      <th className="py-2 pr-3 font-medium text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dueNow.map((s: any) => (
+                      <tr key={s.period} className="border-b border-red-100 text-slate-700">
+                        <td className="py-1.5 pr-3">{s.period}</td>
+                        <td className="py-1.5 pr-3">{s.dueDate}</td>
+                        <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
+                        <td className="py-1.5 pr-3 text-right text-rose-600">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
+                        <td className="py-1.5 pr-3 text-right font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold text-red-800">
+                      <td colSpan={4} className="pt-2 pr-3 text-right">Total Amount Due:</td>
+                      <td className="pt-2 pr-3 text-right">{formatPeso(totalDue.toFixed(2))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div className="block sm:hidden space-y-2">
+                {dueNow.map((s: any) => (
+                  <div key={s.period} className="rounded-lg border border-red-100 bg-white p-3 text-xs space-y-1.5">
+                    <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className="font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Amount</span><span>{formatPeso(s.amount)}</span></div>
+                    {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
+                  </div>
+                ))}
+                <div className="text-center text-sm font-bold text-red-800 pt-1">Total: {formatPeso(totalDue.toFixed(2))}</div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Footer */}
         <div className="border-t border-slate-200 px-8 py-4 text-center text-[11px] text-slate-400 print:border-slate-300">
           MyFaveGadgets — Gadget Installment Monitoring System — {generatedDate}
