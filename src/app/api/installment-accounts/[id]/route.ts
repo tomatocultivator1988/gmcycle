@@ -110,8 +110,12 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
 
   const paidPeriods = existing.schedule.filter((s) => s.status === "PAID");
+  const partialPeriods = existing.schedule.filter((s) => s.status === "PARTIAL");
   const paidPeriodNumbers = new Set(paidPeriods.map((s) => s.periodNumber));
-  const paidTotal = paidPeriods.reduce((sum, p) => sum.plus(p.amount), new Decimal(0));
+
+  const fullPaidTotal = paidPeriods.reduce((sum, p) => sum.plus(p.amount), new Decimal(0));
+  const partialPaidTotal = partialPeriods.reduce((sum, p) => sum.plus(p.paidAmount || 0), new Decimal(0));
+  const paidTotal = fullPaidTotal.plus(partialPaidTotal);
   const unpaidCount = totalPeriods - paidPeriods.length;
 
   const contractBalance = installmentPrice.minus(downPayment);

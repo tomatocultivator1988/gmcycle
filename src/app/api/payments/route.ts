@@ -122,9 +122,14 @@ export async function POST(request: Request) {
         }
       }
 
+      // First pass: compute allocation only (no DB writes)
       let remainingToApply = totalAmount;
       let totalPenalty = new Decimal(0);
-      const scheduleUpdates: Promise<any>[] = [];
+      const computedPeriods: Array<{
+        period: (typeof updatedSchedule)[0];
+        newPaidAmount: Decimal;
+        isPaid: boolean;
+      }> = [];
 
       for (const period of updatedSchedule) {
         if (remainingToApply.lte(0)) break;
@@ -148,26 +153,12 @@ export async function POST(request: Request) {
           : new Decimal(0)
         ).plus(paidForPeriod);
 
-        if (paidForPeriod.gte(periodTotalDue)) {
-          scheduleUpdates.push(tx.installmentSchedule.update({
-            where: { id: period.id },
-            data: {
-              status: "PAID",
-              paidDate: paymentDate,
-              paymentId: "__pending__",
-              paidAmount: decimalToString(newPaidAmount),
-            },
-          }));
-        } else if (paidForPeriod.gt(0)) {
-          scheduleUpdates.push(tx.installmentSchedule.update({
-            where: { id: period.id },
-            data: {
-              status: "PARTIAL",
-              paidDate: paymentDate,
-              paymentId: "__pending__",
-              paidAmount: decimalToString(newPaidAmount),
-            },
-          }));
+        if (paidForPeriod.gt(0)) {
+          computedPeriods.push({
+            period,
+            newPaidAmount,
+            isPaid: paidForPeriod.gte(periodTotalDue),
+          });
         }
 
         remainingToApply = remainingToApply.minus(paidForPeriod);
@@ -175,8 +166,7 @@ export async function POST(request: Request) {
         if (paymentType === "PARTIAL") break;
       }
 
-      await Promise.all(scheduleUpdates);
-
+      // Create payment with REAL totalPenalty
       const createdPayment = await tx.payment.create({
         data: {
           installmentAccountId: body.installmentAccountId,
@@ -192,13 +182,20 @@ export async function POST(request: Request) {
         },
       });
 
-      await tx.installmentSchedule.updateMany({
-        where: {
-          installmentAccountId: account.id,
-          paymentId: "__pending__",
-        },
-        data: { paymentId: createdPayment.id },
-      });
+      // Second pass: write schedule updates with REAL paymentId (no __pending__)
+      await Promise.all(
+        computedPeriods.map(({ period, newPaidAmount, isPaid }) =>
+          tx.installmentSchedule.update({
+            where: { id: period.id },
+            data: {
+              status: isPaid ? "PAID" : "PARTIAL",
+              paidDate: paymentDate,
+              paymentId: createdPayment.id,
+              paidAmount: decimalToString(newPaidAmount),
+            },
+          }),
+        ),
+      );
 
       // --- RECALCULATE REMAINING BALANCE ---
       await recalculateBalance(tx, account.id);
