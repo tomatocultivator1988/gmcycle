@@ -202,40 +202,40 @@ const reportConfigs: Record<string, ReportConfig> = {
                 {showTotal}
                 <span className="text-[10px] font-normal text-slate-400">({breakdown.length})</span>
               </summary>
-              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-3 min-w-[240px] max-w-[300px] text-xs">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-slate-500 text-[11px]">Due Periods</span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg p-2 w-[280px] text-[10px]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-slate-500">Due Periods</span>
                   <button
                     type="button"
-                    className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                    className="flex size-4 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                     onClick={(e) => { e.stopPropagation(); (e.currentTarget.closest("details") as HTMLDetailsElement).open = false; }}
                   >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
                 <table className="w-full">
                   <thead>
                     <tr className="text-slate-500 border-b border-slate-100">
-                      <th className="text-left py-1">#</th>
-                      <th className="text-left py-1">Due</th>
-                      <th className="text-right py-1">Amt</th>
-                      <th className="text-right py-1">Pen</th>
+                      <th className="text-left py-0.5 w-6">#</th>
+                      <th className="text-left py-0.5">Due</th>
+                      <th className="text-right py-0.5 w-16">Amt</th>
+                      <th className="text-right py-0.5 w-16">Pen</th>
                     </tr>
                   </thead>
                   <tbody>
                     {breakdown.map((p) => (
                       <tr key={p.period} className="border-b border-slate-50">
-                        <td className="py-1">{p.period}</td>
-                        <td className="py-1">{p.dueDate}</td>
-                        <td className="py-1 text-right">{formatPeso(p.amount)}</td>
-                        <td className="py-1 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
+                        <td className="py-0.5">{p.period}</td>
+                        <td className="py-0.5">{p.dueDate.slice(5)}</td>
+                        <td className="py-0.5 text-right">{formatPeso(p.amount)}</td>
+                        <td className="py-0.5 text-right text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="font-semibold">
-                      <td colSpan={3} className="pt-1.5 text-right text-slate-600">Total:</td>
-                      <td className="pt-1.5 text-right text-red-800">{showTotal}</td>
+                      <td colSpan={3} className="pt-1 text-right text-slate-600">Total:</td>
+                      <td className="pt-1 text-right text-red-800">{showTotal}</td>
                     </tr>
                   </tfoot>
                 </table>
