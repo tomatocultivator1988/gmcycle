@@ -17,16 +17,19 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
     const search = searchParams.get("search") || "";
+    const showClosed = searchParams.get("showClosed") === "true";
 
-    const where = search
-      ? {
-          OR: [
-            { customerName: { contains: search, mode: "insensitive" as const } },
-            { brand: { contains: search, mode: "insensitive" as const } },
-            { model: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
+    const where: Record<string, unknown> = {};
+    if (!showClosed) {
+      where.status = { not: "CLOSED" };
+    }
+    if (search) {
+      where.OR = [
+        { customerName: { contains: search, mode: "insensitive" as const } },
+        { brand: { contains: search, mode: "insensitive" as const } },
+        { model: { contains: search, mode: "insensitive" as const } },
+      ];
+    }
 
     const [accounts, total] = await Promise.all([
       prisma.installmentAccount.findMany({

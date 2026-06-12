@@ -41,13 +41,14 @@ export default function InstallmentAccountsPage() {
   const [showClosed, setShowClosed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const fetchAccounts = useCallback(async (p: number, search: string, showLoading = true) => {
+  const fetchAccounts = useCallback(async (p: number, search: string, showClosed: boolean, showLoading = true) => {
     if (showLoading) setLoading(true);
     setError("");
 
     try {
       const params = new URLSearchParams({ page: String(p), limit: "20" });
       if (search) params.set("search", search);
+      if (showClosed) params.set("showClosed", "true");
 
       const data = await apiRequest<AccountListResponse>(
         `/api/installment-accounts?${params}`,
@@ -62,8 +63,8 @@ export default function InstallmentAccountsPage() {
   }, []);
 
   useEffect(() => {
-    fetchAccounts(page, debouncedSearch, !debouncedSearch);
-  }, [page, debouncedSearch, fetchAccounts]);
+    fetchAccounts(page, debouncedSearch, showClosed, !debouncedSearch);
+  }, [page, debouncedSearch, showClosed, fetchAccounts]);
 
   function handleSearch(value: string) {
     setSearchTerm(value);
@@ -81,7 +82,7 @@ export default function InstallmentAccountsPage() {
           method: "PATCH",
           body: JSON.stringify({ badRecord: false }),
         });
-        fetchAccounts(page, debouncedSearch);
+        fetchAccounts(page, debouncedSearch, showClosed);
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -102,8 +103,7 @@ export default function InstallmentAccountsPage() {
         body: JSON.stringify({ badRecord: true, badRecordRemark }),
       });
       setBadRecordModal(null);
-      fetchAccounts(page, debouncedSearch);
-    } catch (e) {
+      fetchAccounts(page, debouncedSearch, showClosed);    } catch (e) {
       setError((e as Error).message);
     } finally {
       setSavingBadRecord(false);
@@ -306,7 +306,7 @@ export default function InstallmentAccountsPage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <ResponsiveTable
               columns={columns}
-              data={showClosed ? accounts : accounts.filter((a) => a.status !== "CLOSED")}
+              data={accounts}
               rowKey={(a) => a.id}
               emptyMessage={debouncedSearch ? "No accounts match your search." : "No accounts yet. Create your first account."}
               mobileAccordion={{ summaryColumns: ["customer", "status"] }}
