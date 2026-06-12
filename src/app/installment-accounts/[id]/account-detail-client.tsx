@@ -614,6 +614,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <FileText size={16} aria-hidden="true" />
               <span className="inline">Statement</span>
             </Link>
+            <Link
+              href={`/installment-accounts/${account.id}/down-payment-receipt`}
+              className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 sm:px-4 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+            >
+              <Printer size={16} aria-hidden="true" />
+              <span className="hidden sm:inline">DP Receipt</span>
+            </Link>
             <button
               type="button"
               onClick={openEditModal}

@@ -98,14 +98,23 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           <ArrowLeft size={16} />
           Back to Account
         </Link>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
-        >
-          <Printer size={16} />
-          Print / Export PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/installment-accounts/${id}/down-payment-receipt`}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+          >
+            <Printer size={16} />
+            DP Receipt
+          </Link>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+          >
+            <Printer size={16} />
+            Print / Export PDF
+          </button>
+        </div>
       </div>
 
       {/* ── STATEMENT CONTENT ── */}
