@@ -41,8 +41,8 @@ export default function InstallmentAccountsPage() {
   const [showClosed, setShowClosed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const fetchAccounts = useCallback(async (p: number, search: string) => {
-    setLoading(true);
+  const fetchAccounts = useCallback(async (p: number, search: string, showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError("");
 
     try {
@@ -57,12 +57,12 @@ export default function InstallmentAccountsPage() {
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAccounts(page, debouncedSearch);
+    fetchAccounts(page, debouncedSearch, !debouncedSearch);
   }, [page, debouncedSearch, fetchAccounts]);
 
   function handleSearch(value: string) {
@@ -70,7 +70,6 @@ export default function InstallmentAccountsPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setDebouncedSearch(value);
-      setPage(1);
     }, 300);
   }
 
