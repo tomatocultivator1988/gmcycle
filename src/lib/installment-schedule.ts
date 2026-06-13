@@ -34,10 +34,13 @@ export function generateSchedule(
 
   const dueMonth = firstDueDate.getMonth();
   const dueYear = firstDueDate.getFullYear();
+  const startDay = firstDueDate.getDate();
+  const startIdx = sortedDays.indexOf(startDay) >= 0 ? sortedDays.indexOf(startDay) : 0;
 
   for (let i = 0; i < totalPeriods; i++) {
-    const dayIndex = i % periodsPerMonth;
-    const monthOffset = Math.floor(i / periodsPerMonth);
+    const adjustedI = startIdx + i;
+    const dayIndex = adjustedI % periodsPerMonth;
+    const monthOffset = Math.floor(adjustedI / periodsPerMonth);
     const targetDay = sortedDays[dayIndex];
 
     let targetMonth = dueMonth + monthOffset;
@@ -80,9 +83,13 @@ export function generateAdjustedDates(
   const startMonth = startDate.getMonth();
   const startYear = startDate.getFullYear();
 
+  const startDay = startDate.getDate();
+  const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
+
   for (let i = 0; i < count; i++) {
-    const dayIndex = i % perMonth;
-    const monthOffset = Math.floor(i / perMonth);
+    const adjustedI = startIdx + i;
+    const dayIndex = adjustedI % perMonth;
+    const monthOffset = Math.floor(adjustedI / perMonth);
     const targetDay = sorted[dayIndex];
 
     let targetMonth = startMonth + monthOffset;

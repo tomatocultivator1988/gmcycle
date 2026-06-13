@@ -215,8 +215,11 @@ function computeDueDate(startDate: Date, dueDays: number[], scheduleType: string
     return d;
   } else {
     const periodsPerMonth = 2;
-    const monthsOffset = Math.floor((periodNumber - 1) / periodsPerMonth);
-    const isFirstHalf = (periodNumber - 1) % periodsPerMonth === 0;
+    const startDay = startDate.getDate();
+    const startIdx = dueDays.indexOf(startDay) >= 0 ? dueDays.indexOf(startDay) : 0;
+    const adjustedPeriod = (periodNumber - 1) + startIdx;
+    const monthsOffset = Math.floor(adjustedPeriod / periodsPerMonth);
+    const isFirstHalf = adjustedPeriod % periodsPerMonth === 0;
     const d = new Date(startDate);
     d.setMonth(d.getMonth() + monthsOffset);
     const day = isFirstHalf ? dueDays[0] : (dueDays[1] ?? dueDays[0]);

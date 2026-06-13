@@ -594,10 +594,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     const preview: { periodNumber: number; oldDate: string; newDate: string }[] = [];
     const startMonth = startDate.getMonth();
     const startYear = startDate.getFullYear();
+    const startDay = startDate.getDate();
+    const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
 
     for (let i = 0; i < unpaid.length; i++) {
-      const dayIndex = i % perMonth;
-      const monthOffset = Math.floor(i / perMonth);
+      const adjustedI = startIdx + i;
+      const dayIndex = adjustedI % perMonth;
+      const monthOffset = Math.floor(adjustedI / perMonth);
       const targetDay = sorted[dayIndex];
       let targetMonth = startMonth + monthOffset;
       let targetYear = startYear;
