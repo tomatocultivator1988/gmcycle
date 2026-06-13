@@ -519,6 +519,18 @@ export function InstallmentAccountForm() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">
+                Date Given
+                <input
+                  type="date"
+                  value={form.dateGiven}
+                  onChange={(e) => updateField("dateGiven", e.target.value)}
+                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+              <FieldError error={fieldErrors.dateGiven} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
                 First Due Date
                 <input
                   required
@@ -529,18 +541,6 @@ export function InstallmentAccountForm() {
                 />
               </label>
               <FieldError error={fieldErrors.firstDueDate} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Date Given
-                <input
-                  type="date"
-                  value={form.dateGiven}
-                  onChange={(e) => updateField("dateGiven", e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
-              </label>
-              <FieldError error={fieldErrors.dateGiven} />
             </div>
           </div>
 
