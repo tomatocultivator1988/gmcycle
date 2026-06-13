@@ -5,6 +5,7 @@ import { parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
 import { decimalToString, parsePositiveMoney } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
+import { sendDpReceipt } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { serializeInstallmentAccount } from "@/lib/serializers";
 import { createInstallmentAccountSchema } from "@/lib/validation";
@@ -137,8 +138,26 @@ export async function POST(request: Request) {
       return created;
     });
 
+    const serialized = serializeInstallmentAccount(account);
+    const emailSent = await sendDpReceipt({
+      id: serialized.id,
+      customerEmail: serialized.customerEmail,
+      customerName: serialized.customerName,
+      customerAddress: serialized.customerAddress,
+      customerPhone: serialized.customerPhone,
+      brand: serialized.brand,
+      model: serialized.model,
+      unitDescription: serialized.unitDescription,
+      downPayment: serialized.downPayment,
+      processingFee: serialized.processingFee,
+      dateGiven: serialized.dateGiven,
+      startDate: serialized.startDate,
+      term: serialized.term,
+      monthlyInstallment: serialized.monthlyInstallment,
+    });
+
     return NextResponse.json(
-      { installmentAccount: serializeInstallmentAccount(account) },
+      { installmentAccount: serialized, emailSent },
       { status: 201 },
     );
   } catch (error) {

@@ -52,6 +52,7 @@ export function InstallmentAccountForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([]);
 
   function parseDecimal(value: string): Decimal {
@@ -191,13 +192,14 @@ export function InstallmentAccountForm() {
           return acc;
         }, {} as Record<string, string>),
       };
-      const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
+      const data = await apiRequest<{ installmentAccount: InstallmentAccountDto; emailSent: boolean }>(
         "/api/installment-accounts",
         { method: "POST", body: JSON.stringify(body) },
       );
       setSaving(false);
       setShowConfirm(false);
       setCreatedAccountId(data.installmentAccount.id);
+      setEmailSent(data.emailSent);
     } catch (requestError) {
       setError((requestError as Error).message);
       setShowConfirm(false);
@@ -650,6 +652,13 @@ export function InstallmentAccountForm() {
               </span>
               <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Account Created</h3>
               <p className="mt-1.5 text-sm text-slate-500">The installment account has been created successfully.</p>
+              {emailSent ? (
+                <p className="mt-2 text-xs text-emerald-600">✓ DP Receipt sent to {form.customerEmail}</p>
+              ) : form.customerEmail ? (
+                <p className="mt-2 text-xs text-amber-600">⚠ Failed to send DP receipt email</p>
+              ) : (
+                <p className="mt-2 text-xs text-slate-400">No email configured for customer</p>
+              )}
               <button
                 type="button"
                 onClick={() => router.push(`/installment-accounts/${createdAccountId}`)}
