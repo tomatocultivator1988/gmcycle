@@ -896,7 +896,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
                         Pen: {formatPeso(period.penaltyAmount)}
                       </span>
-                    ) : (period.status === "OVERDUE" || (period.status === "PENDING" && period.dueDate < todayDateOnly())) ? (
+                    ) : (period.status === "OVERDUE" || period.status === "PARTIAL" || (period.status === "PENDING" && period.dueDate < todayDateOnly())) ? (
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-rose-600 font-medium">
                           {(() => {
