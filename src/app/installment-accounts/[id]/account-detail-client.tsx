@@ -29,6 +29,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { ErrorMessage, LoadingBlock, SuccessMessage } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
+import { dateToManilaDateOnly } from "@/lib/dates";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useEscapeKey } from "@/lib/use-escape-key";
 import { createPaymentSchema } from "@/lib/validation";
@@ -594,7 +595,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     const preview: { periodNumber: number; oldDate: string; newDate: string }[] = [];
     const startMonth = startDate.getMonth();
     const startYear = startDate.getFullYear();
-    const startDay = startDate.getDate();
+    const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
     const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
 
     for (let i = 0; i < unpaid.length; i++) {

@@ -215,7 +215,7 @@ function computeDueDate(startDate: Date, dueDays: number[], scheduleType: string
     return d;
   } else {
     const periodsPerMonth = 2;
-    const startDay = startDate.getDate();
+    const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
     const startIdx = dueDays.indexOf(startDay) >= 0 ? dueDays.indexOf(startDay) : 0;
     const adjustedPeriod = (periodNumber - 1) + startIdx;
     const monthsOffset = Math.floor(adjustedPeriod / periodsPerMonth);

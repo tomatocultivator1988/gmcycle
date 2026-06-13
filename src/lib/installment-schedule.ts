@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import { dateToManilaDateOnly } from "@/lib/dates";
 
 export type InstallmentScheduleInput = {
   periodNumber: number;
@@ -34,7 +35,7 @@ export function generateSchedule(
 
   const dueMonth = firstDueDate.getMonth();
   const dueYear = firstDueDate.getFullYear();
-  const startDay = firstDueDate.getDate();
+  const startDay = parseInt(dateToManilaDateOnly(firstDueDate).slice(8, 10), 10);
   const startIdx = sortedDays.indexOf(startDay) >= 0 ? sortedDays.indexOf(startDay) : 0;
 
   for (let i = 0; i < totalPeriods; i++) {
@@ -83,7 +84,7 @@ export function generateAdjustedDates(
   const startMonth = startDate.getMonth();
   const startYear = startDate.getFullYear();
 
-  const startDay = startDate.getDate();
+  const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
   const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
 
   for (let i = 0; i < count; i++) {
