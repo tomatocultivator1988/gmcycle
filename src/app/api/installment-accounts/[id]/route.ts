@@ -206,23 +206,24 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
 }
 
 function computeDueDate(startDate: Date, dueDays: number[], scheduleType: string, periodNumber: number): Date {
+  const sorted = [...dueDays].sort((a, b) => a - b);
   if (scheduleType === "MONTHLY") {
     const d = new Date(startDate);
     d.setMonth(d.getMonth() + (periodNumber - 1));
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const day = dueDays[0];
+    const day = sorted[0];
     d.setDate(Math.min(day, lastDay));
     return d;
   } else {
     const periodsPerMonth = 2;
     const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
-    const startIdx = dueDays.indexOf(startDay) >= 0 ? dueDays.indexOf(startDay) : 0;
+    const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
     const adjustedPeriod = (periodNumber - 1) + startIdx;
     const monthsOffset = Math.floor(adjustedPeriod / periodsPerMonth);
     const isFirstHalf = adjustedPeriod % periodsPerMonth === 0;
     const d = new Date(startDate);
     d.setMonth(d.getMonth() + monthsOffset);
-    const day = isFirstHalf ? dueDays[0] : (dueDays[1] ?? dueDays[0]);
+    const day = isFirstHalf ? sorted[0] : (sorted[1] ?? sorted[0]);
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     d.setDate(Math.min(day, lastDay));
     return d;
