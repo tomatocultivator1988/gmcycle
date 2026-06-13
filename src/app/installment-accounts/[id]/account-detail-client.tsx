@@ -160,6 +160,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [closePassword, setClosePassword] = useState("");
   const [closing, setClosing] = useState(false);
   const [showDeviceSecurity, setShowDeviceSecurity] = useState(false);
+  const [isEditingDeviceSecurity, setIsEditingDeviceSecurity] = useState(false);
   const [deviceEmail, setDeviceEmail] = useState("");
   const [deviceEmailPassword, setDeviceEmailPassword] = useState("");
   const [deviceAccountHolderEmail, setDeviceAccountHolderEmail] = useState("");
@@ -457,12 +458,25 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         `/api/installment-accounts/${account.id}/activate`,
         { method: "PATCH" },
       );
+      setDeviceEmail("");
+      setDeviceEmailPassword("");
+      setDeviceAccountHolderEmail("");
+      setIsEditingDeviceSecurity(false);
       setShowDeviceSecurity(true);
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {
       setActivating(false);
     }
+  }
+
+  function handleEditDeviceSecurity() {
+    if (!account) return;
+    setDeviceEmail(account.deviceEmail || "");
+    setDeviceEmailPassword(account.deviceEmailPassword || "");
+    setDeviceAccountHolderEmail(account.deviceAccountHolderEmail || "");
+    setIsEditingDeviceSecurity(true);
+    setShowDeviceSecurity(true);
   }
 
   async function saveDeviceSecurity() {
@@ -717,7 +731,16 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
       {account.deviceEmail ? (
         <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 shadow-sm">
-          <p className="text-xs font-semibold font-heading uppercase tracking-wider text-blue-600 mb-2">Device Security</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold font-heading uppercase tracking-wider text-blue-600">Device Security</p>
+            <button
+              type="button"
+              onClick={handleEditDeviceSecurity}
+              className="inline-flex size-7 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-600 shadow-sm transition-all hover:bg-blue-50 active:scale-[0.95]"
+            >
+              <Pencil size={13} />
+            </button>
+          </div>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
             <span className="text-slate-600">📱 <span className="font-medium">{account.deviceEmail}</span></span>
             <span className="text-slate-600">🔑 <span className="font-medium">{account.deviceEmailPassword}</span></span>
@@ -1555,8 +1578,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 <span className="flex size-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                   <Lock size={24} />
                 </span>
-                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Device Security Setup</h3>
-                <p className="mt-1.5 text-sm text-slate-500">Install this email on the device for security tracking</p>
+                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">{isEditingDeviceSecurity ? "Edit Device Security" : "Device Security Setup"}</h3>
+                <p className="mt-1.5 text-sm text-slate-500">{isEditingDeviceSecurity ? "Update the device email credentials" : "Install this email on the device for security tracking"}</p>
               </div>
             </div>
 
@@ -1609,7 +1632,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 onClick={saveDeviceSecurity}
                 className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:bg-slate-300"
               >
-                {savingDeviceSecurity ? "Saving..." : "Save & Continue"}
+                {savingDeviceSecurity ? "Saving..." : isEditingDeviceSecurity ? "Save Changes" : "Save & Continue"}
               </button>
               <button
                 type="button"

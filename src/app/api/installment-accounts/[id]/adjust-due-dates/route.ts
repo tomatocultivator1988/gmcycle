@@ -34,23 +34,20 @@ export async function PATCH(request: Request, context: RouteContext) {
       throw new ValidationError("Monthly schedule requires exactly 1 due day");
     }
 
-    const unpaid = await prisma.installmentSchedule.findMany({
-      where: {
-        installmentAccountId: id,
-        status: { in: ["PENDING", "PARTIAL"] },
-      },
+    const allPeriods = await prisma.installmentSchedule.findMany({
+      where: { installmentAccountId: id },
       orderBy: { periodNumber: "asc" },
     });
 
-    if (unpaid.length === 0) {
-      return NextResponse.json({ message: "No unpaid periods" });
+    if (allPeriods.length === 0) {
+      return NextResponse.json({ message: "No periods found" });
     }
 
     const sortedDueDays = [...body.dueDays].sort((a, b) => a - b);
-    const startDate = unpaid[0].dueDate;
-    const newDates = generateAdjustedDates(sortedDueDays, unpaid.length, startDate);
+    const startDate = allPeriods[0].dueDate;
+    const newDates = generateAdjustedDates(sortedDueDays, allPeriods.length, startDate);
 
-    const updates = unpaid.map((period, i) =>
+    const updates = allPeriods.map((period, i) =>
       prisma.installmentSchedule.update({
         where: { id: period.id },
         data: { dueDate: newDates[i] },
@@ -59,15 +56,21 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     await prisma.$transaction(updates);
 
+    // nextDueDate = first unpaid period's new date, or last period if all paid
+    const firstUnpaidIndex = allPeriods.findIndex(
+      (p) => p.status === "PENDING" || p.status === "PARTIAL",
+    );
+    const nextDueDate = firstUnpaidIndex >= 0 ? newDates[firstUnpaidIndex] : newDates[newDates.length - 1];
+
     await prisma.installmentAccount.update({
       where: { id },
       data: {
         dueDays: sortedDueDays,
-        nextDueDate: newDates[0],
+        nextDueDate,
       },
     });
 
-    return NextResponse.json({ message: "Due dates adjusted", count: unpaid.length, newFirstDueDate: newDates[0] });
+    return NextResponse.json({ message: "Due dates adjusted for all periods", count: allPeriods.length, newFirstDueDate: newDates[0] });
   } catch (error) {
     return handleApiError(error);
   }
