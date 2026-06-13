@@ -23,13 +23,6 @@ function todayDateOnly() {
   }).format(new Date());
 }
 
-function computeDueDays(firstDueDate: string, scheduleType: "SEMI_MONTHLY" | "MONTHLY"): number[] {
-  const day = parseInt(firstDueDate.slice(8, 10)) || 15;
-  if (scheduleType === "MONTHLY") return [day];
-  const secondDay = Math.min(day + 15, 28);
-  return secondDay === day ? [day] : [day, secondDay];
-}
-
 export function InstallmentAccountForm() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -49,6 +42,7 @@ export function InstallmentAccountForm() {
     term: 24,
     scheduleType: "SEMI_MONTHLY" as "SEMI_MONTHLY" | "MONTHLY",
     firstDueDate: todayDateOnly(),
+    dueDay2: "",
     dateGiven: todayDateOnly(),
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -90,6 +84,11 @@ export function InstallmentAccountForm() {
     ? remainingBalance.div(totalPeriods).toDecimalPlaces(2)
     : new Decimal(0);
 
+  const dueDay1 = form.firstDueDate ? parseInt(form.firstDueDate.slice(8, 10)) || 15 : 15;
+  const dueDays = form.scheduleType === "SEMI_MONTHLY"
+    ? [dueDay1, parseInt(form.dueDay2) || dueDay1]
+    : [dueDay1];
+
   const formValid =
     form.customerName.trim() &&
     form.customerPhone.trim() &&
@@ -102,7 +101,8 @@ export function InstallmentAccountForm() {
     cashPrice.gt(0) &&
     interestRateDecimal.gt(0) &&
     downPayment.gt(0) &&
-    downPayment.lt(installmentPrice);
+    downPayment.lt(installmentPrice) &&
+    (form.scheduleType === "MONTHLY" || parseInt(form.dueDay2) >= 1);
 
   function updateField(field: string, value: string | number) {
     setForm({ ...form, [field]: value });
@@ -137,7 +137,7 @@ export function InstallmentAccountForm() {
         startDate: form.firstDueDate,
         dateGiven: form.dateGiven || undefined,
         scheduleType: form.scheduleType,
-        dueDays: computeDueDays(form.firstDueDate, form.scheduleType),
+        dueDays,
         firstDueDate: form.firstDueDate,
         customFields: customFields.reduce((acc, { key, value }) => {
           if (key.trim()) acc[key.trim()] = value;
@@ -184,7 +184,7 @@ export function InstallmentAccountForm() {
         startDate: form.firstDueDate,
         dateGiven: form.dateGiven || undefined,
         scheduleType: form.scheduleType,
-        dueDays: computeDueDays(form.firstDueDate, form.scheduleType),
+        dueDays,
         firstDueDate: form.firstDueDate,
         customFields: customFields.reduce((acc, { key, value }) => {
           if (key.trim()) acc[key.trim()] = value;
@@ -567,6 +567,25 @@ export function InstallmentAccountForm() {
                 </button>
               </div>
             </div>
+            {form.scheduleType === "SEMI_MONTHLY" ? (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Second Due Day
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={form.dueDay2}
+                    onChange={(e) => updateField("dueDay2", e.target.value)}
+                    placeholder={String(Math.min(dueDay1 + 15, 28))}
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                <p className="mt-1 text-xs text-slate-400">
+                  First due day ({dueDay1}) comes from the First Due Date. Set the second due day manually.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {remainingBalance.gt(0) ? (
@@ -615,7 +634,7 @@ export function InstallmentAccountForm() {
       <ConfirmModal
         open={showConfirm}
         title="Create Installment Account?"
-        message={`${form.customerName} — ${form.brand} ${form.model}. ₱${formatPeso(remainingBalance.toFixed(2))} — ${totalPeriods} periods, ${form.scheduleType === "SEMI_MONTHLY" ? "semi-monthly" : "monthly"}.`}
+        message={`${form.customerName} — ${form.brand} ${form.model}. ₱${formatPeso(remainingBalance.toFixed(2))} — ${totalPeriods} periods, ${form.scheduleType === "SEMI_MONTHLY" ? `semi-monthly (${dueDays.join(", ")})` : "monthly"}.`}
         confirmLabel="Yes, create account"
         onConfirm={confirmCreate}
         onCancel={() => setShowConfirm(false)}
