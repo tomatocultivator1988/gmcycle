@@ -358,7 +358,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     const period = schedule.find((s) => s.id === periodId);
     if (!period) return;
 
-    const due = new Date(period.dueDate);
+    const due = new Date(period.dueDate + "T00:00:00+08:00");
     const today = new Date(todayDateOnly() + "T00:00:00+08:00");
     const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
     const accrued = diffDays * Number(penaltyPerDay);
@@ -900,7 +900,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-rose-600 font-medium">
                           {(() => {
-                            const due = new Date(period.dueDate);
+                            const due = new Date(period.dueDate + "T00:00:00+08:00");
                             const today = new Date(todayDateOnly() + "T00:00:00+08:00");
                             const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
                             const accrued = diffDays * Number(penaltyPerDay);
@@ -1448,7 +1448,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               {(() => {
                 const period = schedule.find((s) => s.id === penaltyPeriodId);
                 if (!period) return null;
-                const due = new Date(period.dueDate);
+                const due = new Date(period.dueDate + "T00:00:00+08:00");
                 const today = new Date(todayDateOnly() + "T00:00:00+08:00");
                 const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
                 const accrued = diffDays * Number(penaltyPerDay);
