@@ -717,7 +717,6 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Status" value={<StatusBadge status={account.status as AccountStatusValue} />} />
-        <StatCard label="Remaining Balance" value={formatPeso(account.remainingBalance)} />
         <StatCard label="Next Due Date" value={account.nextDueDate} />
         <StatCard label="Days Overdue" value={String(daysOverdue)} valueClass={daysOverdue > 0 ? "text-rose-600" : "text-slate-900"} />
         <StatCard label="Date Given" value={account.dateGiven ?? "—"} />
@@ -753,11 +752,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         </div>
       ) : null}
 
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
         <StatCard label="Cash Price" value={formatPeso(account.cashPrice)} />
         <StatCard label="Net Price" value={formatPeso((parseFloat(account.installmentPrice) - parseFloat(account.downPayment)).toFixed(2))} valueClass="text-red-800" />
         <StatCard label="Down Payment" value={formatPeso(account.downPayment)} />
         <StatCard label="Processing Fee" value={formatPeso(account.processingFee)} />
+        <StatCard label="Remaining Balance" value={formatPeso(account.remainingBalance)} valueClass="text-emerald-700" />
         <StatCard label={account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"} value={formatPeso(account.monthlyInstallment)} />
         <StatCard label="Gross Profit" value={formatPeso(account.grossProfit)} valueClass="text-emerald-700" />
       </div>
@@ -1661,8 +1661,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium text-slate-700">
-                  Due Day 1
+                  <label className="block text-sm font-medium text-slate-700">
+                    Due Date 1
                   <input
                     type="number"
                     min={1}
@@ -1674,7 +1674,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </label>
                 {account?.scheduleType === "SEMI_MONTHLY" ? (
                   <label className="block text-sm font-medium text-slate-700">
-                    Due Day 2
+                    Due Date 2
                     <input
                       type="number"
                       min={1}

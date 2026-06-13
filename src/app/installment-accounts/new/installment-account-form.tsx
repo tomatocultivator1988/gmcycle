@@ -542,6 +542,23 @@ export function InstallmentAccountForm() {
               </label>
               <FieldError error={fieldErrors.firstDueDate} />
             </div>
+            {form.scheduleType === "SEMI_MONTHLY" ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Second Due Date
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={form.dueDay2}
+                    onChange={(e) => updateField("dueDay2", e.target.value)}
+                    placeholder={String(Math.min(dueDay1 + 15, 28))}
+                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+                <p className="mt-1 text-xs text-slate-400">Auto-computed: {dueDay1} and {form.dueDay2 || "?"}</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="border-t border-slate-100 pt-4">
@@ -569,33 +586,14 @@ export function InstallmentAccountForm() {
                 </button>
               </div>
             </div>
-            {form.scheduleType === "SEMI_MONTHLY" ? (
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700">
-                  Second Due Day
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={form.dueDay2}
-                    onChange={(e) => updateField("dueDay2", e.target.value)}
-                    placeholder={String(Math.min(dueDay1 + 15, 28))}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  />
-                </label>
-                <p className="mt-1 text-xs text-slate-400">
-                  First due day ({dueDay1}) comes from the First Due Date. Set the second due day manually.
-                </p>
-              </div>
-            ) : null}
           </div>
 
           {remainingBalance.gt(0) ? (
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
               <div className="grid gap-4 text-sm sm:grid-cols-4">
                 <div>
-                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">Remaining Balance</div>
-                  <div className="mt-1 text-lg font-bold text-slate-900">
+                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-emerald-700">Remaining Balance</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-800">
                     {formatPeso(remainingBalance.toFixed(2))}
                   </div>
                 </div>
