@@ -207,6 +207,17 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   useEscapeKey(() => setShowDeviceSecurity(false), showDeviceSecurity);
   useEscapeKey(() => setShowAdjustDueModal(false), showAdjustDueModal);
 
+  const latestNonVoidedPaymentId = useMemo(() => {
+    const valid = payments.filter((p) => !p.voided);
+    if (valid.length === 0) return null;
+    const sorted = [...valid].sort((a, b) => {
+      const dateCmp = new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
+      if (dateCmp !== 0) return dateCmp;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return sorted[0].id;
+  }, [payments]);
+
   async function handlePostPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!account) return;
@@ -928,7 +939,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                   <Printer size={14} />
                   Print
                 </Link>
-                {!payment.voided && account.status !== "CLOSED" ? (
+                {!payment.voided && account.status !== "CLOSED" && payment.id === latestNonVoidedPaymentId ? (
                   <button
                     type="button"
                     onClick={() => { setVoidPaymentId(payment.id); setVoidReason(""); setShowVoidModal(true); }}

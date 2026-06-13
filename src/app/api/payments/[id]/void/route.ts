@@ -23,6 +23,25 @@ export async function POST(request: Request, context: RouteContext) {
     if (!payment) throw new NotFoundError("Payment not found");
     if (payment.voided) throw new NotFoundError("Payment already voided");
 
+    // Only the latest non-voided payment can be voided
+    const latestPayment = await prisma.payment.findFirst({
+      where: {
+        installmentAccountId: payment.installmentAccountId,
+        voided: false,
+      },
+      orderBy: [
+        { paymentDate: "desc" },
+        { createdAt: "desc" },
+      ],
+    });
+
+    if (!latestPayment || latestPayment.id !== id) {
+      return NextResponse.json(
+        { error: "Only the latest payment can be voided. Voiding older payments would corrupt the account finances." },
+        { status: 400 },
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       // 1. Find all schedule periods affected by this payment
       const affectedPeriods = await tx.installmentSchedule.findMany({
