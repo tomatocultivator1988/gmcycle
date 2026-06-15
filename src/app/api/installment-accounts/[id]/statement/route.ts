@@ -1,3 +1,4 @@
+import { differenceInCalendarDays } from "date-fns";
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
@@ -44,6 +45,12 @@ export async function GET(_request: Request, context: RouteContext) {
     const grossProfit = installmentPrice.sub(cashPrice);
 
     const generatedAt = new Date();
+    const todayManila = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
 
     return NextResponse.json({
       statement: {
@@ -81,15 +88,29 @@ export async function GET(_request: Request, context: RouteContext) {
           cashier: p.cashier,
           proofUrl: p.proofUrl,
         })),
-        schedule: account.schedule.map((s) => ({
-          period: s.periodNumber,
-          dueDate: dateToManilaDateOnly(s.dueDate),
-          amount: decimalToString(s.amount),
-          status: s.status,
-          paidDate: s.paidDate ? dateToManilaDateOnly(s.paidDate) : null,
-          paidAmount: s.paidAmount ? decimalToString(s.paidAmount) : null,
-          penalty: decimalToString(s.penaltyAmount),
-        })),
+        schedule: account.schedule.map((s) => {
+          const dueStr = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Manila",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(s.dueDate);
+          const daysOverdue = s.status === "PAID"
+            ? null
+            : todayManila > dueStr
+              ? differenceInCalendarDays(new Date(todayManila), new Date(dueStr))
+              : 0;
+          return {
+            period: s.periodNumber,
+            dueDate: dateToManilaDateOnly(s.dueDate),
+            amount: decimalToString(s.amount),
+            status: s.status,
+            paidDate: s.paidDate ? dateToManilaDateOnly(s.paidDate) : null,
+            paidAmount: s.paidAmount ? decimalToString(s.paidAmount) : null,
+            penalty: decimalToString(s.penaltyAmount),
+            daysOverdue,
+          };
+        }),
         penalties: account.penalties.map((p) => ({
           amount: decimalToString(p.amount),
           appliedDate: p.appliedDate.toISOString(),

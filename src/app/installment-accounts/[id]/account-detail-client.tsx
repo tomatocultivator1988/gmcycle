@@ -112,6 +112,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [penaltyPerDay, setPenaltyPerDay] = useState("50");
   const [applyingPenalty, setApplyingPenalty] = useState(false);
   const [showPenaltyModal, setShowPenaltyModal] = useState(false);
+  const [undoPenaltyId, setUndoPenaltyId] = useState<string | null>(null);
+  const [undoingPenalty, setUndoingPenalty] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -596,7 +598,16 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     const startMonth = startDate.getMonth();
     const startYear = startDate.getFullYear();
     const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
-    const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
+    const startIdx = (() => {
+      const exact = sorted.indexOf(startDay);
+      if (exact >= 0) return exact;
+      let best = 0, bestDist = Math.abs(sorted[0] - startDay);
+      for (let i = 1; i < sorted.length; i++) {
+        const dist = Math.abs(sorted[i] - startDay);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+      return best;
+    })();
 
     for (let i = 0; i < unpaid.length; i++) {
       const adjustedI = startIdx + i;
@@ -997,7 +1008,18 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <div key={penalty.id} className="px-5 py-3 text-sm transition-colors hover:bg-slate-50">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-rose-700">{formatPeso(penalty.amount)}</span>
-                  <span className="text-xs text-slate-500">{new Date(penalty.appliedDate).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2">
+                    {account?.status !== "FULLY_PAID" && penalty.installmentScheduleId ? (
+                      <button
+                        type="button"
+                        onClick={() => setUndoPenaltyId(penalty.id)}
+                        className="inline-flex h-6 items-center rounded-md border border-rose-200 bg-rose-50 px-2 text-[11px] font-medium text-rose-600 transition-all hover:bg-rose-100 active:scale-[0.98]"
+                      >
+                        Undo
+                      </button>
+                    ) : null}
+                    <span className="text-xs text-slate-500">{new Date(penalty.appliedDate).toLocaleDateString()}</span>
+                  </div>
                 </div>
                 {penalty.reason ? <div className="mt-0.5 text-xs text-slate-400">{penalty.reason}</div> : null}
               </div>
@@ -1005,6 +1027,28 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           </div>
         </section>
       ) : null}
+
+      <ConfirmModal
+        open={undoPenaltyId !== null}
+        title="Undo Penalty?"
+        message="This will remove the penalty amount and recalculate the remaining balance. This action cannot be reversed."
+        confirmLabel={undoingPenalty ? "Undoing..." : "Yes, undo penalty"}
+        onConfirm={async () => {
+          if (!undoPenaltyId) return;
+          setUndoingPenalty(true);
+          try {
+            await apiRequest(`/api/penalty-records/${undoPenaltyId}`, { method: "DELETE" });
+            setUndoPenaltyId(null);
+            loadData();
+          } catch (e: any) {
+            setError(e.message);
+          } finally {
+            setUndoingPenalty(false);
+          }
+        }}
+        onCancel={() => setUndoPenaltyId(null)}
+        loading={undoingPenalty}
+      />
 
       {showModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

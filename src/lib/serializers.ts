@@ -86,6 +86,7 @@ export function serializePenaltyRecord(record: PenaltyRecordShape) {
   return {
     id: record.id,
     installmentAccountId: record.installmentAccountId,
+    installmentScheduleId: record.installmentScheduleId,
     paymentId: record.paymentId,
     amount: decimalToString(record.amount),
     appliedDate: record.appliedDate.toISOString(),

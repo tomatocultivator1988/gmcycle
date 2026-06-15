@@ -1,5 +1,8 @@
 # MyFaveGadgets — Gadget Installment Monitoring System
 
+## DEV SERVER: ALWAYS start in a NEW terminal window
+Use `Start-Process -WindowStyle Normal -FilePath "powershell" -ArgumentList "-NoExit", "-Command", "cd `"D:\MVP`"; npm run dev"` to launch the dev server in a new window so it survives conversation end.
+
 ## MIGRATION PLAN: Cash Loan Management → Gadget Installment Monitoring
 
 **Business:** MyFaveGadgets, Binan City, Laguna

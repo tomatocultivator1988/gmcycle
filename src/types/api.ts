@@ -76,6 +76,7 @@ export type PaymentDto = {
 export type PenaltyRecordDto = {
   id: string;
   installmentAccountId: string;
+  installmentScheduleId: string | null;
   paymentId: string;
   amount: string;
   appliedDate: string;

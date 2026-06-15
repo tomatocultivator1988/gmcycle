@@ -7,6 +7,7 @@ import { decimalToString, parsePositiveMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { updateOverdueSchedule } from "@/lib/schedule-status";
 import { serializeInstallmentAccount } from "@/lib/serializers";
+import { findClosestIndex } from "@/lib/installment-schedule";
 import { updateInstallmentAccountSchema, fullUpdateAccountSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -217,7 +218,7 @@ function computeDueDate(startDate: Date, dueDays: number[], scheduleType: string
   } else {
     const periodsPerMonth = 2;
     const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
-    const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
+    const startIdx = findClosestIndex(sorted, startDay);
     const adjustedPeriod = (periodNumber - 1) + startIdx;
     const monthsOffset = Math.floor(adjustedPeriod / periodsPerMonth);
     const isFirstHalf = adjustedPeriod % periodsPerMonth === 0;

@@ -13,6 +13,18 @@ function clampDay(year: number, month: number, day: number): number {
   return Math.min(day, lastDay);
 }
 
+export function findClosestIndex(sorted: number[], target: number): number {
+  const exact = sorted.indexOf(target);
+  if (exact >= 0) return exact;
+  let best = 0;
+  let bestDist = Math.abs(sorted[0] - target);
+  for (let i = 1; i < sorted.length; i++) {
+    const dist = Math.abs(sorted[i] - target);
+    if (dist < bestDist) { bestDist = dist; best = i; }
+  }
+  return best;
+}
+
 function makeDueDate(year: number, month: number, day: number): Date {
   const safeDay = clampDay(year, month, day);
   const y = String(year).padStart(4, "0");
@@ -36,7 +48,7 @@ export function generateSchedule(
   const dueMonth = firstDueDate.getMonth();
   const dueYear = firstDueDate.getFullYear();
   const startDay = parseInt(dateToManilaDateOnly(firstDueDate).slice(8, 10), 10);
-  const startIdx = sortedDays.indexOf(startDay) >= 0 ? sortedDays.indexOf(startDay) : 0;
+  const startIdx = findClosestIndex(sortedDays, startDay);
 
   for (let i = 0; i < totalPeriods; i++) {
     const adjustedI = startIdx + i;
@@ -85,7 +97,7 @@ export function generateAdjustedDates(
   const startYear = startDate.getFullYear();
 
   const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
-  const startIdx = sorted.indexOf(startDay) >= 0 ? sorted.indexOf(startDay) : 0;
+  const startIdx = findClosestIndex(sorted, startDay);
 
   for (let i = 0; i < count; i++) {
     const adjustedI = startIdx + i;

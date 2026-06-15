@@ -54,7 +54,9 @@ export async function GET(
         status: "PAID",
       },
     });
-    const totalPeriods = payment.installmentAccount.term;
+    const totalPeriods = payment.installmentAccount.scheduleType === "SEMI_MONTHLY"
+      ? payment.installmentAccount.term * 2
+      : payment.installmentAccount.term;
 
     return NextResponse.json({
       payment: {

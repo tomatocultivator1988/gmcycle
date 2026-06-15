@@ -104,6 +104,7 @@ model InstallmentSchedule {
   penaltyAmount        Decimal       @default(0.00) @db.Decimal(14, 2)
 
   installmentAccount InstallmentAccount @relation(fields: [installmentAccountId], references: [id])
+  penaltyRecords     PenaltyRecord[]
 
   @@index([installmentAccountId])
   @@index([dueDate])
@@ -139,17 +140,20 @@ model Payment {
 }
 
 model PenaltyRecord {
-  id                   String        @id @default(cuid())
+  id                   String              @id @default(cuid())
   installmentAccountId String
+  installmentScheduleId String?
   paymentId            String?
-  amount               Decimal       @db.Decimal(14, 2)
-  appliedDate          DateTime      @default(now())
+  amount               Decimal             @db.Decimal(14, 2)
+  appliedDate          DateTime            @default(now())
   reason               String?
 
-  installmentAccount InstallmentAccount @relation(fields: [installmentAccountId], references: [id])
-  payment            Payment?           @relation(fields: [paymentId], references: [id])
+  installmentAccount InstallmentAccount   @relation(fields: [installmentAccountId], references: [id])
+  installmentSchedule InstallmentSchedule? @relation(fields: [installmentScheduleId], references: [id])
+  payment            Payment?             @relation(fields: [paymentId], references: [id])
 
   @@index([installmentAccountId])
+  @@index([installmentScheduleId])
   @@index([appliedDate])
   @@index([paymentId])
 }

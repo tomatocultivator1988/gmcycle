@@ -1,11 +1,11 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Printer, ArrowLeft } from "lucide-react";
+import { Mail, Printer, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { apiRequest } from "@/lib/client-api";
 import { formatPeso } from "@/lib/money";
-import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
+import { ErrorMessage, LoadingBlock, SuccessMessage } from "@/components/ui-state";
 
 type StatementData = {
   generatedAt: string;
@@ -50,6 +50,7 @@ type StatementData = {
     paidDate: string | null;
     paidAmount: string | null;
     penalty: string;
+    daysOverdue: number | null;
   }[];
   penalties: {
     amount: string;
@@ -62,6 +63,8 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [data, setData] = useState<StatementData | null>(null);
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => {
     apiRequest<{ statement: StatementData }>(`/api/installment-accounts/${id}/statement`)
@@ -90,31 +93,65 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 print:px-0 print:py-0">
       {/* Print / Back buttons — hidden when printing */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-1 sm:gap-2 print:hidden">
         <Link
           href={`/installment-accounts/${id}`}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+          className="inline-flex h-8 sm:h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 sm:px-4 text-[11px] sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={12} />
           Back to Account
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link
             href={`/installment-accounts/${id}/down-payment-receipt`}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+            className="inline-flex h-8 sm:h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 sm:px-4 text-[11px] sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
           >
-            <Printer size={16} />
+            <Printer size={12} />
             DP Receipt
           </Link>
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
+            className="inline-flex h-8 sm:h-10 items-center gap-1 rounded-lg bg-red-800 px-2 sm:px-4 text-[11px] sm:text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98]"
           >
-            <Printer size={16} />
-            Print / Export PDF
+            <Printer size={12} />
+            Print PDF
           </button>
+          {data.customerEmail ? (
+            <button
+              type="button"
+              onClick={async () => {
+                setSending(true);
+                setSendResult(null);
+                try {
+                  const res = await apiRequest<{ sent: boolean; message: string }>(
+                    `/api/installment-accounts/${id}/send-statement`,
+                    { method: "POST" },
+                  );
+                  setSendResult({ ok: res.sent, message: res.message });
+                } catch (e: any) {
+                  setSendResult({ ok: false, message: e.message });
+                } finally {
+                  setSending(false);
+                }
+              }}
+              disabled={sending}
+              className="inline-flex h-8 sm:h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 sm:px-4 text-[11px] sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <Mail size={12} />
+              {sending ? "Sending" : "Send"}
+            </button>
+          ) : null}
         </div>
+        {sendResult ? (
+          <div className="w-full mt-1">
+            {sendResult.ok ? (
+              <SuccessMessage message={sendResult.message} />
+            ) : (
+              <ErrorMessage message={sendResult.message} />
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* ── STATEMENT CONTENT ── */}
@@ -238,6 +275,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             {data.schedule.map((s) => (
               <div key={s.period} className={`rounded-lg border p-2.5 text-xs space-y-1 ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50/50" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50/50" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50/50" : "border-slate-200"}`}>
                 <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className={`rounded border px-1 py-px text-[10px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></div>
+                {s.daysOverdue != null && s.daysOverdue > 0 ? <div className="flex justify-between"><span className="text-slate-500">Days</span><span className="text-rose-600 font-medium">{s.daysOverdue}d</span></div> : null}
                 <div className="flex justify-between"><span className="text-slate-500">Amount Due</span><span className="font-semibold">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
                 {s.paidAmount ? <div className="flex justify-between"><span className="text-slate-500">Paid</span><span>{formatPeso(s.paidAmount)}</span></div> : null}
                 {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
@@ -251,6 +289,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                   <th className="py-2 pr-3 font-medium">#</th>
                   <th className="py-2 pr-3 font-medium">Due Date</th>
+                  <th className="py-2 pr-3 font-medium text-right">Days</th>
                   <th className="py-2 pr-3 font-medium text-right">Amount Due</th>
                   <th className="py-2 pr-3 font-medium">Status</th>
                   <th className="py-2 pr-3 font-medium">Paid Date</th>
@@ -263,6 +302,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   <tr key={s.period} className={`border-b border-slate-100 text-slate-700 ${s.status === "PAID" ? "bg-emerald-50/50" : s.status === "OVERDUE" ? "bg-rose-50/50" : s.status === "PARTIAL" ? "bg-amber-50/50" : ""}`}>
                     <td className="py-1.5 pr-3 font-medium">{s.period}</td>
                     <td className="py-1.5 pr-3">{s.dueDate}</td>
+                    <td className="py-1.5 pr-3 text-right">{s.daysOverdue != null && s.daysOverdue > 0 ? <span className="text-rose-600">{s.daysOverdue}d</span> : s.daysOverdue === 0 ? "—" : "—"}</td>
                     <td className="py-1.5 pr-3 text-right font-semibold">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
                     <td className="py-1.5 pr-3"><span className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></td>
                     <td className="py-1.5 pr-3">{s.paidDate || "—"}</td>
@@ -329,6 +369,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                     <tr className="border-b border-red-100 text-left text-xs text-slate-500">
                       <th className="py-2 pr-3 font-medium">#</th>
                       <th className="py-2 pr-3 font-medium">Due Date</th>
+                      <th className="py-2 pr-3 font-medium text-right">Days</th>
                       <th className="py-2 pr-3 font-medium text-right">Amount</th>
                       <th className="py-2 pr-3 font-medium text-right">Penalty</th>
                       <th className="py-2 pr-3 font-medium text-right">Total</th>
@@ -339,6 +380,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                       <tr key={s.period} className="border-b border-red-100 text-slate-700">
                         <td className="py-1.5 pr-3">{s.period}</td>
                         <td className="py-1.5 pr-3">{s.dueDate}</td>
+                        <td className="py-1.5 pr-3 text-right">{s.daysOverdue != null && s.daysOverdue > 0 ? <span className="text-rose-600">{s.daysOverdue}d</span> : "—"}</td>
                         <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
                         <td className="py-1.5 pr-3 text-right text-rose-600">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
                         <td className="py-1.5 pr-3 text-right font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
@@ -347,7 +389,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   </tbody>
                   <tfoot>
                     <tr className="font-bold text-red-800">
-                      <td colSpan={4} className="pt-2 pr-3 text-right">Total Amount Due:</td>
+                      <td colSpan={5} className="pt-2 pr-3 text-right">Total Amount Due:</td>
                       <td className="pt-2 pr-3 text-right">{formatPeso(totalDue.toFixed(2))}</td>
                     </tr>
                   </tfoot>
@@ -357,6 +399,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                 {dueNow.map((s: any) => (
                   <div key={s.period} className="rounded-lg border border-red-100 bg-white p-3 text-xs space-y-1.5">
                     <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className="font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
+                    {s.daysOverdue != null && s.daysOverdue > 0 ? <div className="flex justify-between"><span className="text-slate-500">Days</span><span className="text-rose-600 font-medium">{s.daysOverdue}d</span></div> : null}
                     <div className="flex justify-between"><span className="text-slate-500">Amount</span><span>{formatPeso(s.amount)}</span></div>
                     {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
                   </div>

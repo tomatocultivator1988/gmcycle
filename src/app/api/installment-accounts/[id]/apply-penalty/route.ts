@@ -76,6 +76,7 @@ export async function POST(request: Request, context: RouteContext) {
       const penaltyRecord = await tx.penaltyRecord.create({
         data: {
           installmentAccountId,
+          installmentScheduleId: body.periodId,
           paymentId: period.paymentId || null,
           amount: decimalToString(appliedAmount),
           appliedDate: new Date(),
