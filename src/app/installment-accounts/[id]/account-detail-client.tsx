@@ -604,9 +604,13 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
   function openAdjustDueDates() {
     if (schedule.length > 0 && account) {
-      const current = account.dueDays?.length ? [...account.dueDays].sort((a, b) => a - b) : [15, 30];
-      setAdjustDueDay1(String(current[0]));
-      setAdjustDueDay2(current.length > 1 ? String(current[1]) : "");
+      const firstDueDay = parseInt(schedule[0].dueDate.slice(8, 10), 10);
+      setAdjustDueDay1(String(firstDueDay));
+      let secondDueDay = "";
+      if (account.scheduleType === "SEMI_MONTHLY" && schedule.length > 1) {
+        secondDueDay = String(parseInt(schedule[1].dueDate.slice(8, 10), 10));
+      }
+      setAdjustDueDay2(secondDueDay);
       setAdjustDueError("");
       setShowAdjustDueModal(true);
     }
