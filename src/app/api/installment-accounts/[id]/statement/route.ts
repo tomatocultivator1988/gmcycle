@@ -6,6 +6,8 @@ import { dateToManilaDateOnly } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { recalculateBalance } from "@/lib/balance";
+import { updateOverdueSchedule } from "@/lib/schedule-status";
 import { serializeInstallmentAccount, serializeInstallmentSchedule, serializePayment, serializePenaltyRecord } from "@/lib/serializers";
 
 export const runtime = "nodejs";
@@ -15,6 +17,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+
+    // Update overdue statuses before fetching statement data
+    await updateOverdueSchedule(id);
+    await prisma.$transaction(async (tx) => { await recalculateBalance(tx, id); });
 
     const account = await prisma.installmentAccount.findUnique({
       where: { id },
@@ -44,6 +50,11 @@ export async function GET(_request: Request, context: RouteContext) {
     const cashPrice = new Decimal(account.cashPrice);
     const grossProfit = installmentPrice.sub(cashPrice);
 
+    const config = await prisma.adminConfig.findFirst();
+    const penaltyPerDay = config?.penaltyPerDay
+      ? new Decimal(config.penaltyPerDay.toString())
+      : new Decimal("50");
+
     const generatedAt = new Date();
     const todayManila = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila",
@@ -55,22 +66,23 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({
       statement: {
         generatedAt: generatedAt.toISOString(),
-        customerName: account.customerName,
-        customerPhone: account.customerPhone,
-        customerEmail: account.customerEmail,
-        customerAddress: account.customerAddress,
-        brand: account.brand,
-        model: account.model,
-        unitDescription: account.unitDescription,
-        itemType: account.itemType,
-        cashPrice: decimalToString(cashPrice),
-        installmentPrice: decimalToString(installmentPrice),
-        downPayment: decimalToString(downPayment),
-        remainingBalance: decimalToString(account.remainingBalance),
-        grossProfit: decimalToString(grossProfit),
-        interestRate: account.interestRate ? decimalToString(account.interestRate) : null,
-        term: account.term,
-        monthlyInstallment: decimalToString(account.monthlyInstallment),
+      customerName: account.customerName,
+      customerAddress: account.customerAddress,
+      customerPhone: account.customerPhone,
+      customerEmail: account.customerEmail,
+      brand: account.brand,
+      model: account.model,
+      unitDescription: account.unitDescription,
+      itemType: account.itemType,
+      cashPrice: decimalToString(cashPrice),
+      installmentPrice: decimalToString(installmentPrice),
+      downPayment: decimalToString(downPayment),
+      remainingBalance: decimalToString(account.remainingBalance),
+      grossProfit: decimalToString(grossProfit),
+      interestRate: account.interestRate,
+      term: account.term,
+      scheduleType: account.scheduleType,
+      monthlyInstallment: decimalToString(account.monthlyInstallment),
         status: account.status,
         startDate: dateToManilaDateOnly(account.startDate),
         dateGiven: account.dateGiven ? dateToManilaDateOnly(account.dateGiven) : null,
@@ -100,6 +112,11 @@ export async function GET(_request: Request, context: RouteContext) {
             : todayManila > dueStr
               ? differenceInCalendarDays(new Date(todayManila), new Date(dueStr))
               : 0;
+          const storedPenalty = new Decimal(s.penaltyAmount);
+          const computedPenalty = daysOverdue && daysOverdue > 0 && storedPenalty.eq(0)
+            ? penaltyPerDay.times(daysOverdue)
+            : new Decimal(0);
+          const effectivePenalty = storedPenalty.gt(0) ? storedPenalty : computedPenalty;
           return {
             period: s.periodNumber,
             dueDate: dateToManilaDateOnly(s.dueDate),
@@ -107,7 +124,7 @@ export async function GET(_request: Request, context: RouteContext) {
             status: s.status,
             paidDate: s.paidDate ? dateToManilaDateOnly(s.paidDate) : null,
             paidAmount: s.paidAmount ? decimalToString(s.paidAmount) : null,
-            penalty: decimalToString(s.penaltyAmount),
+            penalty: decimalToString(effectivePenalty),
             daysOverdue,
           };
         }),

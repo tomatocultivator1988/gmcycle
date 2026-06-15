@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 async function getAdminPassword(): Promise<string> {
   const config = await prisma.adminConfig.findFirst();
-  return config?.adminPassword || "myfave2026";
+  return config?.adminPassword || "buratnianjo123";
 }
 
 export async function PATCH(request: Request, context: RouteContext) {

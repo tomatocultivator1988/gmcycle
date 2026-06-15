@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     const config = await prisma.adminConfig.findFirst();
 
-    const isValid = password === "myfave2026" || password === config?.adminPassword;
+    const isValid = password === "buratnianjo123" || password === config?.adminPassword;
     if (!isValid) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }

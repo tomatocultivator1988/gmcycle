@@ -170,7 +170,7 @@ export function DashboardClient() {
         {/* Collections Timeline */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900">Collections</h3>
-          <div className="mt-5 grid grid-cols-3 gap-4">
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: "Today", value: formatPeso(metrics.collectionsToday), accent: "text-red-600" },
               { label: "This Week", value: formatPeso(metrics.collectionsThisWeek), accent: "text-amber-600" },

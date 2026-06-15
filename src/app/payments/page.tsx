@@ -373,7 +373,7 @@ export default function PaymentsPage() {
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
                   Balance: <span className="font-semibold text-slate-900">{formatPeso(selectedAccount.remainingBalance)}</span>
                   &nbsp;·&nbsp; Next due: {selectedAccount.nextDueDate}
-                  &nbsp;·&nbsp; Monthly: {formatPeso(selectedAccount.monthlyInstallment)}
+                  &nbsp;·&nbsp; {selectedAccount.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"}: {formatPeso(selectedAccount.monthlyInstallment)}
                 </div>
               ) : null}
 

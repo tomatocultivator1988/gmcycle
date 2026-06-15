@@ -149,7 +149,12 @@ export default function InstallmentAccountsPage() {
     {
       key: "monthly",
       label: "Monthly",
-      render: (a) => <span className="text-slate-700">{formatPeso(a.monthlyInstallment)}</span>,
+      render: (a: InstallmentAccountDto) => (
+        <span className="text-slate-700">
+          {formatPeso(a.monthlyInstallment)}
+          <span className="text-slate-400 text-[10px] ml-0.5">{a.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</span>
+        </span>
+      ),
     },
     {
       key: "status",
@@ -419,7 +424,26 @@ export default function InstallmentAccountsPage() {
               ) : previewAccounts.length === 0 ? (
                 <div className="py-10 text-center text-sm text-slate-400">No accounts with email found.</div>
               ) : (
-                <table className="w-full text-left text-xs">
+                <>
+                {/* Mobile: Cards */}
+                <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto">
+                  {previewAccounts.map((a: any) => (
+                    <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-xs space-y-1.5">
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)} className="size-4 rounded border-slate-300 accent-red-800" />
+                        <span className="font-medium text-slate-900">{a.customerName}</span>
+                      </label>
+                      <div className="text-slate-500">{a.customerEmail}</div>
+                      <div className="flex justify-between">
+                        <span>{a.brand} {a.model}</span>
+                        <StatusBadge status={a.status as AccountStatusValue} />
+                      </div>
+                      <div className="text-slate-500">Due: {a.nextDueDate}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop: Table */}
+                <table className="hidden sm:table w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-200">
                       <th className="py-2 pr-2 w-8">
@@ -458,6 +482,7 @@ export default function InstallmentAccountsPage() {
                     ))}
                   </tbody>
                 </table>
+                </>
               )}
             </div>
 

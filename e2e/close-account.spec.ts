@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { chromium } from "playwright";
 
 const API = "http://localhost:3000/api";
-const PASSWORD = "myfave2026";
+const PASSWORD = "buratnianjo123";
 
 type AccountDto = any;
 type PaymentDto = any;

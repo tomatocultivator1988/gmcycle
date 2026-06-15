@@ -93,7 +93,7 @@ export default function DownPaymentReceiptPage() {
             {account.brand} {account.model}
           </p>
           <p className="text-xs text-slate-500">{account.unitDescription}</p>
-          <p className="text-xs text-slate-500 mt-1">Term: {account.term} months &bull; {formatPeso(account.monthlyInstallment)}/mo</p>
+          <p className="text-xs text-slate-500 mt-1">Term: {account.scheduleType === "SEMI_MONTHLY" ? `${account.term} months (${account.term * 2} periods) &bull; ${formatPeso(account.monthlyInstallment)}/period` : `${account.term} months &bull; ${formatPeso(account.monthlyInstallment)}/mo`}</p>
         </div>
 
         <div className="mt-4 border-t border-slate-200 pt-4 space-y-2">

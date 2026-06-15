@@ -3,8 +3,13 @@ import { decimalToString } from "@/lib/money";
 
 type TxType = {
   installmentSchedule: { findMany: (args: any) => Promise<any[]> };
-  installmentAccount: { update: (args: any) => Promise<any> };
+  installmentAccount: {
+    findUnique: (args: any) => Promise<any | null>;
+    update: (args: any) => Promise<any>;
+  };
 };
+
+const protectedStatuses = new Set(["CLOSED", "APPLIED"]);
 
 export async function recalculateBalance(
   tx: TxType,
@@ -14,12 +19,17 @@ export async function recalculateBalance(
     where: { installmentAccountId },
   });
 
+  const currentAccount = await tx.installmentAccount.findUnique({
+    where: { id: installmentAccountId },
+    select: { status: true },
+  });
+
   const newBalance = schedule
     .filter((s) => s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE")
     .reduce((sum, s) => {
-      const remainingAmt = new Decimal(s.amount).minus(
+      const remainingAmt = Decimal.max(0, new Decimal(s.amount).minus(
         s.paidAmount ? new Decimal(s.paidAmount) : 0,
-      );
+      ));
       return sum.plus(remainingAmt)
         .plus(new Decimal(s.penaltyAmount));
     }, new Decimal(0))
@@ -39,6 +49,11 @@ export async function recalculateBalance(
     const dueStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(nextDue);
     if (todayStr > dueStr) status = "OVERDUE";
     else if (todayStr === dueStr) status = "DUE_TODAY";
+  }
+
+  // Preserve CLOSED / APPLIED — never overwrite from balance calculation
+  if (currentAccount && protectedStatuses.has(currentAccount.status)) {
+    status = currentAccount.status;
   }
 
   const updateData: Record<string, unknown> = {

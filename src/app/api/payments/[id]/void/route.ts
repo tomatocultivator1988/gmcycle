@@ -48,18 +48,31 @@ export async function POST(request: Request, context: RouteContext) {
         where: { paymentId: id },
       });
 
-      // 2. Reset all affected periods to PENDING in parallel
-      const resetPromises = affectedPeriods.map((period) =>
-        tx.installmentSchedule.update({
+      // 2. Restore penaltyAmount on each period using per-period breakdown
+      const breakdown = payment.penaltyBreakdown as Record<string, string> | null;
+      const paymentPenalty = new Decimal(payment.penaltyAmount);
+      const numPeriods = affectedPeriods.length;
+
+      const resetPromises = affectedPeriods.map((period) => {
+        const currentPenalty = new Decimal(period.penaltyAmount);
+        const periodPenaltyCovered = breakdown?.[period.id]
+          ? new Decimal(breakdown[period.id])
+          : numPeriods > 0 ? paymentPenalty.div(numPeriods) : paymentPenalty;
+        const restored = currentPenalty.plus(periodPenaltyCovered);
+
+        return tx.installmentSchedule.update({
           where: { id: period.id },
           data: {
             status: "PENDING" as const,
             paidDate: null,
             paymentId: null,
             paidAmount: null,
+            penaltyAmount: decimalToString(
+              restored.isNegative() ? new Decimal(0) : restored,
+            ),
           },
-        }),
-      );
+        });
+      });
       await Promise.all(resetPromises);
 
       // 3. Delete penalty records linked to this payment

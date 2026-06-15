@@ -39,6 +39,7 @@ export async function GET(request: Request) {
         model: a.model,
         remainingBalance: decimalToString(a.remainingBalance),
         monthlyInstallment: decimalToString(a.monthlyInstallment),
+        scheduleType: a.scheduleType,
         nextDueDate: dateToManilaDateOnly(a.nextDueDate),
         status: a.status,
         term: a.term,

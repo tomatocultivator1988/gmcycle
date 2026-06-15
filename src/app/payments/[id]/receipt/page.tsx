@@ -19,6 +19,7 @@ type ReceiptData = PaymentDto & {
     unitDescription: string;
     monthlyInstallment: string;
     remainingBalance: string;
+    scheduleType: string;
     totalPaid: string;
     paidCount: number;
     totalPeriods: number;
@@ -111,10 +112,10 @@ export default function ReceiptPage() {
           </p>
           <p className="text-xs text-slate-500">{data.account.unitDescription}</p>
           <p className="text-xs text-slate-500 mt-1">
-            Monthly: {formatPeso(data.account.monthlyInstallment)}
+            {data.account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"}: {formatPeso(data.account.monthlyInstallment)}
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Payment {data.account.paidCount} of {data.account.totalPeriods} {data.account.totalPeriods <= 24 ? "payments" : "months"}
+            Payment {data.account.paidCount} of {data.account.totalPeriods} period{data.account.totalPeriods !== 1 ? "s" : ""}
           </p>
         </div>
 

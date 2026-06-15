@@ -122,6 +122,7 @@ model Payment {
   method               PaymentMethod
   paymentType          PaymentType
   penaltyAmount        Decimal       @default(0.00) @db.Decimal(14, 2)
+  penaltyBreakdown     Json?
   notes                String?
   cashier              String?
   proofUrl             String?

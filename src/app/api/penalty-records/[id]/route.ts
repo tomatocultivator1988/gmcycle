@@ -33,27 +33,56 @@ export async function DELETE(_request: Request, context: RouteContext) {
       );
     }
 
-    if (!penaltyRecord.installmentScheduleId || !penaltyRecord.installmentSchedule) {
+    const hadScheduleLink = !!penaltyRecord.installmentScheduleId;
+    let period = penaltyRecord.installmentSchedule;
+
+    // If installmentScheduleId is null (old records before schema migration),
+    // find the schedule period with a matching penalty amount
+    if (!period) {
+      const candidatePeriods = await prisma.installmentSchedule.findMany({
+        where: {
+          installmentAccountId: penaltyRecord.installmentAccountId,
+          penaltyAmount: { gt: 0 },
+          status: { not: "PAID" },
+        },
+        orderBy: { periodNumber: "asc" },
+      });
+
+      const recordAmount = new Decimal(penaltyRecord.amount);
+      period = candidatePeriods.find((p) =>
+        new Decimal(p.penaltyAmount).gte(recordAmount),
+      ) || null;
+
+      if (!period) {
+        return NextResponse.json(
+          { error: "Cannot undo penalty — could not find the associated schedule period" },
+          { status: 400 },
+        );
+      }
+    }
+
+    const penaltyAmount = new Decimal(penaltyRecord.amount);
+
+    if (new Decimal(period.penaltyAmount).lt(penaltyAmount)) {
       return NextResponse.json(
-        { error: "Cannot undo penalty — linked schedule period not found" },
+        { error: "Cannot undo — this penalty has already been partially or fully paid" },
         { status: 400 },
       );
     }
 
-    const period = penaltyRecord.installmentSchedule;
-    const penaltyAmount = new Decimal(penaltyRecord.amount);
+    // Only validate "latest" check if the record has a proper schedule link
+    if (hadScheduleLink) {
+      const latestForPeriod = await prisma.penaltyRecord.findFirst({
+        where: { installmentScheduleId: period.id },
+        orderBy: { appliedDate: "desc" },
+      });
 
-    // Find the latest PenaltyRecord for this period — only allow undo on the latest
-    const latestForPeriod = await prisma.penaltyRecord.findFirst({
-      where: { installmentScheduleId: period.id },
-      orderBy: { appliedDate: "desc" },
-    });
-
-    if (!latestForPeriod || latestForPeriod.id !== id) {
-      return NextResponse.json(
-        { error: "Only the latest penalty on this period can be undone" },
-        { status: 400 },
-      );
+      if (!latestForPeriod || latestForPeriod.id !== id) {
+        return NextResponse.json(
+          { error: "Only the latest penalty on this period can be undone" },
+          { status: 400 },
+        );
+      }
     }
 
     await prisma.$transaction(async (tx) => {

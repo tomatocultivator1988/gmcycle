@@ -102,7 +102,7 @@ const reportConfigs: Record<string, ReportConfig> = {
         render: (r) => <StatusBadge status={r.status} />,
       },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
-      { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment), hideOnMobile: true },
+      { key: "monthly", label: "Per Period", render: (r) => <span>{formatPeso(r.monthlyInstallment)}<span className="text-slate-400 text-[10px] ml-0.5">{r.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</span></span>, hideOnMobile: true },
       {
         key: "lastPaymentDate",
         label: "Last Payment",
@@ -148,7 +148,7 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "phone", label: "Contact", render: (r) => r.customerPhone },
       { key: "unit", label: "Unit", render: (r) => `${r.brand} ${r.model}` },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
-      { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment), hideOnMobile: true },
+      { key: "monthly", label: "Per Period", render: (r) => <span>{formatPeso(r.monthlyInstallment)}<span className="text-slate-400 text-[10px] ml-0.5">{r.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</span></span>, hideOnMobile: true },
       { key: "dueDate", label: "Due Date", render: (r) => r.nextDueDate },
       {
         key: "status",
@@ -184,10 +184,10 @@ const reportConfigs: Record<string, ReportConfig> = {
       { key: "cashPrice", label: "Cash Price", render: (r) => formatPeso(r.cashPrice), hideOnMobile: true },
       { key: "downPayment", label: "Down Pmt", render: (r) => formatPeso(r.downPayment), hideOnMobile: true },
       { key: "balance", label: "Balance", render: (r) => <span className="font-semibold text-slate-900">{formatPeso(r.remainingBalance)}</span> },
-      { key: "monthly", label: "Monthly", render: (r) => formatPeso(r.monthlyInstallment) },
+      { key: "monthly", label: "Per Period", render: (r) => <span>{formatPeso(r.monthlyInstallment)}<span className="text-slate-400 text-[10px] ml-0.5">{r.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</span></span> },
       { key: "nextAmountDue", label: "Next Due", render: (r) => r.nextAmountDue !== "0.00" ? <span className="font-semibold text-red-800">{formatPeso(r.nextAmountDue)}</span> : <span className="text-slate-400">—</span> },
       { key: "totalPenalties", label: "Penalties", render: (r) => r.totalPenalties !== "0.00" ? <span className="font-medium text-rose-600">{formatPeso(r.totalPenalties)}</span> : <span className="text-slate-300">—</span>, hideOnMobile: true },
-      { key: "term", label: "Term", render: (r) => `${r.term}mo`, hideOnMobile: true },
+      { key: "term", label: "Term", render: (r) => r.scheduleType === "SEMI_MONTHLY" ? `${r.term}mo (${r.term * 2} periods)` : `${r.term}mo`, hideOnMobile: true },
       { key: "dueDay", label: "Due Date", render: (r) => (r.dueDays as number[]).join(", "), hideOnMobile: true },
       { key: "nextDueDate", label: "Due Date", render: (r) => r.nextDueDate },
       {
@@ -495,7 +495,27 @@ export default function ReportPage() {
                 </button>
               </div>
               {hasBreakdown ? (
-                <table className="w-full text-sm">
+                <>
+                {/* Mobile: Cards */}
+                <div className="block sm:hidden space-y-2">
+                  {breakdown.map((p: any) => (
+                    <div key={p.period} className="rounded-lg border border-slate-200 bg-white p-3 text-xs space-y-1.5">
+                      <div className="flex justify-between">
+                        <span className="font-medium text-slate-900">#{p.period} · {p.dueDate}</span>
+                        <span className="font-semibold text-red-800">{formatPeso((parseFloat(p.amount) + parseFloat(p.penalty || "0")).toFixed(2))}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500">
+                        <span>Amount</span><span>{formatPeso(p.amount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Penalty</span><span className="text-rose-600">{p.penalty !== "0.00" ? formatPeso(p.penalty) : "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-sm font-bold text-red-800 pt-2">Total: {showTotal}</div>
+                </div>
+                {/* Desktop: Table */}
+                <table className="hidden sm:table w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                       <th className="py-1.5 w-8">#</th>
@@ -523,6 +543,7 @@ export default function ReportPage() {
                     </tr>
                   </tfoot>
                 </table>
+                </>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-2xl font-bold text-slate-800">{showTotal}</p>

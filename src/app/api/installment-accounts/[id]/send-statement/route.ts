@@ -48,6 +48,11 @@ export async function POST(request: Request, context: RouteContext) {
     const cashPrice = new Decimal(account.cashPrice);
     const grossProfit = installmentPrice.sub(cashPrice);
 
+    const config = await prisma.adminConfig.findFirst();
+    const penaltyPerDay = config?.penaltyPerDay
+      ? new Decimal(config.penaltyPerDay.toString())
+      : new Decimal("50");
+
     const todayManila = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila",
       year: "numeric",
@@ -63,12 +68,17 @@ export async function POST(request: Request, context: RouteContext) {
         day: "2-digit",
       }).format(s.dueDate);
       const daysOverdue = s.status === "PAID" ? null : todayManila > dueStr ? differenceInCalendarDays(new Date(todayManila), new Date(dueStr)) : 0;
+      const storedPenalty = new Decimal(s.penaltyAmount);
+      const computedPenalty = daysOverdue && daysOverdue > 0 && storedPenalty.eq(0)
+        ? penaltyPerDay.times(daysOverdue)
+        : new Decimal(0);
+      const effectivePenalty = storedPenalty.gt(0) ? storedPenalty : computedPenalty;
       return {
         period: s.periodNumber,
         dueDate: dateToManilaDateOnly(s.dueDate),
         amount: decimalToString(s.amount),
         status: s.status,
-        penalty: decimalToString(s.penaltyAmount),
+        penalty: decimalToString(effectivePenalty),
         daysOverdue,
       };
     });
@@ -78,6 +88,10 @@ export async function POST(request: Request, context: RouteContext) {
     );
     const totalDue = dueNow.reduce(
       (sum, s) => sum.plus(new Decimal(s.amount)).plus(new Decimal(s.penalty)),
+      new Decimal(0),
+    );
+    const totalDuePenalty = dueNow.reduce(
+      (sum, s) => sum.plus(new Decimal(s.penalty)),
       new Decimal(0),
     );
 
@@ -125,8 +139,12 @@ export async function POST(request: Request, context: RouteContext) {
         </tbody>
         <tfoot>
           <tr style="font-weight:700;color:#991b1b;">
-            <td colspan="5" style="padding:6px 8px;text-align:right;">Total Amount Due:</td>
-            <td style="padding:6px 8px;text-align:right;">${formatPeso(totalDue.toFixed(2))}</td>
+            <td colspan="5" style="padding:6px 8px;text-align:right;">Total Due:</td>
+            <td style="padding:6px 8px;text-align:right;">${formatPeso(totalDue.toFixed(2))}${totalDuePenalty.gt(0) ? ` <span style="color:#b91c1c;font-weight:400;font-size:12px;">(incl. ${formatPeso(totalDuePenalty.toFixed(2))} penalty)</span>` : ""}</td>
+          </tr>
+          <tr>
+            <td colspan="5" style="padding:4px 8px;text-align:right;color:#64748b;font-size:12px;">Remaining Balance:</td>
+            <td style="padding:4px 8px;text-align:right;font-weight:600;color:#0f172a;">${formatPeso(account.remainingBalance.toString())}</td>
           </tr>
         </tfoot>
       </table>` : "";
@@ -166,8 +184,8 @@ export async function POST(request: Request, context: RouteContext) {
         <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:13px;">
           <tr><td style="padding:4px 8px;color:#64748b;">Installment Price</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.installmentPrice.toString())}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Down Payment</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.downPayment.toString())}</td></tr>
-          <tr><td style="padding:4px 8px;color:#64748b;">Term</td><td style="padding:4px 8px;font-weight:500;">${account.term} months</td></tr>
-          <tr><td style="padding:4px 8px;color:#64748b;">Monthly Installment</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.monthlyInstallment.toString())}/mo</td></tr>
+          <tr><td style="padding:4px 8px;color:#64748b;">Term</td><td style="padding:4px 8px;font-weight:500;">${account.scheduleType === "SEMI_MONTHLY" ? `${account.term} months (${account.term * 2} periods)` : `${account.term} months`}</td></tr>
+          <tr><td style="padding:4px 8px;color:#64748b;">${account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly Installment"}</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.monthlyInstallment.toString())}${account.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Remaining Balance</td><td style="padding:4px 8px;font-weight:700;color:#991b1b;">${formatPeso(account.remainingBalance.toString())}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Total Paid</td><td style="padding:4px 8px;font-weight:500;color:#16a34a;">${formatPeso(totalPayments.toFixed(2))}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Total Penalties</td><td style="padding:4px 8px;font-weight:500;color:#b91c1c;">${formatPeso(totalPenalties.toFixed(2))}</td></tr>

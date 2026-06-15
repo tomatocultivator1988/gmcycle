@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { generateAdjustedDates } from "@/lib/installment-schedule";
+import { updateOverdueSchedule } from "@/lib/schedule-status";
+import { recalculateBalance } from "@/lib/balance";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -23,6 +25,16 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
     }
 
+    if (body.dueDays.length > 1) {
+      const sorted = [...body.dueDays].sort((a, b) => a - b);
+      if (sorted[0] === sorted[1]) {
+        throw new ValidationError("Due days must be distinct");
+      }
+      if (sorted[0] > sorted[1]) {
+        throw new ValidationError("Due days must be in ascending order");
+      }
+    }
+
     const account = await prisma.installmentAccount.findUnique({
       where: { id },
       select: { scheduleType: true },
@@ -33,6 +45,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (account.scheduleType === "MONTHLY" && body.dueDays.length !== 1) {
       throw new ValidationError("Monthly schedule requires exactly 1 due day");
     }
+
+    // Reset stale OVERDUE status before adjusting dates
+    await prisma.installmentSchedule.updateMany({
+      where: {
+        installmentAccountId: id,
+        status: "OVERDUE",
+      },
+      data: { status: "PENDING" },
+    });
 
     const allPeriods = await prisma.installmentSchedule.findMany({
       where: { installmentAccountId: id },
@@ -56,21 +77,22 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     await prisma.$transaction(updates);
 
-    // nextDueDate = first unpaid period's new date, or last period if all paid
-    const firstUnpaidIndex = allPeriods.findIndex(
-      (p) => p.status === "PENDING" || p.status === "PARTIAL",
-    );
-    const nextDueDate = firstUnpaidIndex >= 0 ? newDates[firstUnpaidIndex] : newDates[newDates.length - 1];
-
     await prisma.installmentAccount.update({
       where: { id },
-      data: {
-        dueDays: sortedDueDays,
-        nextDueDate,
-      },
+      data: { dueDays: sortedDueDays },
     });
 
-    return NextResponse.json({ message: "Due dates adjusted for all periods", count: allPeriods.length, newFirstDueDate: newDates[0] });
+    // Recalculate statuses and balance
+    await updateOverdueSchedule(id);
+    await prisma.$transaction(async (tx) => {
+      await recalculateBalance(tx, id);
+    });
+
+    return NextResponse.json({
+      message: "Due dates adjusted for all periods",
+      count: allPeriods.length,
+      newFirstDueDate: newDates[0],
+    });
   } catch (error) {
     return handleApiError(error);
   }

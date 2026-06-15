@@ -103,7 +103,7 @@ export async function POST(request: Request) {
             <tr><td style="padding:6px 0;color:#64748b;">Total Due</td><td style="padding:6px 0;font-weight:700;font-size:15px;color:#991b1b;">${formatPeso(totalDueAll)} ${totalPenaltyAll.gt(0) ? `(incl. ${formatPeso(totalPenaltyAll)} penalty)` : ""}</td></tr>
             <tr><td style="padding:6px 0;color:#64748b;">Remaining Balance</td><td style="padding:6px 0;font-weight:600;color:#991b1b;">${formatPeso(account.remainingBalance.toString())}</td></tr>
             <tr><td style="padding:6px 0;color:#64748b;">Total Paid</td><td style="padding:6px 0;">${formatPeso(totalPaid.toFixed(2))}</td></tr>
-            <tr><td style="padding:6px 0;color:#64748b;">Term</td><td style="padding:6px 0;">${account.term} months &middot; ${formatPeso(account.monthlyInstallment.toString())}/mo</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Term</td><td style="padding:6px 0;">${account.scheduleType === "SEMI_MONTHLY" ? `${account.term} months (${account.term * 2} periods) &middot; ${formatPeso(account.monthlyInstallment.toString())}/period` : `${account.term} months &middot; ${formatPeso(account.monthlyInstallment.toString())}/mo`}</td></tr>
           </table>
           <p style="color:#b91c1c;font-weight:600;">⚠️  Late penalty: ${formatPeso(penaltyPerDay)}/day overdue (if not yet applied).</p>
           <p style="margin-top:24px;color:#64748b;font-size:12px;">MyFaveGadgets — Binan City, Laguna</p>

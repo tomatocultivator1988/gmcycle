@@ -91,18 +91,23 @@ export async function POST(request: Request) {
       }
 
       // Update overdue schedule periods before processing
+      const paymentDateManila = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+      }).format(paymentDate);
+      const paymentDateMidnight = new Date(paymentDateManila + "T00:00:00.000+08:00");
+
       await tx.installmentSchedule.updateMany({
         where: {
           installmentAccountId: account.id,
           status: { in: ["PENDING", "PARTIAL"] },
-          dueDate: { lt: paymentDate },
+          dueDate: { lt: paymentDateMidnight },
         },
         data: { status: "OVERDUE" },
       });
 
       // Update in-memory schedule instead of re-fetching from DB
       for (const s of account.schedule) {
-        if ((s.status === "PENDING" || s.status === "PARTIAL") && s.dueDate < paymentDate) {
+        if ((s.status === "PENDING" || s.status === "PARTIAL") && s.dueDate < paymentDateMidnight) {
           s.status = "OVERDUE";
         }
       }
@@ -125,9 +130,12 @@ export async function POST(request: Request) {
       // First pass: compute allocation only (no DB writes)
       let remainingToApply = totalAmount;
       let totalPenalty = new Decimal(0);
+      const penaltyByPeriod: Record<string, string> = {};
       const computedPeriods: Array<{
         period: (typeof updatedSchedule)[0];
         newPaidAmount: Decimal;
+        newPenaltyAmount: Decimal;
+        penaltyCovered: Decimal;
         isPaid: boolean;
       }> = [];
 
@@ -143,20 +151,26 @@ export async function POST(request: Request) {
 
         const paidForPeriod = Decimal.min(remainingToApply, periodTotalDue);
 
-        const penaltyCovered = paidForPeriod.gt(remainingPeriodAmount)
-          ? Decimal.min(periodPenalty, paidForPeriod.minus(remainingPeriodAmount))
-          : new Decimal(0);
+        const principalCovered = Decimal.min(paidForPeriod, remainingPeriodAmount);
+        const penaltyCovered = paidForPeriod.minus(principalCovered);
+        if (penaltyCovered.gt(0)) {
+          penaltyByPeriod[period.id] = decimalToString(penaltyCovered);
+        }
         totalPenalty = totalPenalty.plus(penaltyCovered);
 
         const newPaidAmount = (period.paidAmount
           ? new Decimal(period.paidAmount)
           : new Decimal(0)
-        ).plus(paidForPeriod);
+        ).plus(principalCovered);
+
+        const newPenaltyAmount = periodPenalty.minus(penaltyCovered);
 
         if (paidForPeriod.gt(0)) {
           computedPeriods.push({
             period,
             newPaidAmount,
+            newPenaltyAmount,
+            penaltyCovered,
             isPaid: paidForPeriod.gte(periodTotalDue),
           });
         }
@@ -166,7 +180,7 @@ export async function POST(request: Request) {
         if (paymentType === "PARTIAL") break;
       }
 
-      // Create payment with REAL totalPenalty
+      // Create payment with REAL totalPenalty and per-period breakdown
       const createdPayment = await tx.payment.create({
         data: {
           installmentAccountId: body.installmentAccountId,
@@ -176,6 +190,7 @@ export async function POST(request: Request) {
           method: body.method,
           paymentType,
           penaltyAmount: decimalToString(totalPenalty),
+          penaltyBreakdown: Object.keys(penaltyByPeriod).length > 0 ? penaltyByPeriod : undefined,
           notes: body.notes || null,
           cashier: body.cashier || null,
           proofUrl: body.proofUrl || null,
@@ -184,7 +199,7 @@ export async function POST(request: Request) {
 
       // Second pass: write schedule updates with REAL paymentId (no __pending__)
       await Promise.all(
-        computedPeriods.map(({ period, newPaidAmount, isPaid }) =>
+        computedPeriods.map(({ period, newPaidAmount, newPenaltyAmount, isPaid }) =>
           tx.installmentSchedule.update({
             where: { id: period.id },
             data: {
@@ -192,6 +207,7 @@ export async function POST(request: Request) {
               paidDate: paymentDate,
               paymentId: createdPayment.id,
               paidAmount: decimalToString(newPaidAmount),
+              penaltyAmount: decimalToString(newPenaltyAmount),
             },
           }),
         ),

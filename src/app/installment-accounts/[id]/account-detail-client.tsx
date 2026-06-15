@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Decimal from "decimal.js";
 import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import {
   Pencil,
   Ban,
   Lock,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -152,7 +154,11 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [showAdjustDueModal, setShowAdjustDueModal] = useState(false);
   const [adjustDueDay1, setAdjustDueDay1] = useState("");
   const [adjustDueDay2, setAdjustDueDay2] = useState("");
+  const [adjustDueError, setAdjustDueError] = useState("");
   const [savingAdjustDue, setSavingAdjustDue] = useState(false);
+  const [editDueDay1, setEditDueDay1] = useState("");
+  const [editDueDay2, setEditDueDay2] = useState("");
+  const [editDueError, setEditDueError] = useState("");
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
@@ -161,7 +167,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [voiding, setVoiding] = useState(false);
   const [closeRemarks, setCloseRemarks] = useState("");
   const [closePassword, setClosePassword] = useState("");
+  const [closeError, setCloseError] = useState("");
   const [closing, setClosing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [showDeviceSecurity, setShowDeviceSecurity] = useState(false);
   const [isEditingDeviceSecurity, setIsEditingDeviceSecurity] = useState(false);
   const [deviceEmail, setDeviceEmail] = useState("");
@@ -202,11 +213,12 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       .catch(() => {});
   }, []);
 
-  useBodyScrollLock(showModal || showPenaltyModal || showEditModal || showCloseModal || showVoidModal || showDeviceSecurity || showAdjustDueModal);
+  useBodyScrollLock(showModal || showPenaltyModal || showEditModal || showCloseModal || showDeleteModal || showVoidModal || showDeviceSecurity || showAdjustDueModal);
   useEscapeKey(() => setShowModal(false), showModal);
   useEscapeKey(() => setShowPenaltyModal(false), showPenaltyModal);
   useEscapeKey(() => setShowEditModal(false), showEditModal);
   useEscapeKey(() => setShowCloseModal(false), showCloseModal);
+  useEscapeKey(() => setShowDeleteModal(false), showDeleteModal);
   useEscapeKey(() => setShowVoidModal(false), showVoidModal);
   useEscapeKey(() => setShowDeviceSecurity(false), showDeviceSecurity);
   useEscapeKey(() => setShowAdjustDueModal(false), showAdjustDueModal);
@@ -221,6 +233,17 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     });
     return sorted[0].id;
   }, [payments]);
+
+  // Total penalty applied per schedule period (from PenaltyRecords)
+  const penaltyAppliedByPeriod = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of penalties) {
+      if (!p.installmentScheduleId) continue;
+      const current = map.get(p.installmentScheduleId) || 0;
+      map.set(p.installmentScheduleId, current + parseFloat(p.amount));
+    }
+    return map;
+  }, [penalties]);
 
   async function handlePostPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -373,6 +396,10 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   function openEditModal() {
     if (!account) return;
     setEditError("");
+    setEditDueError("");
+    const current = account.dueDays?.length ? [...account.dueDays].sort((a, b) => a - b) : [15, 30];
+    setEditDueDay1(String(current[0]));
+    setEditDueDay2(current.length > 1 ? String(current[1]) : "");
     setEditForm({
       customerName: account.customerName,
       customerPhone: account.customerPhone,
@@ -403,8 +430,26 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
   async function confirmEdit() {
     if (!account) return;
+    const d1 = parseInt(editDueDay1);
+    const d2 = editDueDay2 ? parseInt(editDueDay2) : null;
+    if (isNaN(d1) || d1 < 1 || d1 > 31) {
+      setEditDueError("Due Day 1 must be between 1 and 31");
+      return;
+    }
+    if (editForm.scheduleType === "SEMI_MONTHLY") {
+      if (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31) {
+        setEditDueError("Due Day 2 is required for semi-monthly and must be between 1 and 31");
+        return;
+      }
+      if (d2 <= d1) {
+        setEditDueError("Due Day 2 must be after Due Day 1");
+        return;
+      }
+    }
+    const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
     setEditSaving(true);
     setEditError("");
+    setEditDueError("");
     try {
       const isFullUpdate = editForm.editPassword.trim().length > 0;
       const body: Record<string, unknown> = {
@@ -416,8 +461,10 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           if (key.trim()) acc[key.trim()] = value;
           return acc;
         }, {} as Record<string, string>),
-        dueDays: account.dueDays,
       };
+      if (isFullUpdate) {
+        body.dueDays = dueDays;
+      }
 
       const data = await apiRequest<{ installmentAccount: InstallmentAccountDto }>(
         `/api/installment-accounts/${account.id}`,
@@ -502,6 +549,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   async function handleCloseAccount() {
     if (!account) return;
     setClosing(true);
+    setCloseError("");
     try {
       await apiRequest(`/api/installment-accounts/${account.id}/close`, {
         method: "PATCH",
@@ -510,9 +558,28 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       setShowCloseModal(false);
       loadData();
     } catch (requestError) {
-      setError((requestError as Error).message);
+      setCloseError((requestError as Error).message);
     } finally {
       setClosing(false);
+    }
+  }
+
+  const router = useRouter();
+
+  async function handleDeleteAccount() {
+    if (!account || deleteConfirm !== "DELETE") return;
+    setDeleting(true);
+    try {
+      await apiRequest(`/api/installment-accounts/${account.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      router.push("/installment-accounts");
+    } catch (requestError) {
+      setError((requestError as Error).message);
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -541,16 +608,30 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       const current = account.dueDays?.length ? [...account.dueDays].sort((a, b) => a - b) : [15, 30];
       setAdjustDueDay1(String(current[0]));
       setAdjustDueDay2(current.length > 1 ? String(current[1]) : "");
+      setAdjustDueError("");
       setShowAdjustDueModal(true);
     }
   }
 
   async function confirmAdjustDueDates() {
     if (!account) return;
+    setAdjustDueError("");
     const d1 = parseInt(adjustDueDay1);
     const d2 = adjustDueDay2 ? parseInt(adjustDueDay2) : null;
-    if (isNaN(d1) || d1 < 1 || d1 > 31) return;
-    if (account.scheduleType === "SEMI_MONTHLY" && (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31)) return;
+    if (isNaN(d1) || d1 < 1 || d1 > 31) {
+      setAdjustDueError("Due Date 1 must be between 1 and 31");
+      return;
+    }
+    if (account.scheduleType === "SEMI_MONTHLY") {
+      if (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31) {
+        setAdjustDueError("Due Date 2 is required for semi-monthly and must be between 1 and 31");
+        return;
+      }
+      if (d2 <= d1) {
+        setAdjustDueError("Due Date 2 must be after Due Date 1");
+        return;
+      }
+    }
     const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
     setSavingAdjustDue(true);
     try {
@@ -690,13 +771,21 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
             {account.status !== "APPLIED" && account.status !== "CLOSED" ? (
               <button
                 type="button"
-                onClick={() => setShowCloseModal(true)}
+                onClick={() => { setCloseRemarks(""); setClosePassword(""); setCloseError(""); setShowCloseModal(true); }}
                 className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
               >
                 <Ban size={16} aria-hidden="true" />
                 <span className="inline">Close</span>
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => { setDeletePassword(""); setDeleteConfirm(""); setShowDeleteModal(true); }}
+              className="inline-flex h-8 sm:h-10 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-rose-600 shadow-sm transition-all hover:bg-rose-50 active:scale-[0.98]"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              <span className="inline">Delete</span>
+            </button>
           </div>
         }
       />
@@ -723,7 +812,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
             ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">Cash</span>
             : `${account.brand} ${account.model}`
         } />
-        <InfoCard icon={Hash} label="Term" value={`${account.term} months`} />
+        <InfoCard icon={Hash} label="Term" value={account.scheduleType === "SEMI_MONTHLY" ? `${account.term} months (${account.term * 2} periods)` : `${account.term} months`} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -867,7 +956,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         ) : null}
         {showSchedule ? (
           <div className="divide-y divide-slate-100">
-            {schedule.map((period) => (
+            {schedule.map((period, sIdx) => (
               <div
                 key={period.id}
                 className={`px-5 py-3.5 transition-colors ${
@@ -890,44 +979,94 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     <div>
                       <div className="text-sm font-semibold text-slate-900">{formatPeso(period.amount)}</div>
                       <div className="text-xs text-slate-500">Due: {period.dueDate}</div>
-                      {period.status === "PAID" && period.paidAmount ? (
-                        <div className="text-xs text-emerald-600 mt-0.5">Paid: {formatPeso(period.paidAmount)}</div>
-                      ) : period.status === "PARTIAL" && period.paidAmount ? (
-                        <div className="text-xs text-amber-600 mt-0.5">
-                          Paid: {formatPeso(period.paidAmount)} &middot; Balance: {formatPeso((parseFloat(period.amount) - parseFloat(period.paidAmount)).toFixed(2))}
-              </div>
-                      ) : period.status === "PENDING" && period.penaltyAmount !== "0.00" ? (
-                        <div className="text-xs text-rose-500 mt-0.5">+ Penalty: {formatPeso(period.penaltyAmount)}</div>
-                      ) : null}
+                      {(() => {
+                        const paid = parseFloat(period.paidAmount || "0");
+                        const principal = parseFloat(period.amount);
+                        const penalty = parseFloat(period.penaltyAmount);
+                        const remainingPrincipal = Math.max(0, principal - paid);
+                        const totalRemaining = remainingPrincipal + penalty;
+                        const isFullyPaid = period.status === "PAID";
+
+                        // Detect carryover: same payment covered consecutive periods
+                        const prevPeriod = sIdx > 0 ? schedule[sIdx - 1] : null;
+                        const isCarryover = !!(prevPeriod && period.paymentId && prevPeriod.paymentId && prevPeriod.paymentId === period.paymentId);
+
+                        return isFullyPaid ? (
+                          <div className="text-xs text-emerald-600 mt-0.5">
+                            Paid: {formatPeso(period.paidAmount || "0")}
+                            {isCarryover ? <span className="text-emerald-500"> (carryover)</span> : null}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {paid > 0 ? (
+                                <>
+                                  Paid: {formatPeso(period.paidAmount!)}
+                                  {isCarryover ? <span className="text-slate-400"> (carryover)</span> : null}
+                                  &middot;{" "}
+                                </>
+                              ) : null}
+                              Total Due: {formatPeso(totalRemaining.toFixed(2))}
+                              {penalty > 0 ? (
+                                <span className="text-rose-500"> (₱{remainingPrincipal.toFixed(2)} + ₱{penalty.toFixed(2)})</span>
+                              ) : null}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <StatusBadge status={period.status as ScheduleStatusValue} />
-                    {period.penaltyAmount !== "0.00" ? (
-                      <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
-                        Pen: {formatPeso(period.penaltyAmount)}
-                      </span>
-                    ) : (period.status === "OVERDUE" || period.status === "PARTIAL" || (period.status === "PENDING" && period.dueDate < todayDateOnly())) ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-rose-600 font-medium">
-                          {(() => {
-                            const due = new Date(period.dueDate + "T00:00:00+08:00");
-                            const today = new Date(todayDateOnly() + "T00:00:00+08:00");
-                            const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
-                            const accrued = diffDays * Number(penaltyPerDay);
-                            return `Accrued: ₱${accrued.toFixed(2)} (${diffDays}d)`;
-                          })()}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openPenaltyModal(period.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-all hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98]"
-                        >
-                          <AlertTriangle size={12} />
-                          Apply Penalty
-                        </button>
-                      </div>
-                    ) : null}
+                    {(() => {
+                      const totalApplied = penaltyAppliedByPeriod.get(period.id) || 0;
+                      const remainingPen = parseFloat(period.penaltyAmount);
+                      const paidPen = Math.max(0, totalApplied - remainingPen);
+                      const isOverdue = period.status === "OVERDUE" || period.status === "PARTIAL" || (period.status === "PENDING" && period.dueDate < todayDateOnly());
+                      const noPenaltyHistory = totalApplied === 0 && remainingPen === 0;
+
+                      return (
+                        <>
+                          {remainingPen > 0 ? (
+                            <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
+                              Pen: {formatPeso(period.penaltyAmount)}
+                            </span>
+                          ) : null}
+
+                          {paidPen > 0 ? (
+                            <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-xs font-medium ${
+                              remainingPen === 0
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-amber-200 bg-amber-50 text-amber-700"
+                            }`}>
+                              Penalty Paid: {formatPeso(paidPen.toFixed(2))}
+                            </span>
+                          ) : null}
+
+                          {noPenaltyHistory && isOverdue ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-rose-600 font-medium">
+                                {(() => {
+                                  const due = new Date(period.dueDate + "T00:00:00+08:00");
+                                  const today = new Date(todayDateOnly() + "T00:00:00+08:00");
+                                  const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+                                  const accrued = diffDays * Number(penaltyPerDay);
+                                  return `Accrued: ₱${accrued.toFixed(2)} (${diffDays}d)`;
+                                })()}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => openPenaltyModal(period.id)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 transition-all hover:bg-rose-100 hover:border-rose-300 active:scale-[0.98]"
+                              >
+                                <AlertTriangle size={12} />
+                                Apply Penalty
+                              </button>
+                            </div>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1009,7 +1148,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-rose-700">{formatPeso(penalty.amount)}</span>
                   <div className="flex items-center gap-2">
-                    {account?.status !== "FULLY_PAID" && penalty.installmentScheduleId ? (
+                    {account?.status !== "FULLY_PAID" ? (
                       <button
                         type="button"
                         onClick={() => setUndoPenaltyId(penalty.id)}
@@ -1086,7 +1225,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 <FieldError error={fieldErrors.totalAmount} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700">
                     Payment Date
@@ -1122,7 +1261,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700">
                     Method
@@ -1227,7 +1366,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
             <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               {editError ? <ErrorMessage message={editError} /> : null}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700">
                     Customer Name
@@ -1323,7 +1462,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </div>
 
                 {editForm.itemType === "GADGET" ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700">
                         Brand
@@ -1425,14 +1564,19 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-4 text-[11px] text-amber-800">
                 Changing contract terms recalculates the installment price and regenerates unpaid schedule periods. Paid periods are preserved.
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-[11px] font-medium text-slate-600">Cash Price</label><input inputMode="decimal" value={editForm.cashPrice} onChange={(e) => setEditForm((p) => ({ ...p, cashPrice: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
                 <div><label className="block text-[11px] font-medium text-slate-600">Down Payment</label><input inputMode="decimal" value={editForm.downPayment} onChange={(e) => setEditForm((p) => ({ ...p, downPayment: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
                 <div><label className="block text-[11px] font-medium text-slate-600">Interest Rate (%/mo)</label><input inputMode="decimal" value={editForm.interestRate} onChange={(e) => setEditForm((p) => ({ ...p, interestRate: e.target.value.replace(/[^\d.]/g, "") }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
                 <div><label className="block text-[11px] font-medium text-slate-600">Term (months)</label><select value={editForm.term} onChange={(e) => setEditForm((p) => ({ ...p, term: Number(e.target.value) }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"><option value={12}>12</option><option value={24}>24</option><option value={36}>36</option><option value={48}>48</option></select></div>
                 <div><label className="block text-[11px] font-medium text-slate-600">Schedule</label><select value={editForm.scheduleType} onChange={(e) => setEditForm((p) => ({ ...p, scheduleType: e.target.value as any }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"><option value="MONTHLY">Monthly</option><option value="SEMI_MONTHLY">Semi-Monthly</option></select></div>
                 <div><label className="block text-[11px] font-medium text-slate-600">First Due Date</label><input type="date" value={editForm.firstDueDate} onChange={(e) => setEditForm((p) => ({ ...p, firstDueDate: e.target.value }))} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                <div><label className="block text-[11px] font-medium text-slate-600">Due Day 1</label><input type="number" min={1} max={31} value={editDueDay1} onChange={(e) => { setEditDueDay1(e.target.value); setEditDueError(""); }} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                {editForm.scheduleType === "SEMI_MONTHLY" ? (
+                  <div><label className="block text-[11px] font-medium text-slate-600">Due Day 2</label><input type="number" min={1} max={31} value={editDueDay2} onChange={(e) => { setEditDueDay2(e.target.value); setEditDueError(""); }} className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>
+                ) : null}
               </div>
+              {editDueError ? <p className="mt-2 text-xs font-medium text-rose-600">{editDueError}</p> : null}
             </div>
 
             <div className="mt-3">
@@ -1595,6 +1739,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 </label>
               </div>
 
+              {closeError ? <p className="mt-2 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{closeError}</p> : null}
+
               <div className="mt-6 flex flex-col gap-2">
                 <button
                   type="button"
@@ -1608,6 +1754,71 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                   type="button"
                   disabled={closing}
                   onClick={() => setShowCloseModal(false)}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeleteModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                  <Trash2 size={24} />
+                </span>
+                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Delete Account</h3>
+                <p className="mt-1.5 text-sm text-slate-500">
+                  {account.brand} {account.model} — {account.customerName}
+                </p>
+                <div className="mt-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-medium text-rose-800">
+                  All records (payments, penalties, schedule, activity log) will be <strong>permanently deleted</strong>. This cannot be undone.
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Admin Password
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter admin password"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Type DELETE to confirm
+                  <input
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="DELETE"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold tracking-wider outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={deleting || !deletePassword.trim() || deleteConfirm !== "DELETE"}
+                  onClick={handleDeleteAccount}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-rose-500 active:scale-[0.98] disabled:bg-slate-300"
+                >
+                  {deleting ? "Deleting..." : "Delete Account"}
+                </button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(false)}
                   className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
                 >
                   Cancel
@@ -1712,7 +1923,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                     min={1}
                     max={31}
                     value={adjustDueDay1}
-                    onChange={(e) => setAdjustDueDay1(e.target.value)}
+                    onChange={(e) => { setAdjustDueDay1(e.target.value); setAdjustDueError(""); }}
                     className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   />
                 </label>
@@ -1724,12 +1935,15 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       min={1}
                       max={31}
                       value={adjustDueDay2}
-                      onChange={(e) => setAdjustDueDay2(e.target.value)}
+                      onChange={(e) => { setAdjustDueDay2(e.target.value); setAdjustDueError(""); }}
                       className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                     />
                   </label>
                 ) : null}
               </div>
+              {adjustDueError ? (
+                <p className="mt-2 text-xs font-medium text-rose-600">{adjustDueError}</p>
+              ) : null}
 
               {adjustPreview.length > 0 ? (
                 <div className="mt-5">
@@ -1749,7 +1963,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
               <div className="mt-6 flex flex-col gap-2">
                 <button
                   type="button"
-                  disabled={savingAdjustDue || !adjustDueDay1}
+                  disabled={savingAdjustDue || !adjustDueDay1 || !!adjustDueError}
                   onClick={confirmAdjustDueDates}
                   className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:bg-slate-300"
                 >

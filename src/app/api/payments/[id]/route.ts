@@ -70,6 +70,7 @@ export async function GET(
           unitDescription: payment.installmentAccount.unitDescription,
           monthlyInstallment: decimalToString(payment.installmentAccount.monthlyInstallment),
           remainingBalance: decimalToString(payment.installmentAccount.remainingBalance),
+          scheduleType: payment.installmentAccount.scheduleType,
           totalPaid,
           paidCount,
           totalPeriods,
