@@ -626,10 +626,6 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         setAdjustDueError("Due Date 2 is required for semi-monthly and must be between 1 and 31");
         return;
       }
-      if (d2 <= d1) {
-        setAdjustDueError("Due Date 2 must be after Due Date 1");
-        return;
-      }
     }
     const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
     setSavingAdjustDue(true);
@@ -641,7 +637,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       setShowAdjustDueModal(false);
       loadData();
     } catch (requestError) {
-      setError((requestError as Error).message);
+      setAdjustDueError((requestError as Error).message);
     } finally {
       setSavingAdjustDue(false);
     }

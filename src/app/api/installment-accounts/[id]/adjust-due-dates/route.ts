@@ -30,9 +30,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (sorted[0] === sorted[1]) {
         throw new ValidationError("Due days must be distinct");
       }
-      if (sorted[0] > sorted[1]) {
-        throw new ValidationError("Due days must be in ascending order");
-      }
     }
 
     const account = await prisma.installmentAccount.findUnique({
