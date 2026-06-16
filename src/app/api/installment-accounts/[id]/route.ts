@@ -176,18 +176,6 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
       },
     });
 
-    // Delete orphaned penalty records before deleting periods
-    const pendingOverdueIds = await tx.installmentSchedule.findMany({
-      where: { installmentAccountId: id, status: { in: ["PENDING", "OVERDUE"] } },
-      select: { id: true },
-    });
-
-    if (pendingOverdueIds.length > 0) {
-      await tx.penaltyRecord.deleteMany({
-        where: { installmentScheduleId: { in: pendingOverdueIds.map((p) => p.id) } },
-      });
-    }
-
     // Delete unpaid periods (PENDING + OVERDUE) and regenerate
     await tx.installmentSchedule.deleteMany({
       where: { installmentAccountId: id, status: { in: ["PENDING", "OVERDUE"] } },
