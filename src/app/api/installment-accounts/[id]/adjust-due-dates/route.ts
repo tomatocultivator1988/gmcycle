@@ -61,11 +61,20 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ message: "No periods found" });
     }
 
-    const sortedDueDays = [...body.dueDays].sort((a, b) => a - b);
-    const startDate = allPeriods[0].dueDate;
-    const newDates = generateAdjustedDates(sortedDueDays, allPeriods.length, startDate);
+    // Only adjust PENDING + OVERDUE — PAID and PARTIAL are locked as historical records
+    const adjustable = allPeriods.filter(
+      (p) => p.status === "PENDING" || p.status === "OVERDUE",
+    );
 
-    const updates = allPeriods.map((period, i) =>
+    if (adjustable.length === 0) {
+      return NextResponse.json({ message: "No adjustable periods — all periods are either PAID or PARTIAL" });
+    }
+
+    const sortedDueDays = [...body.dueDays].sort((a, b) => a - b);
+    const startDate = adjustable[0].dueDate;
+    const newDates = generateAdjustedDates(sortedDueDays, adjustable.length, startDate);
+
+    const updates = adjustable.map((period, i) =>
       prisma.installmentSchedule.update({
         where: { id: period.id },
         data: { dueDate: newDates[i] },
@@ -86,8 +95,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     });
 
     return NextResponse.json({
-      message: "Due dates adjusted for all periods",
-      count: allPeriods.length,
+      message: "Due dates adjusted for adjustable periods",
+      count: adjustable.length,
+      totalPeriods: allPeriods.length,
       newFirstDueDate: newDates[0],
     });
   } catch (error) {
