@@ -9,7 +9,7 @@ import { ErrorMessage, SuccessMessage } from "@/components/ui-state";
 import { FieldError } from "@/components/field-error";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { apiRequest } from "@/lib/client-api";
-import { formatPeso } from "@/lib/money";
+import { formatPeso, roundTo } from "@/lib/money";
 import { createInstallmentAccountSchema } from "@/lib/validation";
 import { validateForm, clearFieldError, type FieldErrors } from "@/lib/form-validation";
 import type { InstallmentAccountDto } from "@/types/api";
@@ -77,12 +77,12 @@ export function InstallmentAccountForm() {
     : monthlyInterest.times(form.term);  // per-month × term for gadgets
   const installmentPrice = cashPrice.plus(totalInterest);
   const totalPeriods = form.scheduleType === "SEMI_MONTHLY" ? form.term * 2 : form.term;
-  const remainingBalance = installmentPrice.minus(downPayment);
+  const remainingBalance = installmentPrice.floor().minus(downPayment).floor();
   const monthlyInstallment = remainingBalance.gt(0) && form.term > 0
-    ? remainingBalance.div(form.term).toDecimalPlaces(2)
+    ? roundTo(remainingBalance.div(form.term), 50)
     : new Decimal(0);
   const periodAmount = remainingBalance.gt(0) && totalPeriods > 0
-    ? remainingBalance.div(totalPeriods).toDecimalPlaces(2)
+    ? roundTo(remainingBalance.div(totalPeriods), 50)
     : new Decimal(0);
 
   const dueDay1 = form.firstDueDate ? parseInt(form.firstDueDate.slice(8, 10)) || 15 : 15;
