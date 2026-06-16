@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { decimalToString, parseMoney, parsePositiveMoney } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney, roundDownTo } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
 import { updateOverdueSchedule } from "@/lib/schedule-status";
@@ -127,7 +127,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const totalInterest = body.itemType === "CASH"
     ? financed.times(rate)
     : financed.times(rate).times(term);
-  const installmentPrice = cashPrice.plus(totalInterest).toDecimalPlaces(2);
+  const installmentPrice = cashPrice.plus(totalInterest).floor();
   const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
 
   const paidPeriods = existing.schedule.filter((s) => s.status === "PAID");
@@ -139,10 +139,12 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const paidTotal = fullPaidTotal.plus(partialPaidTotal);
   const unpaidCount = totalPeriods - preservedNumbers.size;
 
+  const config = await prisma.adminConfig.findFirst();
+  const roundStep = config?.roundStep ?? 100;
   const contractBalance = installmentPrice.minus(downPayment);
-  const remainingBalance = contractBalance.minus(paidTotal).toDecimalPlaces(2);
+  const remainingBalance = contractBalance.minus(paidTotal).floor();
   const monthlyInstallment = unpaidCount > 0
-    ? remainingBalance.div(unpaidCount).toDecimalPlaces(2)
+    ? roundDownTo(remainingBalance.div(unpaidCount), roundStep)
     : new Decimal(0);
 
   const updated = await prisma.$transaction(async (tx) => {

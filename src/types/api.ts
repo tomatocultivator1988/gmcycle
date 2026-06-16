@@ -120,6 +120,7 @@ export type DashboardMetricsDto = {
 export type AdminConfigDto = {
   id: string;
   penaltyPerDay: string;
+  roundStep: number;
   adminEmail: string | null;
   hasPassword: boolean;
 };

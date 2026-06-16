@@ -15,6 +15,7 @@ export async function GET() {
       config = await prisma.adminConfig.create({
         data: {
           penaltyPerDay: new Decimal("50.00"),
+          roundStep: 100,
         },
       });
     }
@@ -23,6 +24,7 @@ export async function GET() {
       config: {
         id: config.id,
         penaltyPerDay: config.penaltyPerDay.toFixed(2),
+        roundStep: config.roundStep ?? 100,
         adminEmail: config.adminEmail ?? null,
         hasPassword: !!config.adminPassword,
       },
@@ -36,6 +38,7 @@ export async function PUT(request: Request) {
   try {
     const body = updateAdminConfigSchema.parse(await readJson(request));
     const penaltyPerDay = parseMoney(body.penaltyPerDay, "penaltyPerDay");
+    const roundStep = body.roundStep ?? 100;
     const adminEmail = body.adminEmail?.trim() || null;
     const adminPassword = body.adminPassword?.trim() || null;
 
@@ -43,6 +46,7 @@ export async function PUT(request: Request) {
 
     const data: Record<string, unknown> = {
       penaltyPerDay: penaltyPerDay.toFixed(2),
+      roundStep,
       adminEmail,
     };
     if (adminPassword !== undefined) {
@@ -59,6 +63,7 @@ export async function PUT(request: Request) {
       config: {
         id: config.id,
         penaltyPerDay: config.penaltyPerDay.toFixed(2),
+        roundStep: config.roundStep ?? 100,
         adminEmail: config.adminEmail ?? null,
         hasPassword: !!config.adminPassword,
       },

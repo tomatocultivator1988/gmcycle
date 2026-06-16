@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
-import { decimalToString, parseMoney, parsePositiveMoney } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney, roundDownTo } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
 import { sendDpReceipt } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -79,23 +79,28 @@ export async function POST(request: Request) {
     const totalInterest = body.itemType === "CASH"
       ? monthlyInterest  // one-time interest for cash
       : monthlyInterest.times(body.term);  // per-month × term for gadgets
-    const installmentPrice = cashPrice.plus(totalInterest).toDecimalPlaces(2);
+    const installmentPrice = cashPrice.plus(totalInterest).floor();
 
     if (downPayment.gte(installmentPrice)) {
       throw new ValidationError("Down payment cannot equal or exceed installment price");
     }
 
-    const remainingBalance = installmentPrice.minus(downPayment).toDecimalPlaces(2);
+    const remainingBalance = installmentPrice.minus(downPayment).floor();
     const term = body.term;
     const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
     const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
-    const monthlyInstallment = remainingBalance.div(totalPeriods).toDecimalPlaces(2);
+
+    const config = await prisma.adminConfig.findFirst();
+    const roundStep = config?.roundStep ?? 100;
+    const rawPerPeriod = remainingBalance.div(totalPeriods);
+    const monthlyInstallment = roundDownTo(rawPerPeriod, roundStep);
+
     const startDate = parseDateOnly(body.startDate || body.firstDueDate, "startDate");
     const firstDueDate = parseDateOnly(body.firstDueDate, "firstDueDate");
     const dateGiven = body.dateGiven?.trim() ? parseDateOnly(body.dateGiven, "dateGiven") : null;
     const dueDays = body.dueDays ?? [15, 30];
 
-    const schedule = generateSchedule(firstDueDate, term, dueDays, remainingBalance);
+    const schedule = generateSchedule(firstDueDate, term, dueDays, remainingBalance, roundStep);
 
     const account = await prisma.$transaction(async (tx) => {
       const created = await tx.installmentAccount.create({

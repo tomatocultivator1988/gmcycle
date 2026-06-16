@@ -38,6 +38,7 @@ export function generateSchedule(
   term: number,
   dueDays: number[],
   totalRemainingBalance: Decimal,
+  roundStep = 1,
 ): InstallmentScheduleInput[] {
   const sortedDays = [...dueDays].sort((a, b) => a - b);
   const periodsPerMonth = sortedDays.length;
@@ -70,7 +71,9 @@ export function generateSchedule(
       amount = totalRemainingBalance.minus(allocated);
     } else {
       amount = totalRemainingBalance.div(totalPeriods);
-      const rounded = amount.toDecimalPlaces(2);
+      const rounded = roundStep > 1
+        ? amount.div(roundStep).floor().times(roundStep).toDecimalPlaces(2)
+        : amount.toDecimalPlaces(2);
       allocated = allocated.plus(rounded);
     }
 

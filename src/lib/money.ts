@@ -35,3 +35,9 @@ export function formatPeso(value: MoneyInput): string {
 
   return `₱${grouped}.${cents}`;
 }
+
+export function roundDownTo(value: MoneyInput, step: number): Decimal {
+  if (step <= 1) return new Decimal(value.toString()).toDecimalPlaces(2);
+  const d = new Decimal(value.toString());
+  return d.div(step).floor().times(step).toDecimalPlaces(2);
+}

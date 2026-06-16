@@ -456,7 +456,7 @@ export function InstallmentAccountForm() {
                   required
                   inputMode="decimal"
                   value={form.cashPrice}
-                  onChange={(e) => updateField("cashPrice", e.target.value.replace(/[^\d.]/g, ""))}
+                  onChange={(e) => updateField("cashPrice", e.target.value.replace(/[^\d]/g, ""))}
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>
@@ -482,7 +482,7 @@ export function InstallmentAccountForm() {
                   required
                   inputMode="decimal"
                   value={form.downPayment}
-                  onChange={(e) => updateField("downPayment", e.target.value.replace(/[^\d.]/g, ""))}
+                  onChange={(e) => updateField("downPayment", e.target.value.replace(/[^\d]/g, ""))}
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 />
               </label>

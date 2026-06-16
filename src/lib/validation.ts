@@ -8,6 +8,10 @@ const moneyString = z
   .string()
   .trim()
   .regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount");
+const wholeMoneyString = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, "Enter a whole number (no decimals)");
 const dateOnlyString = z
   .string()
   .trim()
@@ -34,8 +38,8 @@ export const createInstallmentAccountSchema = z.object({
   model: requiredString,
   unitDescription: requiredString,
   itemType: z.enum(["GADGET", "CASH"]).default("GADGET"),
-  cashPrice: moneyString,
-  downPayment: moneyString,
+  cashPrice: wholeMoneyString,
+  downPayment: wholeMoneyString,
   processingFee: moneyString.optional(),
   interestRate: moneyString,
   term: z.coerce.number().int().min(6, "Minimum term is 6 months").max(48, "Maximum term is 48 months"),
@@ -82,8 +86,8 @@ export const fullUpdateAccountSchema = z.object({
   model: requiredString,
   unitDescription: requiredString,
   itemType: z.enum(["GADGET", "CASH"]),
-  cashPrice: moneyString,
-  downPayment: moneyString,
+  cashPrice: wholeMoneyString,
+  downPayment: wholeMoneyString,
   processingFee: moneyString.optional(),
   interestRate: moneyString,
   term: z.coerce.number().int().min(6).max(48),
@@ -97,6 +101,7 @@ export const fullUpdateAccountSchema = z.object({
 
 export const updateAdminConfigSchema = z.object({
   penaltyPerDay: moneyString,
+  roundStep: z.coerce.number().int().min(1).max(5000).default(100),
   adminEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
   adminPassword: z.string().optional(),
 });
