@@ -368,11 +368,6 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   })()}</td>
                   <td colSpan={3}></td>
                 </tr>
-                <tr className="text-xs">
-                  <td colSpan={5} className="py-1.5 pr-3 font-semibold text-slate-500 text-right">Remaining Balance</td>
-                  <td className="py-1.5 pr-3 text-right font-bold text-slate-900 text-sm">{formatPeso(data.remainingBalance)}</td>
-                  <td colSpan={3}></td>
-                </tr>
               </tfoot>
             </table>
           </div>
