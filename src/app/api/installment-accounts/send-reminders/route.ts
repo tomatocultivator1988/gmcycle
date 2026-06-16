@@ -62,7 +62,7 @@ export async function POST(request: Request) {
           : new Decimal(0);
         const effectivePenalty = storedPenalty.gt(0) ? storedPenalty : computedPenalty;
         const totalDue = new Decimal(s.amount.toString()).plus(effectivePenalty);
-        return { period: s.periodNumber, dueDate, amount: s.amount, daysOverdue, effectivePenalty, totalDue };
+        return { period: s.periodNumber, dueDate, amount: s.amount, status: s.status, paidAmount: s.paidAmount?.toString() ?? "0", daysOverdue, effectivePenalty, totalDue };
       });
 
       const totalDueAll = periodRows.reduce((sum, r) => sum.plus(r.totalDue), new Decimal(0));
@@ -70,13 +70,16 @@ export async function POST(request: Request) {
 
       const rowsHtml = periodRows.map((r) => `
         <tr>
-          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">#${r.period}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">#${r.period}${r.status === "PARTIAL" ? ` <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px;font-size:10px;">PARTIAL</span>` : ""}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${dateToManilaDateOnly(r.dueDate)}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${formatPeso(r.amount)}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${r.daysOverdue > 0 ? `${r.daysOverdue}d` : "—"}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#b91c1c;">${r.effectivePenalty.gt(0) ? formatPeso(r.effectivePenalty) : "—"}</td>
           <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${formatPeso(r.totalDue)}</td>
-        </tr>`).join("");
+        </tr>${r.status === "PARTIAL" ? `
+        <tr style="font-size:11px;color:#64748b;">
+          <td colspan="6" style="padding:2px 8px 4px 8px;">Paid: <strong style="color:#16a34a;">${formatPeso(r.paidAmount)}</strong> &middot; Remaining: <strong style="color:#991b1b;">${formatPeso(new Decimal(r.amount).minus(new Decimal(r.paidAmount)).plus(r.effectivePenalty).toFixed(2))}</strong></td>
+        </tr>` : ""}`).join("");
 
       const html = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">

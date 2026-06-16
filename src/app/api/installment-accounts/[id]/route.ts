@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { decimalToString, parsePositiveMoney } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
 import { updateOverdueSchedule } from "@/lib/schedule-status";
@@ -102,7 +102,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   if (!existing) throw new NotFoundError("Installment account not found");
 
   const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
-  const downPayment = parsePositiveMoney(body.downPayment, "downPayment");
+  const downPayment = parseMoney(body.downPayment);
   const processingFee = body.processingFee?.trim()
     ? parsePositiveMoney(body.processingFee, "processingFee")
     : new Decimal(0);

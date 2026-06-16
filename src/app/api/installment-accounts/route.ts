@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
-import { decimalToString, parsePositiveMoney } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
 import { sendDpReceipt } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const body = createInstallmentAccountSchema.parse(await readJson(request));
 
     const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
-    const downPayment = parsePositiveMoney(body.downPayment, "downPayment");
+    const downPayment = parseMoney(body.downPayment);
     const processingFee = body.processingFee?.trim()
       ? parsePositiveMoney(body.processingFee, "processingFee")
       : new Decimal(0);

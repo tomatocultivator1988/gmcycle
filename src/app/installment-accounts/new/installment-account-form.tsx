@@ -100,9 +100,8 @@ export function InstallmentAccountForm() {
     form.model.trim() &&
     form.unitDescription.trim() &&
     cashPrice.gt(0) &&
-    interestRateDecimal.gt(0) &&
-    downPayment.gt(0) &&
-    downPayment.lt(installmentPrice) &&
+  interestRateDecimal.gt(0) &&
+  downPayment.lt(installmentPrice) &&
     (form.scheduleType === "MONTHLY" || parseInt(form.dueDay2) >= 1);
 
   function updateField(field: string, value: string | number) {

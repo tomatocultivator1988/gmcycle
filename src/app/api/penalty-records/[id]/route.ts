@@ -33,7 +33,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       );
     }
 
-    const hadScheduleLink = !!penaltyRecord.installmentScheduleId;
+    const hadScheduleLink = !!penaltyRecord.installmentScheduleId && !!penaltyRecord.installmentSchedule;
     let period = penaltyRecord.installmentSchedule;
 
     if (!period) {
