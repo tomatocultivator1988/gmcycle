@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { Mail, Printer, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { apiRequest } from "@/lib/client-api";
@@ -280,7 +280,13 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                 <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className={`rounded border px-1 py-px text-[10px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></div>
                 {s.daysOverdue != null && s.daysOverdue > 0 ? <div className="flex justify-between"><span className="text-slate-500">Days</span><span className="text-rose-600 font-medium">{s.daysOverdue}d</span></div> : null}
                 <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-semibold">{formatPeso(s.amount)}</span></div>
-                {s.paidAmount ? <div className="flex justify-between"><span className="text-slate-500">Paid</span><span>{formatPeso(s.paidAmount)}</span></div> : null}
+                {s.paidAmount ? <div className="flex justify-between"><span className="text-slate-500">Paid</span><span className="text-emerald-600">{formatPeso(s.paidAmount)}</span></div> : null}
+                {s.status === "PARTIAL" && s.paidAmount ? (
+                  <div className="flex justify-between border-t border-amber-100 pt-1">
+                    <span className="text-slate-500">Remaining</span>
+                    <span className="font-semibold text-amber-700">{formatPeso((parseFloat(s.amount) - parseFloat(s.paidAmount) + parseFloat(s.penalty || "0")).toFixed(2))}</span>
+                  </div>
+                ) : null}
                 <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className={s.penalty !== "0.00" ? "text-rose-600" : "text-slate-400"}>{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</span></div>
                 <div className="flex justify-between border-t border-slate-200 pt-1 mt-1"><span className="text-slate-500 font-medium">Total</span><span className="font-bold text-slate-900">{formatPeso(periodTotal)}</span></div>
               </div>
@@ -323,8 +329,12 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               <tbody>
                 {data.schedule.map((s) => {
                   const periodTotal = (parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2);
-                  return (
-                  <tr key={s.period} className={`border-b border-slate-100 text-slate-700 ${s.status === "PAID" ? "bg-emerald-50/50" : s.status === "OVERDUE" ? "bg-rose-50/50" : s.status === "PARTIAL" ? "bg-amber-50/50" : ""}`}>
+                  const isPartial = s.status === "PARTIAL" && s.paidAmount;
+                  const remainingVal = isPartial
+                    ? (parseFloat(s.amount) - parseFloat(s.paidAmount || "0") + parseFloat(s.penalty || "0")).toFixed(2)
+                    : "0.00";
+                  return (<React.Fragment key={s.period}>
+                  <tr className={`border-b border-slate-100 text-slate-700 ${s.status === "PAID" ? "bg-emerald-50/50" : s.status === "OVERDUE" ? "bg-rose-50/50" : s.status === "PARTIAL" ? "bg-amber-50/50" : ""}`}>
                     <td className="py-1.5 pr-3 font-medium">{s.period}</td>
                     <td className="py-1.5 pr-3">{s.dueDate}</td>
                     <td className="py-1.5 pr-3 text-right">{s.daysOverdue != null && s.daysOverdue > 0 ? <span className="text-rose-600">{s.daysOverdue}d</span> : "—"}</td>
@@ -335,7 +345,17 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                     <td className="py-1.5 pr-3">{s.paidDate || "—"}</td>
                     <td className="py-1.5 pr-3 text-right">{s.paidAmount ? formatPeso(s.paidAmount) : "—"}</td>
                   </tr>
-                )})}
+                  {isPartial ? (
+                    <tr className="border-b border-slate-100 bg-amber-50/30 text-xs text-slate-500">
+                      <td colSpan={9} className="py-1 pr-3">
+                        Paid: <span className="font-medium text-emerald-600">{formatPeso(s.paidAmount!)}</span>
+                        {" · "}
+                        Remaining: <span className="font-medium text-amber-700">{formatPeso(remainingVal)}</span>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </React.Fragment>);
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-300 text-xs">
