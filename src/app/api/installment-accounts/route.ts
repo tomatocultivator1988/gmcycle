@@ -86,12 +86,13 @@ export async function POST(request: Request) {
     }
 
     const remainingBalance = installmentPrice.minus(downPayment).toDecimalPlaces(2);
-    const monthlyInstallment = remainingBalance.div(body.term).toDecimalPlaces(2);
+    const term = body.term;
+    const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
+    const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
+    const monthlyInstallment = remainingBalance.div(totalPeriods).toDecimalPlaces(2);
     const startDate = parseDateOnly(body.startDate || body.firstDueDate, "startDate");
     const firstDueDate = parseDateOnly(body.firstDueDate, "firstDueDate");
     const dateGiven = body.dateGiven?.trim() ? parseDateOnly(body.dateGiven, "dateGiven") : null;
-    const term = body.term;
-    const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
     const dueDays = body.dueDays ?? [15, 30];
 
     const schedule = generateSchedule(firstDueDate, term, dueDays, remainingBalance);
