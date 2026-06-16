@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       await tx.installmentSchedule.updateMany({
         where: {
           installmentAccountId: account.id,
-          status: { in: ["PENDING", "PARTIAL"] },
+          status: { in: ["PENDING"] },
           dueDate: { lt: paymentDateMidnight },
         },
         data: { status: "OVERDUE" },
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
 
       // Update in-memory schedule instead of re-fetching from DB
       for (const s of account.schedule) {
-        if ((s.status === "PENDING" || s.status === "PARTIAL") && s.dueDate < paymentDateMidnight) {
+        if (s.status === "PENDING" && s.dueDate < paymentDateMidnight) {
           s.status = "OVERDUE";
         }
       }

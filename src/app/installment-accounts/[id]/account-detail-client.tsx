@@ -603,7 +603,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   }
 
   function openAdjustDueDates() {
-    if (schedule.length > 0 && account) {
+    const firstAdjustable = schedule.find((s) => s.status === "PENDING" || s.status === "OVERDUE");
+    if (firstAdjustable && account) {
       const firstDueDay = parseInt(schedule[0].dueDate.slice(8, 10), 10);
       setAdjustDueDay1(String(firstDueDay));
       let secondDueDay = "";
@@ -668,9 +669,10 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
     if (account.scheduleType === "SEMI_MONTHLY" && (d2 === null || isNaN(d2) || d2 < 1 || d2 > 31)) return [];
 
     const dueDays = d2 !== null && !isNaN(d2) ? [d1, d2] : [d1];
-    if (schedule.length === 0) return [];
+    const adjustable = schedule.filter((s) => s.status === "PENDING" || s.status === "OVERDUE");
+    if (adjustable.length === 0) return [];
 
-    const startDate = new Date(schedule[0].dueDate + "T00:00:00.000+08:00");
+    const startDate = new Date(adjustable[0].dueDate + "T00:00:00.000+08:00");
     const sorted = [...dueDays].sort((a, b) => a - b);
     const perMonth = sorted.length;
     const preview: { periodNumber: number; oldDate: string; newDate: string }[] = [];
@@ -688,7 +690,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       return best;
     })();
 
-    for (let i = 0; i < schedule.length; i++) {
+    for (let i = 0; i < adjustable.length; i++) {
       const adjustedI = startIdx + i;
       const dayIndex = adjustedI % perMonth;
       const monthOffset = Math.floor(adjustedI / perMonth);
@@ -705,8 +707,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
       const mm = String(targetMonth + 1).padStart(2, "0");
       const dd = String(safeDay).padStart(2, "0");
       preview.push({
-        periodNumber: schedule[i].periodNumber,
-        oldDate: schedule[i].dueDate,
+        periodNumber: adjustable[i].periodNumber,
+        oldDate: adjustable[i].dueDate,
         newDate: `${yy}-${mm}-${dd}`,
       });
     }
@@ -941,7 +943,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
           <h2 className="text-sm font-semibold font-heading text-slate-900">Installment Schedule ({schedule.length} periods)</h2>
           {showSchedule ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
         </button>
-        {showSchedule ? (
+        {showSchedule && schedule.some((s) => s.status === "PENDING" || s.status === "OVERDUE") ? (
           <div className="px-5 pb-3">
             <button
               type="button"

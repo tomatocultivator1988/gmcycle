@@ -36,22 +36,17 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const hadScheduleLink = !!penaltyRecord.installmentScheduleId;
     let period = penaltyRecord.installmentSchedule;
 
-    // If installmentScheduleId is null (old records before schema migration),
-    // find the schedule period with a matching penalty amount
     if (!period) {
-      const candidatePeriods = await prisma.installmentSchedule.findMany({
-        where: {
-          installmentAccountId: penaltyRecord.installmentAccountId,
-          penaltyAmount: { gt: 0 },
-          status: { not: "PAID" },
-        },
-        orderBy: { periodNumber: "asc" },
-      });
-
-      const recordAmount = new Decimal(penaltyRecord.amount);
-      period = candidatePeriods.find((p) =>
-        new Decimal(p.penaltyAmount).gte(recordAmount),
-      ) || null;
+      const periodMatch = penaltyRecord.reason?.match(/period\s*#(\d+)/i);
+      if (periodMatch) {
+        const targetNumber = parseInt(periodMatch[1], 10);
+        period = await prisma.installmentSchedule.findFirst({
+          where: {
+            installmentAccountId: penaltyRecord.installmentAccountId,
+            periodNumber: targetNumber,
+          },
+        });
+      }
 
       if (!period) {
         return NextResponse.json(
