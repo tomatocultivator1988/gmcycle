@@ -1,14 +1,14 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
-import { parseDateOnly, dateToManilaDateOnly } from "@/lib/dates";
+import { parseDateOnly } from "@/lib/dates";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { decimalToString, parsePositiveMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
 import { updateOverdueSchedule } from "@/lib/schedule-status";
 import { serializeInstallmentAccount } from "@/lib/serializers";
-import { findClosestIndex } from "@/lib/installment-schedule";
+import { generateAdjustedDates } from "@/lib/installment-schedule";
 import { updateInstallmentAccountSchema, fullUpdateAccountSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -182,15 +182,19 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
     });
 
     // Generate new periods for the remaining term
+    const sortedDueDays = [...dueDays].sort((a, b) => a - b);
+    const allNewDates = generateAdjustedDates(sortedDueDays, totalPeriods, firstDueDate);
     const scheduleEntries: Array<Record<string, unknown>> = [];
     let allocated = new Decimal(0);
     let generatedCount = 0;
+    let genIdx = 0;
 
     for (let i = 1; i <= totalPeriods; i++) {
       if (preservedNumbers.has(i)) continue;
       generatedCount++;
 
-      const dueDate = computeDueDate(firstDueDate, dueDays, scheduleType, i);
+      const dueDate = allNewDates[genIdx];
+      genIdx++;
       let amount: Decimal;
       if (generatedCount === unpaidCount) {
         amount = remainingBalance.minus(allocated);
@@ -232,31 +236,6 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   });
 
   return NextResponse.json({ installmentAccount: serializeInstallmentAccount(updated) });
-}
-
-function computeDueDate(startDate: Date, dueDays: number[], scheduleType: string, periodNumber: number): Date {
-  const sorted = [...dueDays].sort((a, b) => a - b);
-  if (scheduleType === "MONTHLY") {
-    const d = new Date(startDate);
-    d.setMonth(d.getMonth() + (periodNumber - 1));
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const day = sorted[0];
-    d.setDate(Math.min(day, lastDay));
-    return d;
-  } else {
-    const periodsPerMonth = 2;
-    const startDay = parseInt(dateToManilaDateOnly(startDate).slice(8, 10), 10);
-    const startIdx = findClosestIndex(sorted, startDay);
-    const adjustedPeriod = (periodNumber - 1) + startIdx;
-    const monthsOffset = Math.floor(adjustedPeriod / periodsPerMonth);
-    const isFirstHalf = adjustedPeriod % periodsPerMonth === 0;
-    const d = new Date(startDate);
-    d.setMonth(d.getMonth() + monthsOffset);
-    const day = isFirstHalf ? sorted[0] : (sorted[1] ?? sorted[0]);
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, lastDay));
-    return d;
-  }
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
