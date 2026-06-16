@@ -58,15 +58,14 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     const penaltyAmount = new Decimal(penaltyRecord.amount);
 
-    if (new Decimal(period.penaltyAmount).lt(penaltyAmount)) {
-      return NextResponse.json(
-        { error: "Cannot undo — this penalty has already been partially or fully paid" },
-        { status: 400 },
-      );
-    }
-
-    // Only validate "latest" check if the record has a proper schedule link
     if (hadScheduleLink) {
+      if (new Decimal(period.penaltyAmount).lt(penaltyAmount)) {
+        return NextResponse.json(
+          { error: "Cannot undo — this penalty has already been partially or fully paid" },
+          { status: 400 },
+        );
+      }
+
       const latestForPeriod = await prisma.penaltyRecord.findFirst({
         where: { installmentScheduleId: period.id },
         orderBy: { appliedDate: "desc" },
@@ -81,15 +80,17 @@ export async function DELETE(_request: Request, context: RouteContext) {
     }
 
     await prisma.$transaction(async (tx) => {
-      const currentPenalty = new Decimal(period.penaltyAmount);
-      const newPenalty = Decimal.max(0, currentPenalty.minus(penaltyAmount));
+      if (hadScheduleLink) {
+        const currentPenalty = new Decimal(period.penaltyAmount);
+        const newPenalty = Decimal.max(0, currentPenalty.minus(penaltyAmount));
 
-      await tx.installmentSchedule.update({
-        where: { id: period.id },
-        data: {
-          penaltyAmount: decimalToString(newPenalty),
-        },
-      });
+        await tx.installmentSchedule.update({
+          where: { id: period.id },
+          data: {
+            penaltyAmount: decimalToString(newPenalty),
+          },
+        });
+      }
 
       await tx.penaltyRecord.delete({
         where: { id },
