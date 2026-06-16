@@ -101,7 +101,6 @@ export const fullUpdateAccountSchema = z.object({
 
 export const updateAdminConfigSchema = z.object({
   penaltyPerDay: moneyString,
-  roundStep: z.coerce.number().int().min(1).max(5000).default(100),
   adminEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
   adminPassword: z.string().optional(),
 });

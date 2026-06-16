@@ -14,7 +14,6 @@ import type { AdminConfigDto } from "@/types/api";
 export default function AdminConfigPage() {
   const [config, setConfig] = useState<AdminConfigDto | null>(null);
   const [penaltyPerDay, setPenaltyPerDay] = useState("");
-  const [roundStep, setRoundStep] = useState("100");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
@@ -30,7 +29,6 @@ export default function AdminConfigPage() {
       .then((data) => {
         setConfig(data.config);
         setPenaltyPerDay(data.config.penaltyPerDay);
-        setRoundStep(String(data.config.roundStep ?? 100));
         setAdminEmail(data.config.adminEmail ?? "");
         setHasPassword(data.config.hasPassword ?? false);
       })
@@ -43,7 +41,6 @@ export default function AdminConfigPage() {
 
     const validation = validateForm(updateAdminConfigSchema, {
       penaltyPerDay,
-      roundStep,
       adminEmail,
     });
 
@@ -64,7 +61,6 @@ export default function AdminConfigPage() {
         method: "PUT",
         body: JSON.stringify({
           penaltyPerDay,
-          roundStep: parseInt(roundStep) || 100,
           adminEmail,
           adminPassword,
         }),
@@ -118,26 +114,6 @@ export default function AdminConfigPage() {
                   />
                 </label>
                 <FieldError error={fieldErrors.penaltyPerDay} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Per-Period Rounding (nearest ₱)
-                  <input
-                    type="number"
-                    min={1}
-                    max={5000}
-                    step={50}
-                    value={roundStep}
-                    onChange={(e) => {
-                      setRoundStep(e.target.value);
-                      if (fieldErrors.roundStep) clearFieldError(setFieldErrors, "roundStep");
-                    }}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  />
-                </label>
-                <p className="mt-1 text-xs text-slate-400">Rounds per-period down to the nearest step. ₱1,259 → ₱1,200 (with 100). Set to 1 to disable.</p>
-                <FieldError error={fieldErrors.roundStep} />
               </div>
 
               <div>

@@ -90,8 +90,7 @@ export async function POST(request: Request) {
     const scheduleType = body.scheduleType ?? "SEMI_MONTHLY";
     const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
 
-    const config = await prisma.adminConfig.findFirst();
-    const roundStep = config?.roundStep ?? 100;
+    const roundStep = 50;
     const rawPerPeriod = remainingBalance.div(totalPeriods);
     const monthlyInstallment = roundTo(rawPerPeriod, roundStep);
 

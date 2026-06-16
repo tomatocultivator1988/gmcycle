@@ -139,8 +139,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const paidTotal = fullPaidTotal.plus(partialPaidTotal);
   const unpaidCount = totalPeriods - preservedNumbers.size;
 
-  const config = await prisma.adminConfig.findFirst();
-  const roundStep = config?.roundStep ?? 100;
+  const roundStep = 50;
   const contractBalance = installmentPrice.minus(downPayment);
   const remainingBalance = contractBalance.minus(paidTotal).floor();
   const monthlyInstallment = unpaidCount > 0
