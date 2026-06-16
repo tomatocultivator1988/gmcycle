@@ -71,10 +71,10 @@ export function generateSchedule(
       amount = totalRemainingBalance.minus(allocated);
     } else {
       amount = totalRemainingBalance.div(totalPeriods);
-      const rounded = roundStep > 1
+      amount = roundStep > 1
         ? amount.div(roundStep).floor().times(roundStep).toDecimalPlaces(2)
         : amount.toDecimalPlaces(2);
-      allocated = allocated.plus(rounded);
+      allocated = allocated.plus(amount);
     }
 
     schedule.push({
