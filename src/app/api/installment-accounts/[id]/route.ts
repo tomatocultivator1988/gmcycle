@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { decimalToString, parseMoney, parsePositiveMoney, roundDownTo } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney, roundTo } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
 import { updateOverdueSchedule } from "@/lib/schedule-status";
@@ -144,7 +144,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const contractBalance = installmentPrice.minus(downPayment);
   const remainingBalance = contractBalance.minus(paidTotal).floor();
   const monthlyInstallment = unpaidCount > 0
-    ? roundDownTo(remainingBalance.div(unpaidCount), roundStep)
+    ? roundTo(remainingBalance.div(unpaidCount), roundStep)
     : new Decimal(0);
 
   const updated = await prisma.$transaction(async (tx) => {

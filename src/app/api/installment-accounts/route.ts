@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
 import { parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
-import { decimalToString, parseMoney, parsePositiveMoney, roundDownTo } from "@/lib/money";
+import { decimalToString, parseMoney, parsePositiveMoney, roundTo } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
 import { sendDpReceipt } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const config = await prisma.adminConfig.findFirst();
     const roundStep = config?.roundStep ?? 100;
     const rawPerPeriod = remainingBalance.div(totalPeriods);
-    const monthlyInstallment = roundDownTo(rawPerPeriod, roundStep);
+    const monthlyInstallment = roundTo(rawPerPeriod, roundStep);
 
     const startDate = parseDateOnly(body.startDate || body.firstDueDate, "startDate");
     const firstDueDate = parseDateOnly(body.firstDueDate, "firstDueDate");
