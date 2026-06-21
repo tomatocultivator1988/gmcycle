@@ -53,3 +53,12 @@ public/.favicon-*
 public/uploads/
 ename-enum.sql
 	est-results/
+
+.vercel
+.env*
+
+# backups
+/backups/
+
+# scripts (generated)
+/scripts/*.js

@@ -104,7 +104,7 @@ export function DashboardClient() {
       </div>
 
       {/* ── KPI HERO ROW ── */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
         <StatCard label="Total Accounts" value={metrics.totalAccounts}
           icon={Users} color="bg-white/20" bgGradient="bg-gradient-to-br from-red-600 to-red-800" />
         <StatCard label="Active Accounts" value={metrics.activeAccounts}
@@ -114,6 +114,10 @@ export function DashboardClient() {
           icon={AlertTriangle} color="bg-white/20" bgGradient="bg-gradient-to-br from-rose-600 to-rose-800" />
         <StatCard label="Closed" value={metrics.closedAccounts}
           icon={CheckCircle2} color="bg-white/20" bgGradient="bg-gradient-to-br from-slate-600 to-slate-800" />
+        <StatCard label="Fully Paid" value={metrics.fullyPaidAccounts}
+          icon={CheckCircle2} color="bg-white/20" bgGradient="bg-gradient-to-br from-green-600 to-green-800" />
+        <StatCard label="Processing Fees" value={formatPeso(metrics.totalProcessingFees)}
+          icon={BadgeDollarSign} color="bg-white/20" bgGradient="bg-gradient-to-br from-teal-600 to-teal-800" />
         <StatCard label="Collections (Month)" value={formatPeso(metrics.collectionsThisMonth)}
           icon={PiggyBank} color="bg-white/20" bgGradient="bg-gradient-to-br from-red-700 to-red-900" />
         <StatCard label="Outstanding" value={formatPeso(metrics.outstandingBalances)}

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
     const where: Record<string, unknown> = {};
     if (!showClosed) {
-      where.status = { not: "CLOSED" };
+      where.status = { notIn: ["CLOSED", "APPLIED"] };
     }
     if (search) {
       where.OR = [
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
     const downPayment = parseMoney(body.downPayment);
     const processingFee = body.processingFee?.trim()
-      ? parsePositiveMoney(body.processingFee, "processingFee")
+      ? parseMoney(body.processingFee, "processingFee")
       : new Decimal(0);
 
     // Interest-based formula:
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
           itemType: body.itemType ?? "GADGET",
           brand: body.itemType === "CASH" ? "N/A" : body.brand,
           model: body.itemType === "CASH" ? "N/A" : body.model,
-          unitDescription: body.unitDescription,
+          unitDescription: body.itemType === "CASH" ? "N/A" : body.unitDescription,
           cashPrice: decimalToString(cashPrice),
           installmentPrice: decimalToString(installmentPrice),
           downPayment: decimalToString(downPayment),

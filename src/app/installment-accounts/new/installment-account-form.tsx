@@ -99,9 +99,8 @@ export function InstallmentAccountForm() {
     form.customerEmail.trim() &&
     form.customerAddress.trim() &&
     form.fbLink.trim() &&
-    form.brand.trim() &&
-    form.model.trim() &&
-    form.unitDescription.trim() &&
+    (form.itemType !== "GADGET" || (form.brand.trim() && form.model.trim())) &&
+    (form.itemType !== "GADGET" || form.unitDescription.trim()) &&
     cashPrice.gt(0) &&
   interestRateDecimal.gt(0) &&
   downPayment.lt(installmentPrice) &&
@@ -128,9 +127,9 @@ export function InstallmentAccountForm() {
         customerEmail: form.customerEmail,
         customerAddress: form.customerAddress,
         fbLink: form.fbLink || undefined,
-        brand: form.brand,
-        model: form.model,
-        unitDescription: form.unitDescription,
+        brand: form.itemType === "CASH" ? "" : form.brand,
+        model: form.itemType === "CASH" ? "" : form.model,
+        unitDescription: form.itemType === "CASH" ? "" : form.unitDescription,
         itemType: form.itemType,
         cashPrice: form.cashPrice,
         downPayment: form.downPayment,
@@ -175,9 +174,9 @@ export function InstallmentAccountForm() {
         customerEmail: form.customerEmail,
         customerAddress: form.customerAddress,
         fbLink: form.fbLink || undefined,
-        brand: form.brand,
-        model: form.model,
-        unitDescription: form.unitDescription,
+        brand: form.itemType === "CASH" ? "" : form.brand,
+        model: form.itemType === "CASH" ? "" : form.model,
+        unitDescription: form.itemType === "CASH" ? "" : form.unitDescription,
         itemType: form.itemType,
         cashPrice: form.cashPrice,
         downPayment: form.downPayment,
@@ -383,7 +382,6 @@ export function InstallmentAccountForm() {
               <label className="block text-sm font-medium text-slate-700">
                 {form.itemType === "CASH" ? "Description" : "Unit Description"}
                 <textarea
-                  required
                   value={form.unitDescription}
                   onChange={(e) => updateField("unitDescription", e.target.value)}
                   placeholder={form.itemType === "CASH" ? "Purpose / reason for cash" : "Color, storage, condition"}

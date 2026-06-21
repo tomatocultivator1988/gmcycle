@@ -304,7 +304,7 @@ export default function InstallmentAccountsPage() {
                   : "border border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
               }`}
             >
-              {showClosed ? "Hide Closed" : "Show Closed"}
+              {showClosed ? "Hide Inactive" : "Show Inactive"}
             </button>
           </div>
 

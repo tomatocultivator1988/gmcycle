@@ -66,15 +66,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     const existing = await prisma.installmentAccount.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Installment account not found");
 
+    const itemType = body.itemType ?? existing.itemType;
     const updateData: Record<string, unknown> = {
       customerName: body.customerName,
       customerPhone: body.customerPhone,
       customerEmail: body.customerEmail ?? null,
       customerAddress: body.customerAddress,
       fbLink: body.fbLink || null,
-      brand: body.brand,
-      model: body.model,
-      unitDescription: body.unitDescription,
+      brand: itemType === "CASH" ? "N/A" : body.brand,
+      model: itemType === "CASH" ? "N/A" : body.model,
+      unitDescription: itemType === "CASH" ? "N/A" : body.unitDescription,
     };
     if (body.itemType !== undefined) updateData.itemType = body.itemType;
     if (body.processingFee !== undefined) updateData.processingFee = body.processingFee?.trim() || "0.00";
@@ -104,7 +105,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   const cashPrice = parsePositiveMoney(body.cashPrice, "cashPrice");
   const downPayment = parseMoney(body.downPayment);
   const processingFee = body.processingFee?.trim()
-    ? parsePositiveMoney(body.processingFee, "processingFee")
+    ? parseMoney(body.processingFee, "processingFee")
     : new Decimal(0);
   const rate = new Decimal(body.interestRate).div(100);
   const term = body.term;

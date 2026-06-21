@@ -34,9 +34,9 @@ export const createInstallmentAccountSchema = z.object({
   customerEmail: emailString,
   customerAddress: requiredString,
   fbLink: z.string().url("Enter a valid URL").min(1, "Facebook link is required"),
-  brand: requiredString,
-  model: requiredString,
-  unitDescription: requiredString,
+  brand: z.string().trim().optional().default(""),
+  model: z.string().trim().optional().default(""),
+  unitDescription: z.string().trim().optional().default(""),
   itemType: z.enum(["GADGET", "CASH"]).default("GADGET"),
   cashPrice: wholeMoneyString,
   downPayment: wholeMoneyString,
@@ -49,6 +49,12 @@ export const createInstallmentAccountSchema = z.object({
   firstDueDate: dateOnlyString,
   dateGiven: dateOnlyString.optional(),
   customFields: z.record(z.string(), z.string()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.itemType === "GADGET") {
+    if (!data.brand) ctx.addIssue({ code: "custom", path: ["brand"], message: "Required field" });
+    if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "Required field" });
+    if (!data.unitDescription) ctx.addIssue({ code: "custom", path: ["unitDescription"], message: "Required field" });
+  }
 });
 
 export const createPaymentSchema = z.object({
@@ -68,12 +74,18 @@ export const updateInstallmentAccountSchema = z.object({
   customerEmail: emailString,
   customerAddress: requiredString,
   fbLink: z.string().url("Enter a valid URL").optional().or(z.literal("")),
-  brand: requiredString,
-  model: requiredString,
-  unitDescription: requiredString,
+  brand: z.string().trim().optional().default(""),
+  model: z.string().trim().optional().default(""),
+  unitDescription: z.string().trim().optional().default(""),
   itemType: z.enum(["GADGET", "CASH"]).optional(),
   processingFee: moneyString.optional(),
   customFields: z.record(z.string(), z.string()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.itemType === "GADGET") {
+    if (!data.brand) ctx.addIssue({ code: "custom", path: ["brand"], message: "Required field" });
+    if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "Required field" });
+    if (!data.unitDescription) ctx.addIssue({ code: "custom", path: ["unitDescription"], message: "Required field" });
+  }
 });
 
 export const fullUpdateAccountSchema = z.object({
@@ -82,9 +94,9 @@ export const fullUpdateAccountSchema = z.object({
   customerEmail: emailString,
   customerAddress: requiredString,
   fbLink: z.string().url("Enter a valid URL").optional().or(z.literal("")),
-  brand: requiredString,
-  model: requiredString,
-  unitDescription: requiredString,
+  brand: z.string().trim().optional().default(""),
+  model: z.string().trim().optional().default(""),
+  unitDescription: z.string().trim().optional().default(""),
   itemType: z.enum(["GADGET", "CASH"]),
   cashPrice: wholeMoneyString,
   downPayment: wholeMoneyString,
@@ -97,6 +109,12 @@ export const fullUpdateAccountSchema = z.object({
   dateGiven: dateOnlyString.optional(),
   customFields: z.record(z.string(), z.string()).optional(),
   password: z.string().min(1, "Admin password required"),
+}).superRefine((data, ctx) => {
+  if (data.itemType === "GADGET") {
+    if (!data.brand) ctx.addIssue({ code: "custom", path: ["brand"], message: "Required field" });
+    if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "Required field" });
+    if (!data.unitDescription) ctx.addIssue({ code: "custom", path: ["unitDescription"], message: "Required field" });
+  }
 });
 
 export const updateAdminConfigSchema = z.object({
