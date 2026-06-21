@@ -274,7 +274,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           {/* Mobile: Cards */}
           <div className="block sm:hidden space-y-1.5">
             {data.schedule.map((s) => {
-              const periodTotal = (parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2);
+              const periodTotal = ((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2);
               return (
               <div key={s.period} className={`rounded-lg border p-2.5 text-xs space-y-1 ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50/50" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50/50" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50/50" : "border-slate-200"}`}>
                 <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className={`rounded border px-1 py-px text-[10px] font-medium ${s.status === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s.status === "OVERDUE" ? "border-rose-200 bg-rose-50 text-rose-700" : s.status === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"}`}>{s.status}</span></div>
@@ -294,7 +294,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             {(() => {
               const unpaid = data.schedule.filter((s) => s.status !== "PAID");
               if (unpaid.length === 0) return null;
-              const totalDue = unpaid.reduce((sum, s) => sum + parseFloat(s.amount) + parseFloat(s.penalty || "0"), 0);
+              const totalDue = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
               const totalPenalty = unpaid.reduce((sum, s) => sum + parseFloat(s.penalty || "0"), 0);
               return (
                 <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-xs space-y-2 mt-3">
@@ -328,7 +328,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               </thead>
               <tbody>
                 {data.schedule.map((s) => {
-                  const periodTotal = (parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2);
+                  const periodTotal = ((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2);
                   const isPartial = s.status === "PARTIAL" && s.paidAmount;
                   const remainingVal = isPartial
                     ? (parseFloat(s.amount) - parseFloat(s.paidAmount || "0") + parseFloat(s.penalty || "0")).toFixed(2)
@@ -362,7 +362,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   <td colSpan={5} className="py-2 pr-3 font-semibold text-slate-600 text-right">Total Due</td>
                   <td className="py-2 pr-3 text-right font-bold text-red-800 text-sm">{(() => {
                     const unpaid = data.schedule.filter((s) => s.status !== "PAID");
-                    const total = unpaid.reduce((sum, s) => sum + parseFloat(s.amount) + parseFloat(s.penalty || "0"), 0);
+                    const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
                     const totalPenalty = unpaid.reduce((sum, s) => sum + parseFloat(s.penalty || "0"), 0);
                     return <>{formatPeso(total.toFixed(2))}{totalPenalty > 0 ? <span className="text-rose-600 font-normal text-[11px]"> (incl. {formatPeso(totalPenalty.toFixed(2))} penalty)</span> : null}</>;
                   })()}</td>
@@ -417,7 +417,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             (s: any) => (s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE") && s.dueDate <= today
           );
           if (dueNow.length === 0) return null;
-          const totalDue = dueNow.reduce((sum: number, s: any) => sum + parseFloat(s.amount) + parseFloat(s.penalty || "0"), 0);
+          const totalDue = dueNow.reduce((sum: number, s: any) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
           const totalPenalty = dueNow.reduce((sum: number, s: any) => sum + parseFloat(s.penalty || "0"), 0);
           return (
             <div className="border-t-2 border-red-200 px-4 sm:px-8 py-5 print:border-red-300 print:px-8 bg-red-50/30">
@@ -442,7 +442,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                         <td className="py-1.5 pr-3 text-right">{s.daysOverdue != null && s.daysOverdue > 0 ? <span className="text-rose-600">{s.daysOverdue}d</span> : "—"}</td>
                         <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
                         <td className="py-1.5 pr-3 text-right text-rose-600">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
-                        <td className="py-1.5 pr-3 text-right font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
+                        <td className="py-1.5 pr-3 text-right font-semibold text-red-800">{formatPeso(((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -461,7 +461,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               <div className="block sm:hidden space-y-2">
                 {dueNow.map((s: any) => (
                   <div key={s.period} className="rounded-lg border border-red-100 bg-white p-3 text-xs space-y-1.5">
-                    <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className="font-semibold text-red-800">{formatPeso((parseFloat(s.amount) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className="font-semibold text-red-800">{formatPeso(((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
                     {s.daysOverdue != null && s.daysOverdue > 0 ? <div className="flex justify-between"><span className="text-slate-500">Days</span><span className="text-rose-600 font-medium">{s.daysOverdue}d</span></div> : null}
                     <div className="flex justify-between"><span className="text-slate-500">Amount</span><span>{formatPeso(s.amount)}</span></div>
                     {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
