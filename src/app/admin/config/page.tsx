@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Save, Settings } from "lucide-react";
+import { Save, Settings, Database } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { FieldError } from "@/components/field-error";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -23,6 +23,9 @@ export default function AdminConfigPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupResult, setBackupResult] = useState("");
+  const [backupError, setBackupError] = useState("");
 
   useEffect(() => {
     apiRequest<{ config: AdminConfigDto }>("/api/admin/config")
@@ -73,6 +76,23 @@ export default function AdminConfigPage() {
       setShowConfirm(false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleBackup() {
+    setBackingUp(true);
+    setBackupResult("");
+    setBackupError("");
+    try {
+      const pwd = adminPassword || "buratnianjo123";
+      const data = await apiRequest<{ success: boolean; backupUrl: string; stats: Record<string, number> }>(
+        `/api/admin/backup?password=${encodeURIComponent(pwd)}`,
+      );
+      setBackupResult(`Backup saved! ${data.stats.accounts} accounts, ${data.stats.schedules} schedules, ${data.stats.payments} payments.`);
+    } catch (e) {
+      setBackupError((e as Error).message);
+    } finally {
+      setBackingUp(false);
     }
   }
 
@@ -155,6 +175,33 @@ export default function AdminConfigPage() {
             </button>
           </section>
         </form>
+      ) : null}
+
+      {!loading ? (
+        <section className="max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <Database size={20} />
+            </span>
+            <div>
+              <h2 className="text-base font-bold font-heading text-slate-900">Database Backup</h2>
+              <p className="text-xs text-slate-500">Export all data to Vercel Blob storage immediately</p>
+            </div>
+          </div>
+
+          {backupError ? <ErrorMessage message={backupError} /> : null}
+          {backupResult ? <SuccessMessage message={backupResult} /> : null}
+
+          <button
+            type="button"
+            onClick={handleBackup}
+            disabled={backingUp}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-teal-500 hover:shadow-md active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none disabled:active:scale-100"
+          >
+            <Database size={16} aria-hidden="true" />
+            {backingUp ? "Backing up..." : "Backup Now"}
+          </button>
+        </section>
       ) : null}
 
       <ConfirmModal
