@@ -294,13 +294,12 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
             {(() => {
               const unpaid = data.schedule.filter((s) => s.status !== "PAID");
               if (unpaid.length === 0) return null;
-              const totalDue = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
-              const totalPenalty = unpaid.reduce((sum, s) => sum + parseFloat(s.penalty || "0"), 0);
+              const totalDue = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)), 0);
               return (
                 <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-xs space-y-2 mt-3">
                   <div className="flex justify-between font-semibold">
                     <span className="text-slate-700">Total Outstanding</span>
-                    <span className="text-sm text-red-800">{formatPeso(totalDue.toFixed(2))}{totalPenalty > 0 ? <span className="text-rose-600 font-normal text-[11px] block text-right">incl. {formatPeso(totalPenalty.toFixed(2))} penalty</span> : null}</span>
+                    <span className="text-sm text-red-800">{formatPeso(totalDue.toFixed(2))}</span>
                   </div>
                   <div className="flex justify-between font-semibold border-t border-slate-200 pt-2">
                     <span className="text-slate-500">Remaining Balance</span>
@@ -362,9 +361,8 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   <td colSpan={5} className="py-2 pr-3 font-semibold text-slate-600 text-right">Total Outstanding</td>
                   <td className="py-2 pr-3 text-right font-bold text-red-800 text-sm">{(() => {
                     const unpaid = data.schedule.filter((s) => s.status !== "PAID");
-                    const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
-                    const totalPenalty = unpaid.reduce((sum, s) => sum + parseFloat(s.penalty || "0"), 0);
-                    return <>{formatPeso(total.toFixed(2))}{totalPenalty > 0 ? <span className="text-rose-600 font-normal text-[11px]"> (incl. {formatPeso(totalPenalty.toFixed(2))} penalty)</span> : null}</>;
+                    const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)), 0);
+                    return <>{formatPeso(total.toFixed(2))}</>;
                   })()}</td>
                   <td colSpan={3}></td>
                 </tr>
