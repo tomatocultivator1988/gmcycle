@@ -23,6 +23,10 @@ export default function AdminConfigPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [backupPassword, setBackupPassword] = useState("");
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupError, setBackupError] = useState("");
 
   useEffect(() => {
     apiRequest<{ config: AdminConfigDto }>("/api/admin/config")
@@ -76,12 +80,22 @@ export default function AdminConfigPage() {
     }
   }
 
-  async function handleBackup() {
-    const pwd = prompt("Enter admin password to download backup:");
-    if (!pwd) return;
+  function openBackupModal() {
+    setBackupPassword("");
+    setBackupError("");
+    setShowBackupModal(true);
+  }
+
+  async function confirmBackup() {
+    if (!backupPassword.trim()) {
+      setBackupError("Password is required");
+      return;
+    }
+    setBackingUp(true);
+    setBackupError("");
 
     try {
-      const res = await fetch(`/api/admin/backup?password=${encodeURIComponent(pwd)}`);
+      const res = await fetch(`/api/admin/backup?password=${encodeURIComponent(backupPassword)}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Invalid password" }));
         throw new Error(err.error || "Invalid password");
@@ -95,8 +109,11 @@ export default function AdminConfigPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setShowBackupModal(false);
     } catch (e) {
-      alert(`Backup failed: ${(e as Error).message}`);
+      setBackupError((e as Error).message);
+    } finally {
+      setBackingUp(false);
     }
   }
 
@@ -195,13 +212,64 @@ export default function AdminConfigPage() {
 
           <button
             type="button"
-            onClick={handleBackup}
+            onClick={openBackupModal}
             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-teal-500 hover:shadow-md active:scale-[0.98]"
           >
             <Download size={16} aria-hidden="true" />
             Download Backup
           </button>
         </section>
+      ) : null}
+
+      {showBackupModal ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+                  <Database size={24} />
+                </span>
+                <h3 className="mt-4 text-base font-bold font-heading text-slate-900">Download Backup</h3>
+                <p className="mt-1.5 text-sm text-slate-500">Enter admin password to export database.</p>
+              </div>
+
+              {backupError ? (
+                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{backupError}</p>
+              ) : null}
+
+              <div className="mt-4">
+                <input
+                  type="password"
+                  value={backupPassword}
+                  onChange={(e) => { setBackupPassword(e.target.value); setBackupError(""); }}
+                  placeholder="Admin password"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmBackup(); }}
+                  autoFocus
+                />
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={backingUp}
+                  onClick={confirmBackup}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-teal-600 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-teal-500 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+                >
+                  {backingUp ? "Downloading..." : "Download"}
+                </button>
+                <button
+                  type="button"
+                  disabled={backingUp}
+                  onClick={() => setShowBackupModal(false)}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <ConfirmModal
