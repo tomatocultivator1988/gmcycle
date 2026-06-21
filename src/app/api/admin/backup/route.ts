@@ -12,6 +12,7 @@ async function getAdminPassword(): Promise<string> {
 }
 
 const BACKUP_RETENTION_DAYS = 30;
+const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || "";
 
 export async function GET(request: Request) {
   try {
@@ -27,6 +28,10 @@ export async function GET(request: Request) {
       }
     }
 
+    if (!BLOB_TOKEN) {
+      throw new Error("BLOB_READ_WRITE_TOKEN is not configured");
+    }
+
     const data = await exportAllData();
     const dateStr = new Date().toISOString().slice(0, 10);
     const blobPath = `backups/backup-${dateStr}.json`;
@@ -35,18 +40,23 @@ export async function GET(request: Request) {
     const blob = await put(blobPath, json, {
       access: "public",
       contentType: "application/json",
+      token: BLOB_TOKEN,
     });
 
-    const existing = await list({ prefix: "backups/backup-" });
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - BACKUP_RETENTION_DAYS);
-
     let deletedCount = 0;
-    for (const item of existing.blobs) {
-      const uploadedAt = new Date(item.uploadedAt);
-      if (uploadedAt < cutoff) {
-        try { await del(item.url); deletedCount++; } catch { /* skip */ }
+    try {
+      const existing = await list({ prefix: "backups/backup-", token: BLOB_TOKEN });
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - BACKUP_RETENTION_DAYS);
+
+      for (const item of existing.blobs) {
+        const uploadedAt = new Date(item.uploadedAt);
+        if (uploadedAt < cutoff) {
+          try { await del(item.url, { token: BLOB_TOKEN }); deletedCount++; } catch { /* skip */ }
+        }
       }
+    } catch (cleanupErr) {
+      console.warn("Backup cleanup failed (non-fatal):", cleanupErr);
     }
 
     return NextResponse.json({
