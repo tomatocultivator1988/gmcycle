@@ -301,10 +301,6 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                     <span className="text-slate-700">Total Outstanding</span>
                     <span className="text-sm text-red-800">{formatPeso(totalDue.toFixed(2))}</span>
                   </div>
-                  <div className="flex justify-between font-semibold border-t border-slate-200 pt-2">
-                    <span className="text-slate-500">Remaining Balance</span>
-                    <span className="text-sm text-slate-900">{formatPeso(data.remainingBalance)}</span>
-                  </div>
                 </div>
               );
             })()}
@@ -450,7 +446,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                       <td className="pt-2 pr-3 text-right">{formatPeso(totalDue.toFixed(2))}{totalPenalty > 0 ? <span className="text-rose-600 font-normal text-[11px]"> (incl. {formatPeso(totalPenalty.toFixed(2))} penalty)</span> : null}</td>
                     </tr>
                     <tr>
-                      <td colSpan={5} className="pt-1 pr-3 text-right text-xs font-semibold text-slate-500">Remaining Balance:</td>
+                      <td colSpan={5} className="pt-1 pr-3 text-right text-xs font-semibold text-slate-500">Contract Remaining Balance:</td>
                       <td className="pt-1 pr-3 text-right text-xs font-bold text-slate-900">{formatPeso(data.remainingBalance)}</td>
                     </tr>
                   </tfoot>
@@ -466,7 +462,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   </div>
                 ))}
                 <div className="text-center text-sm font-bold text-red-800 pt-1">Total Due: {formatPeso(totalDue.toFixed(2))}{totalPenalty > 0 ? <span className="block text-rose-600 font-normal text-[11px]">(incl. {formatPeso(totalPenalty.toFixed(2))} penalty)</span> : null}</div>
-                <div className="text-center text-xs font-semibold text-slate-500 pt-1">Remaining Balance: <span className="text-slate-900">{formatPeso(data.remainingBalance)}</span></div>
+                <div className="text-center text-xs font-semibold text-slate-500 pt-1">Contract Remaining Balance: <span className="text-slate-900">{formatPeso(data.remainingBalance)}</span></div>
               </div>
             </div>
           );
