@@ -299,7 +299,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               return (
                 <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-xs space-y-2 mt-3">
                   <div className="flex justify-between font-semibold">
-                    <span className="text-slate-700">Total Due</span>
+                    <span className="text-slate-700">Total Outstanding</span>
                     <span className="text-sm text-red-800">{formatPeso(totalDue.toFixed(2))}{totalPenalty > 0 ? <span className="text-rose-600 font-normal text-[11px] block text-right">incl. {formatPeso(totalPenalty.toFixed(2))} penalty</span> : null}</span>
                   </div>
                   <div className="flex justify-between font-semibold border-t border-slate-200 pt-2">
@@ -359,7 +359,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-300 text-xs">
-                  <td colSpan={5} className="py-2 pr-3 font-semibold text-slate-600 text-right">Total Due</td>
+                  <td colSpan={5} className="py-2 pr-3 font-semibold text-slate-600 text-right">Total Outstanding</td>
                   <td className="py-2 pr-3 text-right font-bold text-red-800 text-sm">{(() => {
                     const unpaid = data.schedule.filter((s) => s.status !== "PAID");
                     const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0"), 0);
