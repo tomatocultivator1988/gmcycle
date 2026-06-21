@@ -73,13 +73,18 @@ export async function POST(request: Request, context: RouteContext) {
         ? penaltyPerDay.times(daysOverdue)
         : new Decimal(0);
       const effectivePenalty = storedPenalty.gt(0) ? storedPenalty : computedPenalty;
+      const displayAmount = s.status === "PARTIAL" && s.paidAmount
+        ? (parseFloat(s.amount.toString()) - parseFloat(s.paidAmount.toString())).toFixed(2)
+        : decimalToString(s.amount);
       return {
         period: s.periodNumber,
         dueDate: dateToManilaDateOnly(s.dueDate),
         amount: decimalToString(s.amount),
+        displayAmount,
         status: s.status,
         penalty: decimalToString(effectivePenalty),
         daysOverdue,
+        paidAmount: s.paidAmount ? decimalToString(s.paidAmount) : null,
       };
     });
 
@@ -87,7 +92,7 @@ export async function POST(request: Request, context: RouteContext) {
       (s) => (s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE") && s.dueDate <= todayManila,
     );
     const totalDue = dueNow.reduce(
-      (sum, s) => sum.plus(new Decimal(s.amount)).plus(new Decimal(s.penalty)),
+      (sum, s) => sum.plus(new Decimal(s.displayAmount)).plus(new Decimal(s.penalty)),
       new Decimal(0),
     );
     const totalDuePenalty = dueNow.reduce(
@@ -104,14 +109,38 @@ export async function POST(request: Request, context: RouteContext) {
       </tr>`).join("");
 
     const scheduleRowsHtml = scheduleRows.map((s) => `
-      <tr${s.status === "OVERDUE" ? ' style="background:#fef2f2;"' : s.status === "PAID" ? ' style="background:#f0fdf4;"' : ""}>
+      <tr${s.status === "OVERDUE" ? ' style="background:#fef2f2;"' : s.status === "PAID" ? ' style="background:#f0fdf4;"' : s.status === "PARTIAL" ? ' style="background:#fffbeb;"' : ""}>
         <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">#${s.period}</td>
         <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${s.dueDate}</td>
         <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${s.daysOverdue != null && s.daysOverdue > 0 ? `<span style="color:#b91c1c;">${s.daysOverdue}d</span>` : "—"}</td>
-        <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatPeso(s.amount)}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatPeso(s.displayAmount)}</td>
         <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;color:#b91c1c;">${s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
-        <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;">${formatPeso((parseFloat(s.amount) + parseFloat(s.penalty)).toFixed(2))}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;">${formatPeso((parseFloat(s.displayAmount) + parseFloat(s.penalty)).toFixed(2))}</td>
       </tr>`).join("");
+
+    const unpaidOutstanding = scheduleRows.filter((s) => s.status !== "PAID");
+    const totalOutstanding = unpaidOutstanding.reduce(
+      (sum, s) => sum.plus(new Decimal(s.displayAmount)),
+      new Decimal(0),
+    );
+    const outstandingRowsHtml = unpaidOutstanding.map((s) => `
+      <tr>
+        <td style="padding:2px 8px;font-size:12px;color:#475569;">#${s.period}</td>
+        <td style="padding:2px 8px;font-size:12px;text-align:right;font-weight:500;">${formatPeso(s.displayAmount)}</td>
+      </tr>`).join("");
+    const outstandingHtml = `
+      <h3 style="color:#475569;margin-top:24px;">Total Outstanding Per Period</h3>
+      <table style="width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:13px;">
+        <tbody>
+          ${outstandingRowsHtml}
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #cbd5e1;font-weight:700;">
+            <td style="padding:4px 8px;text-align:right;color:#0f172a;">Total Outstanding:</td>
+            <td style="padding:4px 8px;text-align:right;color:#991b1b;">${formatPeso(totalOutstanding.toFixed(2))}</td>
+          </tr>
+        </tfoot>
+      </table>`;
 
     const dueNowHtml = dueNow.length > 0 ? `
       <h3 style="color:#991b1b;margin-top:24px;">⚠️ Total Amount Due: ${formatPeso(totalDue.toFixed(2))} (${dueNow.length} period${dueNow.length > 1 ? "s" : ""})</h3>
@@ -132,9 +161,9 @@ export async function POST(request: Request, context: RouteContext) {
               <td style="padding:4px 8px;border-bottom:1px solid #fecaca;">#${s.period}</td>
               <td style="padding:4px 8px;border-bottom:1px solid #fecaca;">${s.dueDate}</td>
               <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;">${s.daysOverdue != null && s.daysOverdue > 0 ? s.daysOverdue + "d" : "—"}</td>
-              <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;">${formatPeso(s.amount)}</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;">${formatPeso(s.displayAmount)}</td>
               <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;color:#b91c1c;">${s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
-              <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;font-weight:600;">${formatPeso((parseFloat(s.amount) + parseFloat(s.penalty)).toFixed(2))}</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #fecaca;text-align:right;font-weight:600;">${formatPeso((parseFloat(s.displayAmount) + parseFloat(s.penalty)).toFixed(2))}</td>
             </tr>`).join("")}
         </tbody>
         <tfoot>
@@ -143,7 +172,7 @@ export async function POST(request: Request, context: RouteContext) {
             <td style="padding:6px 8px;text-align:right;">${formatPeso(totalDue.toFixed(2))}${totalDuePenalty.gt(0) ? ` <span style="color:#b91c1c;font-weight:400;font-size:12px;">(incl. ${formatPeso(totalDuePenalty.toFixed(2))} penalty)</span>` : ""}</td>
           </tr>
           <tr>
-            <td colspan="5" style="padding:4px 8px;text-align:right;color:#64748b;font-size:12px;">Remaining Balance:</td>
+            <td colspan="5" style="padding:4px 8px;text-align:right;color:#64748b;font-size:12px;">Contract Remaining Balance:</td>
             <td style="padding:4px 8px;text-align:right;font-weight:600;color:#0f172a;">${formatPeso(account.remainingBalance.toString())}</td>
           </tr>
         </tfoot>
@@ -224,6 +253,7 @@ export async function POST(request: Request, context: RouteContext) {
           </tbody>
         </table>
 
+        ${outstandingHtml}
         ${dueNowHtml}
         ${penaltyRowsHtml}
 

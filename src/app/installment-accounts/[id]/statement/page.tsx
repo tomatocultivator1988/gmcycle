@@ -296,8 +296,20 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
               if (unpaid.length === 0) return null;
               const totalDue = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)), 0);
               return (
-                <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-xs space-y-2 mt-3">
-                  <div className="flex justify-between font-semibold">
+                <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-xs space-y-1 mt-3">
+                  <div className="text-[11px] font-semibold text-slate-500 mb-1">Total Outstanding Per Period</div>
+                  {unpaid.map((s) => {
+                    const rem = s.status === "PARTIAL" && s.paidAmount
+                      ? (parseFloat(s.amount) - parseFloat(s.paidAmount)).toFixed(2)
+                      : s.amount;
+                    return (
+                      <div key={s.period} className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Period {s.period}</span>
+                        <span className="font-medium text-slate-700">{formatPeso(rem)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-between font-semibold border-t border-slate-200 pt-1.5 mt-1.5">
                     <span className="text-slate-700">Total Outstanding</span>
                     <span className="text-sm text-red-800">{formatPeso(totalDue.toFixed(2))}</span>
                   </div>
@@ -353,15 +365,30 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-slate-300 text-xs">
-                  <td colSpan={5} className="py-2 pr-3 font-semibold text-slate-600 text-right">Total Outstanding</td>
-                  <td className="py-2 pr-3 text-right font-bold text-red-800 text-sm">{(() => {
-                    const unpaid = data.schedule.filter((s) => s.status !== "PAID");
-                    const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)), 0);
-                    return <>{formatPeso(total.toFixed(2))}</>;
-                  })()}</td>
-                  <td colSpan={3}></td>
-                </tr>
+                {(() => {
+                  const unpaid = data.schedule.filter((s) => s.status !== "PAID");
+                  if (unpaid.length === 0) return null;
+                  const total = unpaid.reduce((sum, s) => sum + (s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)), 0);
+                  return (<>
+                    {unpaid.map((s) => {
+                      const rem = s.status === "PARTIAL" && s.paidAmount
+                        ? (parseFloat(s.amount) - parseFloat(s.paidAmount)).toFixed(2)
+                        : s.amount;
+                      return (
+                        <tr key={s.period} className="text-xs text-slate-500">
+                          <td colSpan={5} className="py-0.5 pr-3 text-right">Period {s.period}</td>
+                          <td className="py-0.5 pr-3 text-right">{formatPeso(rem)}</td>
+                          <td colSpan={3}></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="border-t-2 border-slate-300 text-xs font-semibold">
+                      <td colSpan={5} className="py-2 pr-3 text-slate-700 text-right">Total Outstanding</td>
+                      <td className="py-2 pr-3 text-right font-bold text-red-800 text-sm">{formatPeso(total.toFixed(2))}</td>
+                      <td colSpan={3}></td>
+                    </tr>
+                  </>);
+                })()}
               </tfoot>
             </table>
           </div>
