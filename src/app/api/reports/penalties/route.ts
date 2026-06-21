@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
-    const [penalties, totalCount] = await Promise.all([
+    const [penalties, totalCount, grandTotalResult] = await Promise.all([
       prisma.penaltyRecord.findMany({
         orderBy: { appliedDate: "desc" },
         skip: (page - 1) * limit,
@@ -23,12 +23,17 @@ export async function GET(request: Request) {
         },
       }),
       prisma.penaltyRecord.count(),
+      prisma.penaltyRecord.aggregate({
+        _sum: { amount: true },
+      }),
     ]);
 
     const total = penalties.reduce(
       (sum, p) => sum.plus(new Decimal(p.amount.toString())),
       new Decimal(0),
     );
+
+    const grandTotal = new Decimal(grandTotalResult._sum.amount?.toString() ?? "0");
 
     return NextResponse.json({
       penalties: penalties.map((p) => ({
@@ -40,6 +45,7 @@ export async function GET(request: Request) {
         reason: p.reason,
       })),
       total: decimalToString(total),
+      grandTotal: decimalToString(grandTotal),
       count: totalCount,
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });

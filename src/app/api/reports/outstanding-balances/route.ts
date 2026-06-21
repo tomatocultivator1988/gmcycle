@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
-    const [accounts, totalCount] = await Promise.all([
+    const [accounts, totalCount, grandTotalResult] = await Promise.all([
       prisma.installmentAccount.findMany({
         where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
         orderBy: { remainingBalance: "desc" },
@@ -23,12 +23,18 @@ export async function GET(request: Request) {
       prisma.installmentAccount.count({
         where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
       }),
+      prisma.installmentAccount.aggregate({
+        where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
+        _sum: { remainingBalance: true },
+      }),
     ]);
 
     const totalOutstanding = accounts.reduce(
       (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
       new Decimal(0),
     );
+
+    const grandTotal = new Decimal(grandTotalResult._sum.remainingBalance?.toString() ?? "0");
 
     return NextResponse.json({
       accounts: accounts.map((a) => ({
@@ -45,6 +51,7 @@ export async function GET(request: Request) {
         term: a.term,
       })),
       totalOutstanding: decimalToString(totalOutstanding),
+      grandTotal: decimalToString(grandTotal),
       count: totalCount,
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });

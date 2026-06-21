@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
-    const [payments, totalCount] = await Promise.all([
+    const [payments, totalCount, grandTotalResult] = await Promise.all([
       prisma.payment.findMany({
         where: { paymentDate: { gte: monthStart, lt: monthEnd }, voided: false },
         orderBy: { paymentDate: "desc" },
@@ -36,12 +36,18 @@ export async function GET(request: Request) {
         },
       }),
       prisma.payment.count({ where: { paymentDate: { gte: monthStart, lt: monthEnd }, voided: false } }),
+      prisma.payment.aggregate({
+        where: { paymentDate: { gte: monthStart, lt: monthEnd }, voided: false },
+        _sum: { totalAmount: true },
+      }),
     ]);
 
     const monthlyTotal = payments.reduce(
       (sum, p) => sum.plus(new Decimal(p.totalAmount.toString())),
       new Decimal(0),
     );
+
+    const grandTotal = new Decimal(grandTotalResult._sum.totalAmount?.toString() ?? "0");
 
     const yearStart = new Date(`${dateToManilaDateOnly(referenceDate).slice(0, 4)}-01-01T00:00:00.000+08:00`);
     const breakdown = await prisma.$queryRawUnsafe<Array<{
@@ -84,6 +90,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       month: dateToManilaDateOnly(monthStart).slice(0, 7),
       total: decimalToString(monthlyTotal),
+      grandTotal: decimalToString(grandTotal),
       count: totalCount,
       collections,
       monthlyBreakdown,

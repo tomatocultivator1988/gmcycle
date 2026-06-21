@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
-    const [payments, totalCount] = await Promise.all([
+    const [payments, totalCount, grandTotalResult] = await Promise.all([
       prisma.payment.findMany({
         where: { voided: false },
         orderBy: { paymentDate: "desc" },
@@ -24,12 +24,18 @@ export async function GET(request: Request) {
         },
       }),
       prisma.payment.count({ where: { voided: false } }),
+      prisma.payment.aggregate({
+        where: { voided: false },
+        _sum: { totalAmount: true },
+      }),
     ]);
 
     const total = payments.reduce(
       (sum, p) => sum.plus(new Decimal(p.totalAmount.toString())),
       new Decimal(0),
     );
+
+    const grandTotal = new Decimal(grandTotalResult._sum.totalAmount?.toString() ?? "0");
 
     return NextResponse.json({
       collections: payments.map((p) => ({
@@ -45,6 +51,7 @@ export async function GET(request: Request) {
         cashier: p.cashier,
       })),
       total: decimalToString(total),
+      grandTotal: decimalToString(grandTotal),
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {

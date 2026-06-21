@@ -24,7 +24,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     title: "Collection Report",
     description: "All collections with customer and unit details",
     summaryFields: [
-      { label: "Total Collections", getValue: (d) => formatPeso(d.total) },
+      { label: "Total Collections", getValue: (d) => formatPeso(d.grandTotal ?? d.total) },
     ],
     columns: [
       {
@@ -44,7 +44,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     description: "Collections for the selected date",
     summaryFields: [
       { label: "Date", getValue: (d) => d.date },
-      { label: "Today's Total", getValue: (d) => formatPeso(d.total) },
+      { label: "Today's Total", getValue: (d) => formatPeso(d.grandTotal ?? d.total) },
     ],
     columns: [
       {
@@ -64,7 +64,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     description: "Detailed collections for the selected month",
     summaryFields: [
       { label: "Month", getValue: (d) => d.month },
-      { label: "Total", getValue: (d) => formatPeso(d.total) },
+      { label: "Total", getValue: (d) => formatPeso(d.grandTotal ?? d.total) },
       { label: "Transactions", getValue: (d) => String(d.count) },
     ],
     columns: [
@@ -125,7 +125,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     title: "Penalty Report",
     description: "All penalty records",
     summaryFields: [
-      { label: "Total Penalties", getValue: (d) => formatPeso(d.total) },
+      { label: "Total Penalties", getValue: (d) => formatPeso(d.grandTotal ?? d.total) },
       { label: "Count", getValue: (d) => String(d.count) },
     ],
     columns: [
@@ -140,7 +140,7 @@ const reportConfigs: Record<string, ReportConfig> = {
     title: "Outstanding Balance Report",
     description: "All active accounts with remaining balances",
     summaryFields: [
-      { label: "Total Outstanding", getValue: (d) => formatPeso(d.totalOutstanding) },
+      { label: "Total Outstanding", getValue: (d) => formatPeso(d.grandTotal ?? d.totalOutstanding) },
       { label: "Active Accounts", getValue: (d) => String(d.count) },
     ],
     columns: [
@@ -241,10 +241,20 @@ export default function ReportPage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedPaidStatus, setSelectedPaidStatus] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [printAll, setPrintAll] = useState(false);
+  const printAllRef = useRef(false);
   const hasDateFilter = slug === "overdue-accounts" || slug === "account-master-list";
   const hasDailyFilter = slug === "daily-collections";
   const hasMonthFilter = slug === "monthly-collections";
   const hasStatusFilter = slug === "account-master-list";
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      if (printAll) setPrintAll(false);
+    };
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, [printAll]);
 
   useEffect(() => {
     if (!config) { setLoading(false); return; }
@@ -252,7 +262,7 @@ export default function ReportPage() {
     let active = true;
     setLoading(true);
 
-    let url = `/api/reports/${slug}?page=${page}&limit=50`;
+    let url = `/api/reports/${slug}?page=${printAll ? 1 : page}&limit=${printAll ? 99999 : 50}`;
     if (selectedDate) url += `&date=${selectedDate}`;
     if (selectedPaidStatus) url += `&paidStatus=${selectedPaidStatus}`;
     if (selectedMonth) url += `&month=${selectedMonth}`;
@@ -262,13 +272,17 @@ export default function ReportPage() {
         if (active) {
           setData(res);
           if (res.pagination) setTotalPages(res.pagination.totalPages);
+          if (printAllRef.current) {
+            printAllRef.current = false;
+            setTimeout(() => window.print(), 300);
+          }
         }
       })
       .catch((requestError: Error) => { if (active) setError(requestError.message); })
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [slug, config, page, selectedDate, selectedPaidStatus, selectedMonth]);
+  }, [slug, config, page, selectedDate, selectedPaidStatus, selectedMonth, printAll]);
 
   if (!config) {
     return (
@@ -318,6 +332,25 @@ export default function ReportPage() {
         description={config.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+              {printAll ? (
+                <button
+                  type="button"
+                  onClick={() => setPrintAll(false)}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] print:hidden"
+                >
+                  Exit Print All View
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setPage(1); printAllRef.current = true; setPrintAll(true); }}
+                  disabled={loading}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-700 shadow-sm transition-all hover:bg-red-50 active:scale-[0.98] print:hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Printer size={16} />
+                  Print All
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -325,7 +358,7 @@ export default function ReportPage() {
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-800 px-4 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 hover:shadow-md active:scale-[0.98] print:hidden disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Printer size={16} />
-                Print / Export PDF
+                {printAll ? "Print / Export PDF" : "Print / Export PDF"}
               </button>
             <Link
               href="/reports"
@@ -451,12 +484,20 @@ export default function ReportPage() {
       {!loading && data ? (
         <>
           <div className="flex flex-wrap gap-4 print:gap-3">
-            {config.summaryFields.map((field) => (
-              <div key={field.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[180px] print:border print:border-slate-300 print:shadow-none print:p-3">
-                <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">{field.label}</div>
-                <div className="mt-1.5 text-xl font-bold text-slate-900">{field.getValue(data)}</div>
-              </div>
-            ))}
+            {config.summaryFields.map((field) => {
+              const showPageInfo = data.total && data.grandTotal && data.total !== data.grandTotal;
+              return (
+                <div key={field.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[180px] print:border print:border-slate-300 print:shadow-none print:p-3">
+                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">{field.label}</div>
+                  <div className="mt-1.5 text-xl font-bold text-slate-900">{field.getValue(data)}</div>
+                  {showPageInfo && !printAll ? (
+                    <div className="mt-0.5 text-[10px] text-slate-400">
+                      Page {page}: {formatPeso(data.total)} of {formatPeso(data.grandTotal)}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:border print:border-slate-300 print:shadow-none print:rounded-none print:overflow-visible">
@@ -467,7 +508,7 @@ export default function ReportPage() {
               emptyMessage="No data for this report."
               mobileAccordion={slug === "account-master-list" || slug === "overdue-accounts" ? { summaryColumns: ["customerName", "status"] } : undefined}
             />
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="print:hidden" />
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className={`${printAll ? "hidden" : ""} print:hidden`} />
           </div>
         </>
       ) : null}
