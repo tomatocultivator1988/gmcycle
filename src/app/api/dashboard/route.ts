@@ -109,6 +109,7 @@ export async function GET() {
         appliedAccounts: countMap.APPLIED ?? 0,
         activeAccounts: countMap.ACTIVE ?? 0,
         fullyPaidAccounts: countMap.FULLY_PAID ?? 0,
+        closedAccounts: countMap.CLOSED ?? 0,
         overdueAccounts: countMap.OVERDUE ?? 0,
         dueTodayAccounts: countMap.DUE_TODAY ?? 0,
         totalInstallmentSales: decimalToString(new Decimal(accountAggs.total_installment)),

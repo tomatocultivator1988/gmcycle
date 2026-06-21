@@ -97,6 +97,7 @@ export type DashboardMetricsDto = {
   appliedAccounts: number;
   activeAccounts: number;
   fullyPaidAccounts: number;
+  closedAccounts: number;
   overdueAccounts: number;
   dueTodayAccounts: number;
   totalInstallmentSales: string;

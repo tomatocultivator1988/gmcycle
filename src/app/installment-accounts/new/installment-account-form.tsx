@@ -84,6 +84,9 @@ export function InstallmentAccountForm() {
   const periodAmount = remainingBalance.gt(0) && totalPeriods > 0
     ? roundTo(remainingBalance.div(totalPeriods), 50)
     : new Decimal(0);
+  const lastPeriodAmount = remainingBalance.gt(0) && totalPeriods > 1
+    ? remainingBalance.minus(periodAmount.times(totalPeriods - 1))
+    : remainingBalance;
 
   const dueDay1 = form.firstDueDate ? parseInt(form.firstDueDate.slice(8, 10)) || 15 : 15;
   const dueDays = form.scheduleType === "SEMI_MONTHLY"
@@ -506,7 +509,7 @@ export function InstallmentAccountForm() {
                 Term (months)
                 <input
                   type="number"
-                  min={6}
+                  min={1}
                   max={48}
                   value={form.term}
                   onChange={(e) => updateField("term", Number(e.target.value))}
@@ -588,8 +591,11 @@ export function InstallmentAccountForm() {
           </div>
 
           {remainingBalance.gt(0) ? (
-            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-              <div className="grid gap-4 text-sm sm:grid-cols-4">
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-lg shadow-emerald-200/50">
+              <div className="mb-4 text-sm font-semibold text-emerald-800">
+                {form.brand} · {form.model}{form.unitDescription ? ` · ${form.unitDescription}` : ""}
+              </div>
+              <div className="grid gap-4 text-sm sm:grid-cols-5">
                 <div>
                   <div className="text-xs font-semibold font-heading uppercase tracking-wider text-emerald-700">Remaining Balance</div>
                   <div className="mt-1 text-lg font-bold text-emerald-800">
@@ -611,6 +617,13 @@ export function InstallmentAccountForm() {
                 <div>
                   <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">Term / Total Periods</div>
                   <div className="mt-1 text-lg font-bold text-slate-900">{form.term} mo / {totalPeriods}x</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-amber-700">Last Period</div>
+                  <div className="mt-1 text-lg font-bold text-amber-800">
+                    {formatPeso(lastPeriodAmount.toFixed(2))}
+                    <span className="block text-[10px] font-normal text-amber-600">absorbs remainder</span>
+                  </div>
                 </div>
               </div>
             </div>

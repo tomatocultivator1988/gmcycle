@@ -104,12 +104,16 @@ export function DashboardClient() {
       </div>
 
       {/* ── KPI HERO ROW ── */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard label="Total Accounts" value={metrics.totalAccounts}
           icon={Users} color="bg-white/20" bgGradient="bg-gradient-to-br from-red-600 to-red-800" />
         <StatCard label="Active Accounts" value={metrics.activeAccounts}
           icon={CheckCircle2} color="bg-white/20" bgGradient="bg-gradient-to-br from-emerald-600 to-emerald-800"
           trend={`${overduePct}% overdue`} />
+        <StatCard label="Overdue" value={metrics.overdueAccounts}
+          icon={AlertTriangle} color="bg-white/20" bgGradient="bg-gradient-to-br from-rose-600 to-rose-800" />
+        <StatCard label="Closed" value={metrics.closedAccounts}
+          icon={CheckCircle2} color="bg-white/20" bgGradient="bg-gradient-to-br from-slate-600 to-slate-800" />
         <StatCard label="Collections (Month)" value={formatPeso(metrics.collectionsThisMonth)}
           icon={PiggyBank} color="bg-white/20" bgGradient="bg-gradient-to-br from-red-700 to-red-900" />
         <StatCard label="Outstanding" value={formatPeso(metrics.outstandingBalances)}
