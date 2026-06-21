@@ -434,7 +434,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                         <td className="py-1.5 pr-3">{s.period}</td>
                         <td className="py-1.5 pr-3">{s.dueDate}</td>
                         <td className="py-1.5 pr-3 text-right">{s.daysOverdue != null && s.daysOverdue > 0 ? <span className="text-rose-600">{s.daysOverdue}d</span> : "—"}</td>
-                        <td className="py-1.5 pr-3 text-right">{formatPeso(s.amount)}</td>
+                        <td className="py-1.5 pr-3 text-right">{formatPeso(s.status === "PARTIAL" && s.paidAmount ? (parseFloat(s.amount) - parseFloat(s.paidAmount)).toFixed(2) : s.amount)}</td>
                         <td className="py-1.5 pr-3 text-right text-rose-600">{s.penalty !== "0.00" ? formatPeso(s.penalty) : "—"}</td>
                         <td className="py-1.5 pr-3 text-right font-semibold text-red-800">{formatPeso(((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2))}</td>
                       </tr>
@@ -457,7 +457,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                   <div key={s.period} className="rounded-lg border border-red-100 bg-white p-3 text-xs space-y-1.5">
                     <div className="flex justify-between"><span className="text-slate-500">#{s.period} · {s.dueDate}</span><span className="font-semibold text-red-800">{formatPeso(((s.status === "PARTIAL" && s.paidAmount ? parseFloat(s.amount) - parseFloat(s.paidAmount) : parseFloat(s.amount)) + parseFloat(s.penalty || "0")).toFixed(2))}</span></div>
                     {s.daysOverdue != null && s.daysOverdue > 0 ? <div className="flex justify-between"><span className="text-slate-500">Days</span><span className="text-rose-600 font-medium">{s.daysOverdue}d</span></div> : null}
-                    <div className="flex justify-between"><span className="text-slate-500">Amount</span><span>{formatPeso(s.amount)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Amount</span><span>{formatPeso(s.status === "PARTIAL" && s.paidAmount ? (parseFloat(s.amount) - parseFloat(s.paidAmount)).toFixed(2) : s.amount)}</span></div>
                     {s.penalty !== "0.00" ? <div className="flex justify-between"><span className="text-slate-500">Penalty</span><span className="text-rose-600">{formatPeso(s.penalty)}</span></div> : null}
                   </div>
                 ))}
