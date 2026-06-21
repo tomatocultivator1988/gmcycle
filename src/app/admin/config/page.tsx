@@ -77,9 +77,27 @@ export default function AdminConfigPage() {
   }
 
   async function handleBackup() {
-    const pwd = adminPassword || "buratnianjo123";
-    const url = `/api/admin/backup?password=${encodeURIComponent(pwd)}`;
-    window.open(url, "_blank");
+    const pwd = prompt("Enter admin password to download backup:");
+    if (!pwd) return;
+
+    try {
+      const res = await fetch(`/api/admin/backup?password=${encodeURIComponent(pwd)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Invalid password" }));
+        throw new Error(err.error || "Invalid password");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`Backup failed: ${(e as Error).message}`);
+    }
   }
 
   return (
