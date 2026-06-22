@@ -76,9 +76,7 @@ export async function POST(request: Request) {
     const rate = new Decimal(body.interestRate).div(100);
     const financed = cashPrice.minus(downPayment);
     const monthlyInterest = financed.times(rate);
-    const totalInterest = body.itemType === "CASH"
-      ? monthlyInterest  // one-time interest for cash
-      : monthlyInterest.times(body.term);  // per-month × term for gadgets
+    const totalInterest = monthlyInterest.times(body.term);
     const installmentPrice = cashPrice.plus(totalInterest).floor();
 
     if (downPayment.gte(installmentPrice)) {

@@ -125,9 +125,7 @@ async function handleFullUpdate(id: string, raw: Record<string, unknown>) {
   }
 
   const financed = cashPrice.minus(downPayment);
-  const totalInterest = body.itemType === "CASH"
-    ? financed.times(rate)
-    : financed.times(rate).times(term);
+  const totalInterest = financed.times(rate).times(term);
   const installmentPrice = cashPrice.plus(totalInterest).floor();
   const totalPeriods = scheduleType === "SEMI_MONTHLY" ? term * 2 : term;
 

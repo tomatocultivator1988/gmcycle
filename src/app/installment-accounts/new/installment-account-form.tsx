@@ -72,9 +72,7 @@ export function InstallmentAccountForm() {
   // Installment Price = Cash Price + Total Interest
   const financed = cashPrice.minus(downPayment);
   const monthlyInterest = interestRateDecimal.gt(0) ? financed.times(interestRateDecimal.div(100)) : new Decimal(0);
-  const totalInterest = form.itemType === "CASH"
-    ? monthlyInterest  // one-time for cash
-    : monthlyInterest.times(form.term);  // per-month × term for gadgets
+  const totalInterest = monthlyInterest.times(form.term);
   const installmentPrice = cashPrice.plus(totalInterest);
   const totalPeriods = form.scheduleType === "SEMI_MONTHLY" ? form.term * 2 : form.term;
   const remainingBalance = installmentPrice.floor().minus(downPayment).floor();
