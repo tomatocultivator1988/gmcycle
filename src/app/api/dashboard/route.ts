@@ -34,6 +34,7 @@ export async function GET() {
         total_cash: string;
         total_installment_price: string;
         total_processing_fees: string;
+        total_cash_price: string;
       }>>(`
         SELECT
           COALESCE(SUM("installmentPrice"), 0)::text AS "total_installment",
@@ -41,7 +42,8 @@ export async function GET() {
           COALESCE(SUM(CASE WHEN status IN ('ACTIVE','OVERDUE','DUE_TODAY') THEN "remainingBalance" ELSE 0 END), 0)::text AS "total_outstanding",
           COALESCE(SUM("cashPrice"), 0)::text AS "total_cash",
           COALESCE(SUM("installmentPrice"), 0)::text AS "total_installment_price",
-          COALESCE(SUM("processingFee"), 0)::text AS "total_processing_fees"
+          COALESCE(SUM("processingFee"), 0)::text AS "total_processing_fees",
+          COALESCE(SUM("cashPrice"), 0)::text AS "total_cash_price"
         FROM "InstallmentAccount"
       `),
 
@@ -53,11 +55,11 @@ export async function GET() {
         month: string;
       }>>(
         `SELECT
-          COALESCE(SUM("totalAmount"), 0)::text AS "total_collections",
+          COALESCE(SUM("totalAmount" - "penaltyAmount"), 0)::text AS "total_collections",
           COALESCE(SUM("penaltyAmount"), 0)::text AS "total_penalties",
-          COALESCE(SUM(CASE WHEN "paymentDate" >= $1::timestamp AND "paymentDate" < $2::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "today",
-          COALESCE(SUM(CASE WHEN "paymentDate" >= $3::timestamp AND "paymentDate" < $4::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "week",
-          COALESCE(SUM(CASE WHEN "paymentDate" >= $5::timestamp AND "paymentDate" < $6::timestamp THEN "totalAmount" ELSE 0 END), 0)::text AS "month"
+          COALESCE(SUM(CASE WHEN "paymentDate" >= $1::timestamp AND "paymentDate" < $2::timestamp THEN "totalAmount" - "penaltyAmount" ELSE 0 END), 0)::text AS "today",
+          COALESCE(SUM(CASE WHEN "paymentDate" >= $3::timestamp AND "paymentDate" < $4::timestamp THEN "totalAmount" - "penaltyAmount" ELSE 0 END), 0)::text AS "week",
+          COALESCE(SUM(CASE WHEN "paymentDate" >= $5::timestamp AND "paymentDate" < $6::timestamp THEN "totalAmount" - "penaltyAmount" ELSE 0 END), 0)::text AS "month"
         FROM "Payment"
         WHERE "voided" = false`,
         todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd,
@@ -97,7 +99,7 @@ export async function GET() {
       countMap[row.status] = row._count;
     }
 
-    const accountAggs = accountAggsResult[0] ?? { total_installment: "0", total_down: "0", total_outstanding: "0", total_cash: "0", total_installment_price: "0", total_processing_fees: "0" };
+    const accountAggs = accountAggsResult[0] ?? { total_installment: "0", total_down: "0", total_outstanding: "0", total_cash: "0", total_installment_price: "0", total_processing_fees: "0", total_cash_price: "0" };
     const paymentAggs = paymentAggsResult[0] ?? { total_collections: "0", total_penalties: "0", today: "0", week: "0", month: "0" };
     const agingData = agingResult[0] ?? { days1to30: 0, days31to60: 0, days61to90: 0, days90plus: 0 };
 
@@ -116,6 +118,7 @@ export async function GET() {
         dueTodayAccounts: countMap.DUE_TODAY ?? 0,
         totalInstallmentSales: decimalToString(new Decimal(accountAggs.total_installment)),
         totalInstallmentMargin: decimalToString(totalInstallmentPrice.sub(totalCashPrice)),
+        totalCashPrice: decimalToString(totalCashPrice),
         totalDownPayments: decimalToString(new Decimal(accountAggs.total_down)),
         totalProcessingFees: decimalToString(new Decimal(accountAggs.total_processing_fees)),
         totalCollections: decimalToString(new Decimal(paymentAggs.total_collections)),

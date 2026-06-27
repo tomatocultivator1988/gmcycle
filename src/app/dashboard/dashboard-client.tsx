@@ -15,6 +15,7 @@ import {
   Clock,
   FileText,
   BarChart3,
+  Info,
 } from "lucide-react";
 import { ErrorMessage, LoadingBlock } from "@/components/ui-state";
 import { apiRequest } from "@/lib/client-api";
@@ -46,10 +47,20 @@ function StatCard({ label, value, icon: Icon, trend, color, bgGradient }: {
   );
 }
 
-function CompactCard({ label, value, color }: { label: string; value: string; color: string }) {
+function CompactCard({ label, value, formula, color }: { label: string; value: string; formula?: string; color: string }) {
   return (
     <div className={`rounded-xl border-l-4 bg-white p-4 shadow-sm ${color}`}>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        {formula ? (
+          <span className="group relative">
+            <Info size={12} className="cursor-help text-slate-300 hover:text-slate-500" />
+            <span className="pointer-events-none absolute -left-1 bottom-full mb-1.5 hidden whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[10px] text-white shadow-lg group-hover:block z-10">
+              {formula}
+            </span>
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
     </div>
   );
@@ -163,12 +174,24 @@ export function DashboardClient() {
           <h3 className="text-sm font-bold text-slate-900">Financial Summary</h3>
           <p className="mt-0.5 text-xs text-slate-500">Installment sales, collections, and penalties</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <CompactCard label="Installment Sales" value={formatPeso(metrics.totalInstallmentSales)} color="border-l-red-500" />
-            <CompactCard label="Gross Profit" value={formatPeso(metrics.totalInstallmentMargin)} color="border-l-emerald-500" />
-            <CompactCard label="Down Payments" value={formatPeso(metrics.totalDownPayments)} color="border-l-red-400" />
-            <CompactCard label="Total Collections" value={formatPeso(metrics.totalCollections)} color="border-l-red-600" />
-            <CompactCard label="Penalties Collected" value={formatPeso(metrics.totalPenaltiesCollected)} color="border-l-rose-500" />
-            <CompactCard label="Outstanding Balance" value={formatPeso(metrics.outstandingBalances)} color="border-l-orange-500" />
+            <CompactCard label="Installment Sales" value={formatPeso(metrics.totalInstallmentSales)} formula="Sum of all contract prices" color="border-l-red-500" />
+            <CompactCard label="Gross Profit" value={formatPeso(metrics.totalInstallmentMargin)} formula={`Installment Sales (${formatPeso(metrics.totalInstallmentSales)}) \u2212 Cash Price (${formatPeso(metrics.totalCashPrice)})`} color="border-l-emerald-500" />
+            <CompactCard label="Down Payments" value={formatPeso(metrics.totalDownPayments)} formula="Sum of down payments across all accounts" color="border-l-red-400" />
+            <CompactCard label="Total Collections" value={formatPeso(metrics.totalCollections)} formula={`Payment amounts received (excludes ${formatPeso(metrics.totalPenaltiesCollected)} penalties)`} color="border-l-red-600" />
+            <CompactCard label="Penalties Collected" value={formatPeso(metrics.totalPenaltiesCollected)} formula="Sum of penalty portions from payments" color="border-l-rose-500" />
+            <CompactCard label="Outstanding Balance" value={formatPeso(metrics.outstandingBalances)} formula="Sum of remaining balances on active \u0026 overdue accounts" color="border-l-orange-500" />
+          </div>
+
+          {/* Accounting Identity Bar */}
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-emerald-800">
+              <CheckCircle2 size={14} />
+              <span className="font-medium">Accounting Identity:</span>
+              <span>
+                {formatPeso(metrics.totalInstallmentSales)} = {formatPeso(metrics.totalDownPayments)} + {formatPeso(metrics.totalCollections)} + {formatPeso(metrics.outstandingBalances)}
+              </span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-emerald-600 pl-6">Sales = Down Payments + Collections + Outstanding</p>
           </div>
         </div>
       </div>

@@ -102,6 +102,7 @@ export type DashboardMetricsDto = {
   dueTodayAccounts: number;
   totalInstallmentSales: string;
   totalInstallmentMargin: string;
+  totalCashPrice: string;
   totalDownPayments: string;
   totalProcessingFees: string;
   totalCollections: string;
