@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Mail, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResponsiveTable, type Column } from "@/components/responsive-table";
 import { Pagination } from "@/components/pagination";
@@ -243,6 +243,8 @@ export default function ReportPage() {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [printAll, setPrintAll] = useState(false);
   const printAllRef = useRef(false);
+  const [emailing, setEmailing] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
   const hasDateFilter = slug === "overdue-accounts" || slug === "account-master-list";
   const hasDailyFilter = slug === "daily-collections";
   const hasMonthFilter = slug === "monthly-collections";
@@ -360,12 +362,40 @@ export default function ReportPage() {
                 <Printer size={16} />
                 {printAll ? "Print / Export PDF" : "Print / Export PDF"}
               </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setEmailing(true);
+                setEmailResult(null);
+                try {
+                  const res = await apiRequest<{ message: string }>(
+                    `/api/reports/${slug}/email`,
+                    { method: "POST" },
+                  );
+                  setEmailResult({ ok: true, message: res.message });
+                } catch (e: any) {
+                  setEmailResult({ ok: false, message: e.message });
+                } finally {
+                  setEmailing(false);
+                }
+              }}
+              disabled={emailing}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] print:hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Mail size={16} />
+              {emailing ? "Sending..." : "Email Report"}
+            </button>
             <Link
               href="/reports"
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98]"
             >
               <ArrowLeft size={16} /> All Reports
             </Link>
+            {emailResult ? (
+              <div className={`w-full text-xs font-medium ${emailResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+                {emailResult.message}
+              </div>
+            ) : null}
           </div>
         }
       />
