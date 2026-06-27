@@ -20,6 +20,7 @@ type StatementData = {
   cashPrice: string;
   installmentPrice: string;
   downPayment: string;
+  processingFee: string;
   remainingBalance: string;
   grossProfit: string;
   interestRate: string | null;
@@ -198,6 +199,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2 text-sm">
             <div><span className="text-slate-500">Net Price:</span> <span className="font-semibold text-red-800">{formatPeso((parseFloat(data.installmentPrice) - parseFloat(data.downPayment)).toFixed(2))}</span></div>
             <div><span className="text-slate-500">Down Payment:</span> <span className="text-slate-700">{formatPeso(data.downPayment)}</span></div>
+            <div><span className="text-slate-500">Processing Fee:</span> <span className="text-slate-700">{formatPeso(data.processingFee)}</span></div>
             <div><span className="text-slate-500">Term:</span> <span className="text-slate-700">{data.scheduleType === "SEMI_MONTHLY" ? `${data.term} months (${data.term * 2} periods)` : `${data.term} months`}</span></div>
             <div><span className="text-slate-500">{data.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"}:</span> <span className="text-slate-700">{formatPeso(data.monthlyInstallment)}{data.scheduleType === "MONTHLY" ? "/mo" : "/period"}</span></div>
             <div><span className="text-slate-500">First Due:</span> <span className="text-slate-700">{data.firstDueDate ?? "—"}</span></div>

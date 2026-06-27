@@ -213,6 +213,7 @@ export async function POST(request: Request, context: RouteContext) {
         <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:13px;">
           <tr><td style="padding:4px 8px;color:#64748b;">Installment Price</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.installmentPrice.toString())}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Down Payment</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.downPayment.toString())}</td></tr>
+          <tr><td style="padding:4px 8px;color:#64748b;">Processing Fee</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.processingFee.toString())}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Term</td><td style="padding:4px 8px;font-weight:500;">${account.scheduleType === "SEMI_MONTHLY" ? `${account.term} months (${account.term * 2} periods)` : `${account.term} months`}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">${account.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly Installment"}</td><td style="padding:4px 8px;font-weight:500;">${formatPeso(account.monthlyInstallment.toString())}${account.scheduleType === "SEMI_MONTHLY" ? "/period" : "/mo"}</td></tr>
           <tr><td style="padding:4px 8px;color:#64748b;">Remaining Balance</td><td style="padding:4px 8px;font-weight:700;color:#991b1b;">${formatPeso(account.remainingBalance.toString())}</td></tr>

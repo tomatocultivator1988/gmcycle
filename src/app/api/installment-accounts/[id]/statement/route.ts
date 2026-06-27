@@ -77,6 +77,7 @@ export async function GET(_request: Request, context: RouteContext) {
       cashPrice: decimalToString(cashPrice),
       installmentPrice: decimalToString(installmentPrice),
       downPayment: decimalToString(downPayment),
+      processingFee: decimalToString(account.processingFee),
       remainingBalance: decimalToString(account.remainingBalance),
       grossProfit: decimalToString(grossProfit),
       interestRate: account.interestRate,
