@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       // ADVANCE is same as REGULAR now — both apply forward
 
       const currentPeriod = account.schedule.find(
-        (s) => s.status === "PENDING" || s.status === "PARTIAL",
+        (s) => s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE",
       );
 
       if (!currentPeriod) {

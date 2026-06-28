@@ -58,7 +58,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const isFullUpdate = typeof raw.password === "string" && raw.password.length > 0;
 
     if (isFullUpdate) {
-      return handleFullUpdate(id, raw);
+      return await handleFullUpdate(id, raw);
     }
 
     const body = updateInstallmentAccountSchema.parse(raw);
