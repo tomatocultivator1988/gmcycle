@@ -48,25 +48,36 @@ export async function POST(request: Request, context: RouteContext) {
         where: { paymentId: id },
       });
 
-      // 2. Restore penaltyAmount on each period using per-period breakdown
-      const breakdown = payment.penaltyBreakdown as Record<string, string> | null;
+      // 2. Restore penaltyAmount and paidAmount on each period using per-period breakdowns
+      const penaltyBreakdown = payment.penaltyBreakdown as Record<string, string> | null;
+      const principalBreakdown = payment.principalBreakdown as Record<string, string> | null;
       const paymentPenalty = new Decimal(payment.penaltyAmount);
       const numPeriods = affectedPeriods.length;
 
       const resetPromises = affectedPeriods.map((period) => {
         const currentPenalty = new Decimal(period.penaltyAmount);
-        const periodPenaltyCovered = breakdown?.[period.id]
-          ? new Decimal(breakdown[period.id])
+        const periodPenaltyCovered = penaltyBreakdown?.[period.id]
+          ? new Decimal(penaltyBreakdown[period.id])
           : numPeriods > 0 ? paymentPenalty.div(numPeriods) : paymentPenalty;
         const restored = currentPenalty.plus(periodPenaltyCovered);
+
+        const currentPaidAmount = period.paidAmount
+          ? new Decimal(period.paidAmount)
+          : new Decimal(0);
+        const thisPaymentPrincipal = principalBreakdown?.[period.id]
+          ? new Decimal(principalBreakdown[period.id])
+          : new Decimal(0);
+        const newPaidAmount = Decimal.max(0, currentPaidAmount.minus(thisPaymentPrincipal));
+
+        const newStatus = newPaidAmount.gt(0) ? "PARTIAL" : "PENDING";
 
         return tx.installmentSchedule.update({
           where: { id: period.id },
           data: {
-            status: "PENDING" as const,
-            paidDate: null,
-            paymentId: null,
-            paidAmount: null,
+            status: newStatus as any,
+            paidDate: newPaidAmount.gt(0) ? period.paidDate : null,
+            paymentId: newPaidAmount.gt(0) ? period.paymentId : null,
+            paidAmount: newPaidAmount.gt(0) ? decimalToString(newPaidAmount) : null,
             penaltyAmount: decimalToString(
               restored.isNegative() ? new Decimal(0) : restored,
             ),

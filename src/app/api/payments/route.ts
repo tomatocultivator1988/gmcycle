@@ -113,6 +113,24 @@ export async function POST(request: Request) {
       }
       const updatedSchedule = account.schedule;
 
+      // Reject overpayments — cannot pay more than the total remaining balance
+      {
+        const maxPayable = updatedSchedule
+          .filter((s) => s.status !== "PAID")
+          .reduce((sum, s) => {
+            const remainingAmt = new Decimal(s.amount).minus(
+              s.paidAmount ? new Decimal(s.paidAmount) : 0,
+            );
+            return sum.plus(remainingAmt).plus(new Decimal(s.penaltyAmount));
+          }, new Decimal(0));
+
+        if (totalAmount.gt(maxPayable)) {
+          throw new ValidationError(
+            `Enter the exact amount of ₱${maxPayable.toFixed(2)}. Overpayment is not allowed.`,
+          );
+        }
+      }
+
       // FULL: validate amount covers remaining balance (after overdue update)
       if (paymentType === "FULL") {
         const remaining = updatedSchedule
@@ -131,11 +149,13 @@ export async function POST(request: Request) {
       let remainingToApply = totalAmount;
       let totalPenalty = new Decimal(0);
       const penaltyByPeriod: Record<string, string> = {};
+      const principalByPeriod: Record<string, string> = {};
       const computedPeriods: Array<{
         period: (typeof updatedSchedule)[0];
         newPaidAmount: Decimal;
         newPenaltyAmount: Decimal;
         penaltyCovered: Decimal;
+        principalCovered: Decimal;
         isPaid: boolean;
       }> = [];
 
@@ -156,6 +176,9 @@ export async function POST(request: Request) {
         if (penaltyCovered.gt(0)) {
           penaltyByPeriod[period.id] = decimalToString(penaltyCovered);
         }
+        if (principalCovered.gt(0)) {
+          principalByPeriod[period.id] = decimalToString(principalCovered);
+        }
         totalPenalty = totalPenalty.plus(penaltyCovered);
 
         const newPaidAmount = (period.paidAmount
@@ -171,6 +194,7 @@ export async function POST(request: Request) {
             newPaidAmount,
             newPenaltyAmount,
             penaltyCovered,
+            principalCovered,
             isPaid: paidForPeriod.gte(periodTotalDue),
           });
         }
@@ -191,6 +215,7 @@ export async function POST(request: Request) {
           paymentType,
           penaltyAmount: decimalToString(totalPenalty),
           penaltyBreakdown: Object.keys(penaltyByPeriod).length > 0 ? penaltyByPeriod : undefined,
+          principalBreakdown: Object.keys(principalByPeriod).length > 0 ? principalByPeriod : undefined,
           notes: body.notes || null,
           cashier: body.cashier || null,
           proofUrl: body.proofUrl || null,
