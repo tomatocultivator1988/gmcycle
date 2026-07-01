@@ -13,31 +13,73 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 50));
 
-    const [accounts, totalCount, grandTotalResult] = await Promise.all([
+    const [allAccounts] = await Promise.all([
       prisma.installmentAccount.findMany({
-        where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
+        where: { status: { notIn: ["APPLIED", "CLOSED"] as any } },
         orderBy: { remainingBalance: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.installmentAccount.count({
-        where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
-      }),
-      prisma.installmentAccount.aggregate({
-        where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
-        _sum: { remainingBalance: true },
       }),
     ]);
 
-    const totalOutstanding = accounts.reduce(
+    const allIds = allAccounts.map((a) => a.id);
+    const schedulePeriods = allIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
+          where: { installmentAccountId: { in: allIds } },
+          select: { installmentAccountId: true, dueDate: true, status: true },
+        })
+      : [];
+    const scheduleByAccount = new Map<string, typeof schedulePeriods>();
+    for (const s of schedulePeriods) {
+      if (!scheduleByAccount.has(s.installmentAccountId)) {
+        scheduleByAccount.set(s.installmentAccountId, []);
+      }
+      scheduleByAccount.get(s.installmentAccountId)!.push(s);
+    }
+
+    const now = new Date();
+    const todayStr = dateToManilaDateOnly(now);
+
+    const computedAccounts = allAccounts.filter((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+
+      if (unpaid.length === 0 && periods.length > 0) {
+        return false; // FULLY_PAID — exclude
+      }
+      if (unpaid.length > 0) {
+        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+        return isOverdue || isDueToday || true; // ACTIVE, OVERDUE, or DUE_TODAY
+      }
+      return new Decimal(a.remainingBalance.toString()).gt(0);
+    });
+
+    const activeAccounts = computedAccounts.map((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+      let computedStatus = a.status;
+      if (unpaid.length > 0) {
+        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+        computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
+      }
+      return { ...a, computedStatus };
+    });
+
+    const totalCount = activeAccounts.length;
+    const pagedAccounts = activeAccounts.slice((page - 1) * limit, page * limit);
+
+    const totalOutstanding = pagedAccounts.reduce(
       (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
       new Decimal(0),
     );
 
-    const grandTotal = new Decimal(grandTotalResult._sum.remainingBalance?.toString() ?? "0");
+    const grandTotal = activeAccounts.reduce(
+      (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
+      new Decimal(0),
+    );
 
     return NextResponse.json({
-      accounts: accounts.map((a) => ({
+      accounts: pagedAccounts.map((a) => ({
         id: a.id,
         customerName: a.customerName,
         customerPhone: a.customerPhone,
@@ -47,7 +89,7 @@ export async function GET(request: Request) {
         monthlyInstallment: decimalToString(a.monthlyInstallment),
         scheduleType: a.scheduleType,
         nextDueDate: dateToManilaDateOnly(a.nextDueDate),
-        status: a.status,
+        status: a.computedStatus,
         term: a.term,
       })),
       totalOutstanding: decimalToString(totalOutstanding),

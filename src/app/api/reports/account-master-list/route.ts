@@ -213,8 +213,24 @@ export async function GET(request: Request) {
         ? Math.floor((new Date().getTime() - earliestOverdue.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       const lastPayInfo = lastPaymentMap.get(a.id);
-      let dueLabel = daysOverdue > 0 ? `${daysOverdue}d overdue` : nextDue === todayStr ? "Due Today" : nextDue;
-      if (a.status === "FULLY_PAID") dueLabel = "Paid";
+      const accountSchedules = scheduleMap.get(a.id) ?? [];
+      const allPaid = accountSchedules.length > 0 && accountSchedules.every((s) => s.status === "PAID");
+      const unpaidSchedules = accountSchedules.filter((s) => s.status !== "PAID");
+      const isDueToday = unpaidSchedules.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+
+      let computedStatus: string;
+      if (allPaid) {
+        computedStatus = "FULLY_PAID";
+      } else if (daysOverdue > 0) {
+        computedStatus = "OVERDUE";
+      } else if (isDueToday) {
+        computedStatus = "DUE_TODAY";
+      } else {
+        computedStatus = "ACTIVE";
+      }
+
+      let dueLabel = daysOverdue > 0 ? `${daysOverdue}d overdue` : nextDue === todayStr || isDueToday ? "Due Today" : nextDue;
+      if (allPaid) dueLabel = "Paid";
 
       return {
         id: a.id,
@@ -229,7 +245,7 @@ export async function GET(request: Request) {
         remainingBalance: decimalToString(a.remainingBalance),
         monthlyInstallment: decimalToString(a.monthlyInstallment),
         term: a.term,
-        status: a.status,
+        status: computedStatus,
         scheduleType: a.scheduleType,
         dueDays: a.dueDays,
         nextDueDate: nextDue,
