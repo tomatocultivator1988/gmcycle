@@ -368,8 +368,13 @@ export default function ReportPage() {
                 setEmailing(true);
                 setEmailResult(null);
                 try {
+                  const params = new URLSearchParams();
+                  if (selectedDate) params.set("date", selectedDate);
+                  if (selectedPaidStatus) params.set("paidStatus", selectedPaidStatus);
+                  if (selectedMonth) params.set("month", selectedMonth);
+                  const qs = params.toString();
                   const res = await apiRequest<{ message: string }>(
-                    `/api/reports/${slug}/email`,
+                    `/api/reports/${slug}/email${qs ? `?${qs}` : ""}`,
                     { method: "POST" },
                   );
                   setEmailResult({ ok: true, message: res.message });

@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
-import { parseDateOnly } from "@/lib/dates";
+import { dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
 import { decimalToString, parseMoney, parsePositiveMoney, roundTo } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
@@ -42,8 +42,45 @@ export async function GET(request: Request) {
       prisma.installmentAccount.count({ where }),
     ]);
 
+    const accountIds = accounts.map((a) => a.id);
+    const schedulePeriods = accountIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
+          where: { installmentAccountId: { in: accountIds } },
+          select: { installmentAccountId: true, dueDate: true, status: true },
+        })
+      : [];
+    const scheduleByAccount = new Map<string, typeof schedulePeriods>();
+    for (const s of schedulePeriods) {
+      if (!scheduleByAccount.has(s.installmentAccountId)) {
+        scheduleByAccount.set(s.installmentAccountId, []);
+      }
+      scheduleByAccount.get(s.installmentAccountId)!.push(s);
+    }
+
+    const now = new Date();
+    const todayStr = dateToManilaDateOnly(now);
+
+    const serialized = accounts.map((account) => {
+      const result = serializeInstallmentAccount(account);
+      const periods = scheduleByAccount.get(account.id) ?? [];
+
+      if (account.status !== "APPLIED" && account.status !== "CLOSED") {
+        const unpaid = periods.filter((s) => s.status !== "PAID");
+
+        if (unpaid.length === 0 && periods.length > 0) {
+          result.status = "FULLY_PAID";
+        } else if (unpaid.length > 0) {
+          const isOverdue = unpaid.some((s) => s.dueDate < now);
+          const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+          result.status = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
+        }
+      }
+
+      return result;
+    });
+
     return NextResponse.json({
-      installmentAccounts: accounts.map(serializeInstallmentAccount),
+      installmentAccounts: serialized,
       pagination: {
         page,
         limit,

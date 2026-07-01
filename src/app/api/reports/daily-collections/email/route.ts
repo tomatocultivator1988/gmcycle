@@ -8,9 +8,23 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const { start, end } = getManilaDayRange();
+    const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get("date");
+
+    let start: Date;
+    let end: Date;
+
+    if (dateParam) {
+      start = new Date(`${dateParam}T00:00:00.000+08:00`);
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+    } else {
+      const range = getManilaDayRange();
+      start = range.start;
+      end = range.end;
+    }
 
     const payments = await prisma.payment.findMany({
       where: { paymentDate: { gte: start, lt: end }, voided: false },
@@ -50,12 +64,12 @@ export async function POST() {
           <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">Summary</h3>
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <tr><td style="padding:4px 0;color:#64748b;">Date</td><td style="padding:4px 0;text-align:right;font-weight:700;">${dateLabel}</td></tr>
-            <tr><td style="padding:4px 0;color:#64748b;">Today's Total</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#059669;">${formatPeso(total.toFixed(2))}</td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Total</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#059669;">${formatPeso(total.toFixed(2))}</td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">Transactions</td><td style="padding:4px 0;text-align:right;font-weight:700;">${payments.length}</td></tr>
           </table>
         </div>
 
-        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Collections (${payments.length})</h3>
+        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">Collections (${payments.length})</h3>
         ${payments.length > 0 ? `
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
@@ -69,7 +83,7 @@ export async function POST() {
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
-        </table>` : "<p style='color:#94a3b8;font-size:13px;'>No collections today.</p>"}
+        </table>` : "<p style='color:#94a3b8;font-size:13px;'>No collections for this date.</p>"}
 
         <p style="margin-top:24px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #e2e8f0;padding-top:12px;">
           MyFaveGadgets — Gadget Installment Monitoring &bull; Generated: ${generatedAt}

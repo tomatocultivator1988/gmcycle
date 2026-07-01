@@ -7,10 +7,20 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get("date");
+
+    const whereBase: Record<string, unknown> = {
+      status: { in: ["ACTIVE", "DUE_TODAY", "OVERDUE"] },
+    };
+    if (date) {
+      whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
+    }
+
     const accounts = await prisma.installmentAccount.findMany({
-      where: { status: { in: ["ACTIVE", "DUE_TODAY", "OVERDUE"] } },
+      where: whereBase,
       orderBy: { nextDueDate: "asc" },
     });
 

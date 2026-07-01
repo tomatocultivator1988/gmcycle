@@ -8,18 +8,34 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const accounts = await prisma.installmentAccount.findMany({
-      where: { status: { notIn: ["APPLIED", "CLOSED"] } },
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get("date");
+    const paidStatus = searchParams.get("paidStatus");
+
+    const scheduleEndDate = date ? new Date(date + "T23:59:59.999+08:00") : undefined;
+
+    const whereBase: Record<string, unknown> = {
+      status: { notIn: ["APPLIED", "CLOSED"] },
+    };
+    if (scheduleEndDate) {
+      whereBase.schedule = { some: { dueDate: { lte: scheduleEndDate } } };
+    }
+
+    const allAccounts = await prisma.installmentAccount.findMany({
+      where: whereBase,
       orderBy: { customerName: "asc" },
     });
 
-    const accountIds = accounts.map((a) => a.id);
+    const accountIds = allAccounts.map((a) => a.id);
 
     const schedules = accountIds.length > 0
       ? await prisma.installmentSchedule.findMany({
-          where: { installmentAccountId: { in: accountIds } },
+          where: {
+            installmentAccountId: { in: accountIds },
+            ...(scheduleEndDate ? { dueDate: { lte: scheduleEndDate } } : {}),
+          },
         })
       : [];
 
@@ -31,16 +47,38 @@ export async function POST() {
       scheduleMap.get(s.installmentAccountId)!.push(s);
     }
 
+    const paidAccounts: typeof allAccounts = [];
+    const unpaidAccounts: typeof allAccounts = [];
+    for (const a of allAccounts) {
+      const accountSchedules = scheduleMap.get(a.id) ?? [];
+      if (accountSchedules.length > 0 && accountSchedules.every((s) => s.status === "PAID")) {
+        paidAccounts.push(a);
+      } else {
+        unpaidAccounts.push(a);
+      }
+    }
+
+    let accounts: typeof allAccounts;
+    if (paidStatus === "paid") {
+      accounts = paidAccounts;
+    } else if (paidStatus === "unpaid") {
+      accounts = unpaidAccounts;
+    } else {
+      accounts = allAccounts;
+    }
+
+    const filteredIds = accounts.map((a) => a.id);
+
     const totalBalance = accounts.reduce(
       (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
       new Decimal(0),
     );
 
     const paymentWhere: Record<string, unknown> = {
-      installmentAccountId: { in: accountIds },
+      installmentAccountId: { in: filteredIds.length > 0 ? filteredIds : [""] },
       voided: false,
     };
-    const totalCollectedResult = accountIds.length > 0
+    const totalCollectedResult = filteredIds.length > 0
       ? await prisma.payment.aggregate({
           where: paymentWhere,
           _sum: { totalAmount: true },
@@ -52,11 +90,11 @@ export async function POST() {
 
     const todayStr = getManilaTodayDateString();
 
-    const overduePeriods = accountIds.length > 0
+    const overduePeriods = filteredIds.length > 0
       ? await prisma.installmentSchedule.groupBy({
           by: ["installmentAccountId"],
           where: {
-            installmentAccountId: { in: accountIds },
+            installmentAccountId: { in: filteredIds },
             status: { in: ["PENDING", "OVERDUE", "PARTIAL"] },
             dueDate: { lt: new Date() },
           },

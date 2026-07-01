@@ -416,6 +416,15 @@ export default function InstallmentAccountsPage() {
                 </button>
               ))}
               <span className="text-xs text-slate-400 ml-auto">{previewAccounts.length} accounts with email</span>
+              {previewAccounts.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  {selectedIds.size === previewAccounts.length ? "Deselect All" : "Select All"}
+                </button>
+              ) : null}
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-2">
@@ -427,6 +436,10 @@ export default function InstallmentAccountsPage() {
                 <>
                 {/* Mobile: Cards */}
                 <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto">
+                  <div className="flex items-center justify-between px-1 py-1 text-xs text-slate-400 font-medium">
+                    <span>Select All</span>
+                    <input type="checkbox" checked={selectedIds.size === previewAccounts.length && previewAccounts.length > 0} onChange={toggleSelectAll} className="size-4 rounded border-slate-300 accent-red-800" />
+                  </div>
                   {previewAccounts.map((a: any) => (
                     <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-xs space-y-1.5">
                       <label className="flex items-center gap-2">

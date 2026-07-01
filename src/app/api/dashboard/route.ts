@@ -18,14 +18,19 @@ export async function GET() {
     const monthEnd = endOfMonth(now);
 
     const [
-      statusCounts,
+      stableCounts,
       accountAggsResult,
       paymentAggsResult,
       agingResult,
       badRecords,
       unsecuredDevices,
+      computedStatuses,
     ] = await Promise.all([
-      prisma.installmentAccount.groupBy({ by: ["status"], _count: true }),
+      prisma.installmentAccount.groupBy({
+        by: ["status"],
+        _count: true,
+        where: { status: { in: ["APPLIED", "FULLY_PAID", "CLOSED"] } },
+      }),
 
       prisma.$queryRawUnsafe<Array<{
         total_installment: string;
@@ -82,7 +87,7 @@ export async function GET() {
             SELECT s."installmentAccountId", s."dueDate" as due_date
             FROM "InstallmentSchedule" s
             JOIN "InstallmentAccount" a ON a.id = s."installmentAccountId"
-            WHERE a.status = 'OVERDUE'
+            WHERE a.status IN ('ACTIVE','OVERDUE','DUE_TODAY')
               AND s.status IN ('PENDING', 'OVERDUE', 'PARTIAL')
               AND s."dueDate" < CURRENT_DATE
           ) sub
@@ -92,11 +97,39 @@ export async function GET() {
 
       prisma.installmentAccount.count({ where: { badRecord: true, status: { notIn: ["FULLY_PAID", "CLOSED"] as any } } }),
       prisma.installmentAccount.count({ where: { status: "ACTIVE" as any, deviceEmail: null } }),
+
+      prisma.$queryRawUnsafe<Array<{ status: string; count: number }>>(`
+        SELECT sub.computed_status AS status, COUNT(*)::int AS count
+        FROM (
+          SELECT a.id,
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM "InstallmentSchedule" s
+                WHERE s."installmentAccountId" = a.id
+                  AND s.status IN ('PENDING', 'PARTIAL', 'OVERDUE')
+                  AND s."dueDate" < CURRENT_DATE
+              ) THEN 'OVERDUE'
+              WHEN EXISTS (
+                SELECT 1 FROM "InstallmentSchedule" s
+                WHERE s."installmentAccountId" = a.id
+                  AND s.status IN ('PENDING', 'PARTIAL', 'OVERDUE')
+                  AND s."dueDate" = CURRENT_DATE
+              ) THEN 'DUE_TODAY'
+              ELSE 'ACTIVE'
+            END AS computed_status
+          FROM "InstallmentAccount" a
+          WHERE a.status NOT IN ('APPLIED', 'CLOSED', 'FULLY_PAID')
+        ) sub
+        GROUP BY sub.computed_status
+      `),
     ]);
 
     const countMap: Record<string, number> = {};
-    for (const row of statusCounts) {
+    for (const row of stableCounts) {
       countMap[row.status] = row._count;
+    }
+    for (const row of computedStatuses) {
+      countMap[row.status] = (countMap[row.status] ?? 0) + row.count;
     }
 
     const accountAggs = accountAggsResult[0] ?? { total_installment: "0", total_down: "0", total_outstanding: "0", total_cash: "0", total_installment_price: "0", total_processing_fees: "0", total_cash_price: "0" };

@@ -15,9 +15,24 @@ function getMonthRange(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const { start: monthStart, end: monthEnd } = getMonthRange(getManilaDayRange().start);
+    const { searchParams } = new URL(request.url);
+    const monthParam = searchParams.get("month");
+
+    let monthStart: Date;
+    let monthEnd: Date;
+
+    if (monthParam) {
+      monthStart = new Date(`${monthParam}-01T00:00:00.000+08:00`);
+      monthEnd = new Date(monthStart);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+    } else {
+      const range = getMonthRange(getManilaDayRange().start);
+      monthStart = range.start;
+      monthEnd = range.end;
+    }
+
     const monthLabel = dateToManilaDateOnly(monthStart).slice(0, 7);
 
     const payments = await prisma.payment.findMany({
@@ -62,7 +77,7 @@ export async function POST() {
           </table>
         </div>
 
-        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Collections (${payments.length})</h3>
+        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">Collections (${payments.length})</h3>
         ${payments.length > 0 ? `
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
