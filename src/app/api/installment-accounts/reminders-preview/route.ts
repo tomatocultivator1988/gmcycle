@@ -17,15 +17,6 @@ export async function GET(request: Request) {
       customerEmail: { not: null },
     };
 
-    if (statusFilter) {
-      const statuses = statusFilter.split(",").filter(Boolean);
-      if (statuses.length > 0) {
-        where.status = { in: statuses as any };
-      }
-    } else {
-      where.status = { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any };
-    }
-
     if (date) {
       where.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
     }
@@ -39,20 +30,63 @@ export async function GET(request: Request) {
       prisma.installmentAccount.count({ where }),
     ]);
 
-    const rows = accounts.map((a) => ({
-      id: a.id,
-      customerName: a.customerName,
-      customerPhone: a.customerPhone,
-      customerEmail: a.customerEmail,
-      brand: a.brand,
-      model: a.model,
-      unitDescription: a.unitDescription,
-      status: a.status,
-      nextDueDate: dateToManilaDateOnly(a.nextDueDate),
-      remainingBalance: decimalToString(a.remainingBalance),
-      monthlyInstallment: decimalToString(a.monthlyInstallment),
-      term: a.term,
-    }));
+    const accountIds = accounts.map((a) => a.id);
+    const schedulePeriods = accountIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
+          where: { installmentAccountId: { in: accountIds } },
+          select: { installmentAccountId: true, dueDate: true, status: true },
+        })
+      : [];
+    const scheduleByAccount = new Map<string, typeof schedulePeriods>();
+    for (const s of schedulePeriods) {
+      if (!scheduleByAccount.has(s.installmentAccountId)) {
+        scheduleByAccount.set(s.installmentAccountId, []);
+      }
+      scheduleByAccount.get(s.installmentAccountId)!.push(s);
+    }
+
+    const now = new Date();
+    const todayStr = dateToManilaDateOnly(now);
+
+    let rows = accounts.map((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+
+      let computedStatus = a.status;
+      if (a.status !== "APPLIED" && a.status !== "CLOSED") {
+        if (unpaid.length === 0 && periods.length > 0) {
+          computedStatus = "FULLY_PAID";
+        } else if (unpaid.length > 0) {
+          const isOverdue = unpaid.some((s) => s.dueDate < now);
+          const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+          computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
+        }
+      }
+
+      return {
+        id: a.id,
+        customerName: a.customerName,
+        customerPhone: a.customerPhone,
+        customerEmail: a.customerEmail,
+        brand: a.brand,
+        model: a.model,
+        unitDescription: a.unitDescription,
+        status: computedStatus,
+        nextDueDate: dateToManilaDateOnly(a.nextDueDate),
+        remainingBalance: decimalToString(a.remainingBalance),
+        monthlyInstallment: decimalToString(a.monthlyInstallment),
+        term: a.term,
+      };
+    });
+
+    if (statusFilter) {
+      const statuses = statusFilter.split(",").filter(Boolean);
+      if (statuses.length > 0) {
+        rows = rows.filter((r) => statuses.includes(r.status));
+      }
+    } else {
+      rows = rows.filter((r) => ["ACTIVE", "OVERDUE", "DUE_TODAY"].includes(r.status));
+    }
 
     return NextResponse.json({ accounts: rows, total });
   } catch (error) {
