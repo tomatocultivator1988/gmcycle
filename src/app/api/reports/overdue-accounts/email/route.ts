@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
 import { dateToManilaDateOnly, getManilaTodayDateString } from "@/lib/dates";
-import { decimalToString, formatPeso } from "@/lib/money";
+import { formatPeso } from "@/lib/money";
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
@@ -13,22 +13,56 @@ export async function POST(request: Request) {
     const date = searchParams.get("date");
 
     const whereBase: Record<string, unknown> = {
-      status: { in: ["ACTIVE", "DUE_TODAY", "OVERDUE"] },
+      status: { notIn: ["APPLIED", "CLOSED"] as any },
     };
     if (date) {
       whereBase.nextDueDate = { lte: new Date(date + "T23:59:59.999+08:00") };
     }
 
-    const accounts = await prisma.installmentAccount.findMany({
+    const allAccounts = await prisma.installmentAccount.findMany({
       where: whereBase,
       orderBy: { nextDueDate: "asc" },
     });
 
-    const overdueCount = await prisma.installmentAccount.count({
-      where: { status: "OVERDUE" as any },
+    const allIds = allAccounts.map((a) => a.id);
+    const schedulePeriods = allIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
+          where: { installmentAccountId: { in: allIds } },
+          select: { installmentAccountId: true, dueDate: true, status: true },
+        })
+      : [];
+    const scheduleByAccount = new Map<string, typeof schedulePeriods>();
+    for (const s of schedulePeriods) {
+      if (!scheduleByAccount.has(s.installmentAccountId)) {
+        scheduleByAccount.set(s.installmentAccountId, []);
+      }
+      scheduleByAccount.get(s.installmentAccountId)!.push(s);
+    }
+
+    const now = new Date();
+    const todayStr = getManilaTodayDateString();
+
+    const computedAccounts = allAccounts.map((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+
+      let computedStatus = a.status;
+      if (unpaid.length === 0 && periods.length > 0) {
+        computedStatus = "FULLY_PAID";
+      } else if (unpaid.length > 0) {
+        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+        computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
+      }
+
+      return { ...a, computedStatus };
     });
 
-    const accountIds = accounts.map((a) => a.id);
+    const activeAccounts = computedAccounts.filter(
+      (a) => a.computedStatus === "ACTIVE" || a.computedStatus === "OVERDUE" || a.computedStatus === "DUE_TODAY",
+    );
+    const overdueCount = activeAccounts.filter((a) => a.computedStatus === "OVERDUE").length;
+    const accountIds = activeAccounts.map((a) => a.id);
 
     const overduePeriods = accountIds.length > 0
       ? await prisma.installmentSchedule.groupBy({
@@ -45,23 +79,39 @@ export async function POST(request: Request) {
       overduePeriods.map((p) => [p.installmentAccountId, p._min.dueDate]),
     );
 
-    const todayStr = getManilaTodayDateString();
+    const lastPayments = accountIds.length > 0
+      ? await prisma.payment.findMany({
+          where: { installmentAccountId: { in: accountIds }, voided: false },
+          orderBy: { paymentDate: "desc" },
+          distinct: ["installmentAccountId"],
+        })
+      : [];
+    const paymentMap = new Map(lastPayments.map((p) => [p.installmentAccountId, p]));
+
     const generatedAt = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
 
-    const rowsHtml = accounts.map((a) => {
+    const rowsHtml = activeAccounts.map((a) => {
       const earliestOverdue = earliestOverdueMap.get(a.id);
       const daysOverdue = earliestOverdue
         ? Math.floor((new Date().getTime() - earliestOverdue.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
-      const statusColor = a.status === "OVERDUE" ? "#b91c1c" : a.status === "DUE_TODAY" ? "#d97706" : "#059669";
+      const s = a.computedStatus;
+      const statusColor = s === "OVERDUE" ? "#b91c1c" : s === "DUE_TODAY" ? "#d97706" : "#059669";
+      const lastPay = paymentMap.get(a.id);
+      const perPeriodLabel = a.scheduleType === "SEMI_MONTHLY" ? "/per" : "/mo";
+      const lastPayDisplay = lastPay
+        ? `${dateToManilaDateOnly(lastPay.paymentDate)} — ${formatPeso(lastPay.totalAmount.toString())}`
+        : "\u2014";
       return `
       <tr>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${a.customerName}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${a.brand} ${a.model}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${a.customerPhone}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${dateToManilaDateOnly(a.nextDueDate)}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${statusColor};">${a.status}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${statusColor};">${s}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:500;">${formatPeso(a.remainingBalance.toString())}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;">${formatPeso(a.monthlyInstallment.toString())}<span style="font-size:10px;color:#94a3b8;">${perPeriodLabel}</span></td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;font-size:11px;">${lastPayDisplay}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${daysOverdue > 0 ? `<span style="color:#b91c1c;">${daysOverdue}d</span>` : "\u2014"}</td>
       </tr>`;
     }).join("");
@@ -77,12 +127,12 @@ export async function POST(request: Request) {
         <div style="margin-bottom:20px;">
           <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">Summary</h3>
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <tr><td style="padding:4px 0;color:#64748b;">Total Accounts</td><td style="padding:4px 0;text-align:right;font-weight:700;">${accounts.length}</td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Total Accounts</td><td style="padding:4px 0;text-align:right;font-weight:700;">${activeAccounts.length}</td></tr>
             <tr><td style="padding:4px 0;color:#64748b;">Overdue</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#b91c1c;">${overdueCount}</td></tr>
           </table>
         </div>
 
-        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Accounts (${accounts.length})</h3>
+        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Accounts (${activeAccounts.length})</h3>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:#f1f5f9;">
@@ -92,6 +142,8 @@ export async function POST(request: Request) {
               <th style="padding:6px 8px;text-align:right;font-weight:600;color:#475569;">Due Date</th>
               <th style="padding:6px 8px;text-align:center;font-weight:600;color:#475569;">Status</th>
               <th style="padding:6px 8px;text-align:right;font-weight:600;color:#475569;">Balance</th>
+              <th style="padding:6px 8px;text-align:right;font-weight:600;color:#475569;">Per Period</th>
+              <th style="padding:6px 8px;text-align:right;font-weight:600;color:#475569;">Last Payment</th>
               <th style="padding:6px 8px;text-align:right;font-weight:600;color:#475569;">Days</th>
             </tr>
           </thead>
@@ -112,7 +164,7 @@ export async function POST(request: Request) {
       html,
     });
 
-    return NextResponse.json({ message: "Due date monitoring report emailed", total: accounts.length, overdue: overdueCount });
+    return NextResponse.json({ message: "Due date monitoring report emailed", total: activeAccounts.length, overdue: overdueCount });
   } catch (error) {
     return handleApiError(error);
   }

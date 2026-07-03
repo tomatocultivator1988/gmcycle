@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
 import { dateToManilaDateOnly } from "@/lib/dates";
-import { decimalToString, formatPeso } from "@/lib/money";
+import { formatPeso } from "@/lib/money";
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
@@ -10,20 +10,66 @@ export const runtime = "nodejs";
 
 export async function POST() {
   try {
-    const accounts = await prisma.installmentAccount.findMany({
-      where: { status: { in: ["ACTIVE", "OVERDUE", "DUE_TODAY"] as any } },
+    const allAccounts = await prisma.installmentAccount.findMany({
+      where: { status: { notIn: ["APPLIED", "CLOSED"] as any } },
       orderBy: { remainingBalance: "desc" },
     });
 
-    const totalOutstanding = accounts.reduce(
+    const allIds = allAccounts.map((a) => a.id);
+    const schedulePeriods = allIds.length > 0
+      ? await prisma.installmentSchedule.findMany({
+          where: { installmentAccountId: { in: allIds } },
+          select: { installmentAccountId: true, dueDate: true, status: true },
+        })
+      : [];
+    const scheduleByAccount = new Map<string, typeof schedulePeriods>();
+    for (const s of schedulePeriods) {
+      if (!scheduleByAccount.has(s.installmentAccountId)) {
+        scheduleByAccount.set(s.installmentAccountId, []);
+      }
+      scheduleByAccount.get(s.installmentAccountId)!.push(s);
+    }
+
+    const now = new Date();
+    const todayStr = dateToManilaDateOnly(now);
+
+    const activeAccounts = allAccounts.filter((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+
+      if (unpaid.length === 0 && periods.length > 0) {
+        return false; // FULLY_PAID — exclude
+      }
+      if (unpaid.length > 0) {
+        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+        return isOverdue || isDueToday || true; // ACTIVE, OVERDUE, or DUE_TODAY
+      }
+      return new Decimal(a.remainingBalance.toString()).gt(0);
+    });
+
+    const computedAccounts = activeAccounts.map((a) => {
+      const periods = scheduleByAccount.get(a.id) ?? [];
+      const unpaid = periods.filter((s) => s.status !== "PAID");
+      let computedStatus = a.status;
+      if (unpaid.length > 0) {
+        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
+        computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
+      }
+      return { ...a, computedStatus };
+    });
+
+    const totalOutstanding = computedAccounts.reduce(
       (sum, a) => sum.plus(new Decimal(a.remainingBalance.toString())),
       new Decimal(0),
     );
 
     const generatedAt = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
 
-    const rowsHtml = accounts.map((a) => {
-      const statusColor = a.status === "OVERDUE" ? "#b91c1c" : a.status === "DUE_TODAY" ? "#d97706" : "#059669";
+    const rowsHtml = computedAccounts.map((a) => {
+      const s = a.computedStatus;
+      const statusColor = s === "OVERDUE" ? "#b91c1c" : s === "DUE_TODAY" ? "#d97706" : "#059669";
       return `
       <tr>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${a.customerName}</td>
@@ -32,7 +78,7 @@ export async function POST() {
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:500;">${formatPeso(a.remainingBalance.toString())}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatPeso(a.monthlyInstallment.toString())}<span style="font-size:10px;color:#94a3b8;">${a.scheduleType === "SEMI_MONTHLY" ? "/per" : "/mo"}</span></td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">${dateToManilaDateOnly(a.nextDueDate)}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${statusColor};">${a.status}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${statusColor};">${s}</td>
       </tr>`;
     }).join("");
 
@@ -48,12 +94,12 @@ export async function POST() {
           <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">Summary</h3>
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <tr><td style="padding:4px 0;color:#64748b;">Total Outstanding</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#b91c1c;">${formatPeso(totalOutstanding.toFixed(2))}</td></tr>
-            <tr><td style="padding:4px 0;color:#64748b;">Active Accounts</td><td style="padding:4px 0;text-align:right;font-weight:700;">${accounts.length}</td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Active Accounts</td><td style="padding:4px 0;text-align:right;font-weight:700;">${computedAccounts.length}</td></tr>
           </table>
         </div>
 
-        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Accounts (${accounts.length})</h3>
-        ${accounts.length > 0 ? `
+        <h3 style="font-size:14px;color:#475569;margin:0 0 8px;">All Accounts (${computedAccounts.length})</h3>
+        ${computedAccounts.length > 0 ? `
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:#f1f5f9;">
@@ -83,7 +129,7 @@ export async function POST() {
       html,
     });
 
-    return NextResponse.json({ message: "Outstanding balance report emailed", totalOutstanding: totalOutstanding.toFixed(2), count: accounts.length });
+    return NextResponse.json({ message: "Outstanding balance report emailed", totalOutstanding: totalOutstanding.toFixed(2), count: computedAccounts.length });
   } catch (error) {
     return handleApiError(error);
   }
