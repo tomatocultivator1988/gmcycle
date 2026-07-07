@@ -267,9 +267,16 @@ async function sendReceiptEmail(accountId: string, payment: any, serialized: any
     });
     const totalPaid = allPayments.reduce((sum, p) => sum.plus(new Decimal(p.totalAmount)), new Decimal(0));
 
+    const paidCount = await prisma.installmentSchedule.count({
+      where: { installmentAccountId: accountId, status: "PAID" },
+    });
+    const totalPeriods = account.scheduleType === "SEMI_MONTHLY" ? account.term * 2 : account.term;
+
     sendPaymentReceipt({
       customerEmail: account.customerEmail,
       customerName: account.customerName,
+      customerAddress: account.customerAddress,
+      customerPhone: account.customerPhone,
       paymentId: payment.id,
       paymentDate: serialized.paymentDate,
       paymentType: payment.paymentType,
@@ -282,6 +289,9 @@ async function sendReceiptEmail(accountId: string, payment: any, serialized: any
       model: account.model,
       unitDescription: account.unitDescription,
       monthlyInstallment: account.monthlyInstallment.toString(),
+      scheduleType: account.scheduleType,
+      paidCount,
+      totalPeriods,
       notes: payment.notes,
       cashier: payment.cashier,
     }).catch((err) => console.error("Receipt email failed:", err));

@@ -18,6 +18,8 @@ function getTransporter() {
 interface ReceiptEmailData {
   customerEmail: string;
   customerName: string;
+  customerAddress: string;
+  customerPhone: string;
   paymentId: string;
   paymentDate: string;
   paymentType: string;
@@ -30,6 +32,9 @@ interface ReceiptEmailData {
   model: string;
   unitDescription: string;
   monthlyInstallment: string;
+  scheduleType: string;
+  paidCount: number;
+  totalPeriods: number;
   notes: string | null;
   cashier: string | null;
 }
@@ -72,13 +77,16 @@ function buildReceiptHtml(data: ReceiptEmailData): string {
     <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
       <p style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; margin: 0 0 8px;">Customer</p>
       <p style="font-weight: 500; color: #0f172a; margin: 0 0 4px;">${data.customerName}</p>
+      <p style="font-size: 12px; color: #64748b; margin: 0;">${data.customerAddress}</p>
+      <p style="font-size: 12px; color: #64748b; margin: 2px 0 0;">${data.customerPhone}</p>
     </div>
 
     <div style="margin-top: 16px;">
       <p style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; margin: 0 0 8px;">Device</p>
       <p style="font-size: 14px; color: #0f172a; margin: 0;">${data.brand} ${data.model}</p>
       <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">${data.unitDescription}</p>
-      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">Monthly: ${formatPeso(data.monthlyInstallment)}</p>
+      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">${data.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"}: ${formatPeso(data.monthlyInstallment)}</p>
+      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">Payment ${data.paidCount} of ${data.totalPeriods} period${data.totalPeriods !== 1 ? "s" : ""}</p>
     </div>
 
     <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
@@ -138,6 +146,7 @@ interface DpReceiptData {
   startDate: string;
   term: number;
   monthlyInstallment: string;
+  scheduleType?: string;
 }
 
 function buildDpReceiptHtml(data: DpReceiptData): string {
@@ -179,7 +188,7 @@ function buildDpReceiptHtml(data: DpReceiptData): string {
       <p style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; margin: 0 0 8px;">Device</p>
       <p style="font-size: 14px; color: #0f172a; margin: 0;">${data.brand} ${data.model}</p>
       <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">${data.unitDescription}</p>
-      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">Term: ${data.term} months &bull; ${formatPeso(data.monthlyInstallment)}/mo</p>
+      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0;">Term: ${data.scheduleType === "SEMI_MONTHLY" ? `${data.term} months (${data.term * 2} periods) &bull; ${formatPeso(data.monthlyInstallment)}/period` : `${data.term} months &bull; ${formatPeso(data.monthlyInstallment)}/mo`}</p>
     </div>
 
     <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 16px;">

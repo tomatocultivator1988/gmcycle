@@ -134,7 +134,7 @@ export async function POST(request: Request) {
       const statusColor = computedStatus === "OVERDUE" ? "#b91c1c" : computedStatus === "FULLY_PAID" ? "#059669" : computedStatus === "DUE_TODAY" ? "#d97706" : "#0f172a";
       const nextUnpaid = unpaidSchedules.length > 0 ? unpaidSchedules.reduce((a, b) => a.periodNumber < b.periodNumber ? a : b) : null;
       const nextDueDate = nextUnpaid ? dateToManilaDateOnly(nextUnpaid.dueDate) : "\u2014";
-      const termLabel = a.scheduleType === "SEMI_MONTHLY" ? `${a.term} per` : `${a.term} mos`;
+      const termLabel = a.scheduleType === "SEMI_MONTHLY" ? `${a.term}mo (${a.term * 2} periods)` : `${a.term}mo`;
       const dueDayLabel = Array.isArray(a.dueDays) ? a.dueDays.join("/") : a.dueDays ?? "\u2014";
       return `
       <tr>

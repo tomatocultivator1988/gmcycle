@@ -194,6 +194,7 @@ export async function POST(request: Request) {
       startDate: serialized.startDate,
       term: serialized.term,
       monthlyInstallment: serialized.monthlyInstallment,
+      scheduleType: serialized.scheduleType,
     });
 
     return NextResponse.json(

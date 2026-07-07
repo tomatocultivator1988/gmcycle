@@ -599,7 +599,7 @@ export function InstallmentAccountForm() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">Monthly</div>
+                  <div className="text-xs font-semibold font-heading uppercase tracking-wider text-slate-500">{form.scheduleType === "SEMI_MONTHLY" ? "Per Period" : "Monthly"}</div>
                   <div className="mt-1 text-lg font-bold text-slate-900">
                     {formatPeso(monthlyInstallment.toFixed(2))}
                   </div>
