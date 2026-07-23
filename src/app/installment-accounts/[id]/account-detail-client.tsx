@@ -111,6 +111,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
   const [postSuccess, setPostSuccess] = useState("");
   const [penaltyPeriodId, setPenaltyPeriodId] = useState<string | null>(null);
   const [penaltyAmount, setPenaltyAmount] = useState("");
+  const [penaltyRefDate, setPenaltyRefDate] = useState("");
   const [penaltyPerDay, setPenaltyPerDay] = useState("50");
   const [applyingPenalty, setApplyingPenalty] = useState(false);
   const [showPenaltyModal, setShowPenaltyModal] = useState(false);
@@ -390,6 +391,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
 
     setPenaltyPeriodId(periodId);
     setPenaltyAmount(accrued > 0 ? String(accrued) : penaltyPerDay);
+    setPenaltyRefDate(todayDateOnly());
     setShowPenaltyModal(true);
   }
 
@@ -488,6 +490,7 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
         body: JSON.stringify({
           periodId: penaltyPeriodId,
           appliedAmount: penaltyAmount,
+          asOfDate: penaltyRefDate || undefined,
         }),
       });
       setShowPenaltyModal(false);
@@ -1637,8 +1640,8 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                 const period = schedule.find((s) => s.id === penaltyPeriodId);
                 if (!period) return null;
                 const due = new Date(period.dueDate + "T00:00:00+08:00");
-                const today = new Date(todayDateOnly() + "T00:00:00+08:00");
-                const diffDays = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+                const refDate = penaltyRefDate ? new Date(penaltyRefDate + "T00:00:00+08:00") : new Date(todayDateOnly() + "T00:00:00+08:00");
+                const diffDays = Math.max(0, Math.floor((refDate.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
                 const accrued = diffDays * Number(penaltyPerDay);
                 const applied = Number(penaltyAmount) || 0;
                 const waived = accrued - applied > 0 ? accrued - applied : 0;
@@ -1650,6 +1653,18 @@ export function AccountDetailClient({ accountId }: { accountId: string }) {
                       <p className="text-xs text-slate-500">Days Overdue: <span className="font-semibold text-slate-900">{diffDays}</span></p>
                       <p className="text-xs text-slate-500">Rate: ₱{penaltyPerDay}/day</p>
                       <p className="text-sm font-bold text-rose-700">Accrued: ₱{accrued.toLocaleString()}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700">
+                        Payment Date
+                        <input
+                          type="date"
+                          value={penaltyRefDate}
+                          onChange={(e) => setPenaltyRefDate(e.target.value)}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition-all focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                      </label>
                     </div>
 
                     <div>

@@ -10,12 +10,20 @@ import { updateOverdueSchedule } from "@/lib/schedule-status";
 
 export const runtime = "nodejs";
 
+function parseAsOfDate(dateStr: string): Date {
+  const parsed = new Date(dateStr + "T00:00:00.000+08:00");
+  if (isNaN(parsed.getTime())) {
+    throw new Error("Invalid asOfDate format");
+  }
+  return parsed;
+}
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id: installmentAccountId } = await context.params;
-    const body = await readJson(request) as { periodId: string; appliedAmount?: string };
+    const body = await readJson(request) as { periodId: string; appliedAmount?: string; asOfDate?: string };
 
     if (!body.periodId) {
       return NextResponse.json({ error: "periodId is required" }, { status: 400 });
@@ -42,8 +50,8 @@ export async function POST(request: Request, context: RouteContext) {
       ? new Decimal(config.penaltyPerDay.toString())
       : new Decimal("50.00");
 
-    const today = new Date();
-    const { daysOverdue, accrued } = computeAccruedPenalty(period.dueDate, today, { penaltyPerDay });
+    const referenceDate = body.asOfDate ? parseAsOfDate(body.asOfDate) : new Date();
+    const { daysOverdue, accrued } = computeAccruedPenalty(period.dueDate, referenceDate, { penaltyPerDay });
 
     const appliedAmount = body.appliedAmount
       ? new Decimal(body.appliedAmount)

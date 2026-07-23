@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson } from "@/lib/api";
-import { dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
+import { dateToManilaDateOnly, isBeforeManilaToday, parseDateOnly } from "@/lib/dates";
 import { ValidationError } from "@/lib/errors";
 import { decimalToString, parseMoney, parsePositiveMoney, roundTo } from "@/lib/money";
 import { generateSchedule } from "@/lib/installment-schedule";
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
         if (unpaid.length === 0 && periods.length > 0) {
           result.status = "FULLY_PAID";
         } else if (unpaid.length > 0) {
-          const isOverdue = unpaid.some((s) => s.dueDate < now);
+          const isOverdue = unpaid.some((s) => isBeforeManilaToday(s.dueDate));
           const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
           result.status = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
         }

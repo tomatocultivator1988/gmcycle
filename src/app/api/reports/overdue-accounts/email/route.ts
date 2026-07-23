@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { dateToManilaDateOnly, getManilaTodayDateString } from "@/lib/dates";
+import { dateToManilaDateOnly, getManilaTodayDateString, isBeforeManilaToday } from "@/lib/dates";
 import { formatPeso } from "@/lib/money";
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       if (unpaid.length === 0 && periods.length > 0) {
         computedStatus = "FULLY_PAID";
       } else if (unpaid.length > 0) {
-        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isOverdue = unpaid.some((s) => isBeforeManilaToday(s.dueDate));
         const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
         computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
       }

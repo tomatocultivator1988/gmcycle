@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api";
-import { dateToManilaDateOnly } from "@/lib/dates";
+import { dateToManilaDateOnly, isBeforeManilaToday } from "@/lib/dates";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
         return false; // FULLY_PAID — exclude
       }
       if (unpaid.length > 0) {
-        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isOverdue = unpaid.some((s) => isBeforeManilaToday(s.dueDate));
         const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
         return isOverdue || isDueToday || true; // ACTIVE, OVERDUE, or DUE_TODAY
       }
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       const unpaid = periods.filter((s) => s.status !== "PAID");
       let computedStatus = a.status;
       if (unpaid.length > 0) {
-        const isOverdue = unpaid.some((s) => s.dueDate < now);
+        const isOverdue = unpaid.some((s) => isBeforeManilaToday(s.dueDate));
         const isDueToday = unpaid.some((s) => dateToManilaDateOnly(s.dueDate) === todayStr);
         computedStatus = isOverdue ? "OVERDUE" : isDueToday ? "DUE_TODAY" : "ACTIVE";
       }
