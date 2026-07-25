@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson, withRetry } from "@/lib/api";
-import { parseDateOnly } from "@/lib/dates";
+import { dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
 import { sendPaymentReceipt } from "@/lib/email";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
@@ -100,10 +100,15 @@ export async function POST(request: Request) {
       const autoPenaltyPeriods: Array<{ periodId: string; amount: Decimal }> = [];
       for (const period of account.schedule) {
         if (period.status === "PAID") continue;
-        const dueDt = period.dueDate instanceof Date ? period.dueDate : new Date(period.dueDate);
-        if (dueDt >= paymentDateMidnight) continue;
 
-        const { accrued } = computeAccruedPenalty(dueDt, paymentDateMidnight, { penaltyPerDay });
+        // Normalize both dates to Manila calendar to avoid UTC timezone offset bug
+        const dueStr = dateToManilaDateOnly(period.dueDate);
+        const payStr = dateToManilaDateOnly(paymentDateMidnight);
+        if (dueStr >= payStr) continue;
+
+        const dueManila = parseDateOnly(dueStr);
+        const payManila = parseDateOnly(payStr);
+        const { accrued } = computeAccruedPenalty(dueManila, payManila, { penaltyPerDay });
         if (accrued.lte(0)) continue;
 
         const currentPenalty = new Decimal(period.penaltyAmount || "0");
