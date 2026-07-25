@@ -48,7 +48,19 @@ export async function POST(request: Request, context: RouteContext) {
         where: { paymentId: id },
       });
 
-      // 2. Restore penaltyAmount and paidAmount on each period using per-period breakdowns
+      // 2. Read auto-penalty records linked to this payment (must reverse auto-applied penalty)
+      const autoPenaltyRecords = await tx.penaltyRecord.findMany({
+        where: { paymentId: id },
+        select: { installmentScheduleId: true, amount: true },
+      });
+      const autoPenaltyByPeriod = new Map<string, Decimal>();
+      for (const r of autoPenaltyRecords) {
+        if (!r.installmentScheduleId) continue;
+        const prev = autoPenaltyByPeriod.get(r.installmentScheduleId) || new Decimal(0);
+        autoPenaltyByPeriod.set(r.installmentScheduleId, prev.plus(new Decimal(r.amount.toString())));
+      }
+
+      // 3. Restore penaltyAmount and paidAmount on each period using per-period breakdowns
       const penaltyBreakdown = payment.penaltyBreakdown as Record<string, string> | null;
       const principalBreakdown = payment.principalBreakdown as Record<string, string> | null;
       const paymentPenalty = new Decimal(payment.penaltyAmount);
@@ -59,7 +71,8 @@ export async function POST(request: Request, context: RouteContext) {
         const periodPenaltyCovered = penaltyBreakdown?.[period.id]
           ? new Decimal(penaltyBreakdown[period.id])
           : numPeriods > 0 ? paymentPenalty.div(numPeriods) : paymentPenalty;
-        const restored = currentPenalty.plus(periodPenaltyCovered);
+        const autoPenalty = autoPenaltyByPeriod.get(period.id) || new Decimal(0);
+        const restored = currentPenalty.plus(periodPenaltyCovered).minus(autoPenalty);
 
         const currentPaidAmount = period.paidAmount
           ? new Decimal(period.paidAmount)
@@ -86,10 +99,10 @@ export async function POST(request: Request, context: RouteContext) {
       });
       await Promise.all(resetPromises);
 
-      // 3. Delete penalty records linked to this payment
+      // 4. Delete penalty records linked to this payment
       await tx.penaltyRecord.deleteMany({ where: { paymentId: id } });
 
-      // 4. Mark payment as voided
+      // 5. Mark payment as voided
       await tx.payment.update({
         where: { id },
         data: {
@@ -99,10 +112,10 @@ export async function POST(request: Request, context: RouteContext) {
         },
       });
 
-      // 5. Recalculate balance and status using shared function
+      // 6. Recalculate balance and status using shared function
       await recalculateBalance(tx, payment.installmentAccountId);
 
-      // 6. Activity log
+      // 7. Activity log
       await tx.activityLog.create({
         data: {
           accountId: payment.installmentAccountId,
