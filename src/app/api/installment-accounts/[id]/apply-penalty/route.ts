@@ -87,7 +87,7 @@ export async function POST(request: Request, context: RouteContext) {
           installmentScheduleId: body.periodId,
           paymentId: period.paymentId || null,
           amount: decimalToString(appliedAmount),
-          appliedDate: new Date(),
+          appliedDate: referenceDate,
           reason,
         },
       });
