@@ -1,13 +1,12 @@
 import Decimal from "decimal.js";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson, withRetry } from "@/lib/api";
-import { dateToManilaDateOnly, parseDateOnly } from "@/lib/dates";
+import { parseDateOnly } from "@/lib/dates";
 import { sendPaymentReceipt } from "@/lib/email";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { decimalToString } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { recalculateBalance } from "@/lib/balance";
-import { computeAccruedPenalty } from "@/lib/penalty";
 import { serializePayment } from "@/lib/serializers";
 import { createPaymentSchema } from "@/lib/validation";
 
@@ -68,66 +67,8 @@ export async function POST(request: Request) {
 
       const totalAmount = new Decimal(body.totalAmount);
 
-      // Compute payment date boundary (Manila midnight)
-      const paymentDateManila = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Manila",
-      }).format(paymentDate);
-      const paymentDateMidnight = new Date(paymentDateManila + "T00:00:00.000+08:00");
-
-      // Mark overdue periods based on payment date
-      await tx.installmentSchedule.updateMany({
-        where: {
-          installmentAccountId: account.id,
-          status: { in: ["PENDING"] },
-          dueDate: { lt: paymentDateMidnight },
-        },
-        data: { status: "OVERDUE" },
-      });
-
-      // In-memory schedule update
-      for (const s of account.schedule) {
-        if (s.status === "PENDING" && s.dueDate < paymentDateMidnight) {
-          s.status = "OVERDUE";
-        }
-      }
-
-      // Auto-compute penalty based on payment date (not recording date)
-      const penaltyConfig = await tx.adminConfig.findFirst();
-      const penaltyPerDay = penaltyConfig?.penaltyPerDay
-        ? new Decimal(penaltyConfig.penaltyPerDay.toString())
-        : new Decimal("50.00");
-
-      const autoPenaltyPeriods: Array<{ periodId: string; amount: Decimal }> = [];
-      for (const period of account.schedule) {
-        if (period.status === "PAID") continue;
-
-        // Normalize both dates to Manila calendar to avoid UTC timezone offset bug
-        const dueStr = dateToManilaDateOnly(period.dueDate);
-        const payStr = dateToManilaDateOnly(paymentDateMidnight);
-        if (dueStr >= payStr) continue;
-
-        const dueManila = parseDateOnly(dueStr);
-        const payManila = parseDateOnly(payStr);
-        const { accrued } = computeAccruedPenalty(dueManila, payManila, { penaltyPerDay });
-        if (accrued.lte(0)) continue;
-
-        const currentPenalty = new Decimal(period.penaltyAmount || "0");
-        const additional = Decimal.max(0, accrued.minus(currentPenalty));
-        if (additional.lte(0)) continue;
-
-        await tx.installmentSchedule.update({
-          where: { id: period.id },
-          data: { penaltyAmount: decimalToString(currentPenalty.plus(additional)) },
-        });
-        period.penaltyAmount = currentPenalty.plus(additional) as any;
-        autoPenaltyPeriods.push({ periodId: period.id, amount: additional });
-      }
-
-      const updatedSchedule = account.schedule;
-
-      // Determine payment type (after auto-penalty so amounts include penalty)
       const paymentType = body.paymentType || (() => {
-        const remaining = updatedSchedule
+        const remaining = account.schedule
           .filter((s) => s.status !== "PAID")
           .reduce((sum, s) => {
             const ramt = new Decimal(s.amount).minus(s.paidAmount ? new Decimal(s.paidAmount) : 0);
@@ -142,12 +83,36 @@ export async function POST(request: Request) {
 
       // ADVANCE is same as REGULAR now — both apply forward
 
-      const currentPeriod = updatedSchedule.find(
+      const currentPeriod = account.schedule.find(
         (s) => s.status === "PENDING" || s.status === "PARTIAL" || s.status === "OVERDUE",
       );
+
       if (!currentPeriod) {
         throw new NotFoundError("No unpaid periods found");
       }
+
+      // Update overdue schedule periods before processing
+      const paymentDateManila = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+      }).format(paymentDate);
+      const paymentDateMidnight = new Date(paymentDateManila + "T00:00:00.000+08:00");
+
+      await tx.installmentSchedule.updateMany({
+        where: {
+          installmentAccountId: account.id,
+          status: { in: ["PENDING"] },
+          dueDate: { lt: paymentDateMidnight },
+        },
+        data: { status: "OVERDUE" },
+      });
+
+      // Update in-memory schedule instead of re-fetching from DB
+      for (const s of account.schedule) {
+        if (s.status === "PENDING" && s.dueDate < paymentDateMidnight) {
+          s.status = "OVERDUE";
+        }
+      }
+      const updatedSchedule = account.schedule;
 
       // Reject overpayments — cannot pay more than the total remaining balance
       {
@@ -257,24 +222,6 @@ export async function POST(request: Request) {
           proofUrl: body.proofUrl || null,
         },
       });
-
-      // Create penalty records for auto-computed penalties
-      if (autoPenaltyPeriods.length > 0) {
-        await Promise.all(
-          autoPenaltyPeriods.map((p) =>
-            tx.penaltyRecord.create({
-              data: {
-                installmentAccountId: account.id,
-                installmentScheduleId: p.periodId,
-                paymentId: createdPayment.id,
-                amount: decimalToString(p.amount),
-                appliedDate: paymentDate,
-                reason: `Auto penalty: ₱${p.amount.toFixed(2)} from due date to payment date`,
-              },
-            }),
-          ),
-        );
-      }
 
       // Second pass: write schedule updates with REAL paymentId (no __pending__)
       await Promise.all(
