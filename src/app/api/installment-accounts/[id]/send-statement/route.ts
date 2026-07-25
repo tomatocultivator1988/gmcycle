@@ -191,7 +191,7 @@ export async function POST(request: Request, context: RouteContext) {
         <tbody>
           ${account.penalties.map((p) => `
             <tr>
-              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${new Date(p.appliedDate).toLocaleDateString()}</td>
+              <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${dateToManilaDateOnly(new Date(p.appliedDate))}</td>
               <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;text-align:right;color:#b91c1c;">${formatPeso(p.amount.toString())}</td>
               <td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${p.reason || "—"}</td>
             </tr>`).join("")}
